@@ -1,0 +1,148 @@
+{
+  "name": "hello-world",
+  "type": "clab",
+  "clab": {
+    "config": {
+      "prefix": "clab",
+      "mgmt": {
+        "network": "clab",
+        "bridge": "br-c61145c1696b",
+        "ipv4-subnet": "172.20.20.0/24",
+        "ipv4-gw": "172.20.20.1",
+        "ipv6-subnet": "3fff:172:20:20::/64",
+        "ipv6-gw": "3fff:172:20:20::1",
+        "external-access": true
+      }
+    }
+  },
+  "ssh-pub-keys": ["ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBM2wafpWFQaci6QQ0VT5jQJPh0Feat5aPtVKeRRGywgLPaOiyoXC0MHeUeA3sGxG4/JnsMGnUoJqBSXj+ZoLSZI="],
+  "nodes": {
+    "pc1": {
+      "index": "0",
+      "shortname": "pc1",
+      "longname": "clab-hello-world-pc1",
+      "fqdn": "pc1.hello-world.io",
+      "group": "",
+      "labdir": "/home/clab/netconfbench/labs/clab-hello-world/pc1",
+      "kind": "linux",
+      "image": "alpine:latest",
+      "mgmt-net": "",
+      "mgmt-intf": "",
+      "mgmt-ipv4-address": "172.20.20.2",
+      "mgmt-ipv4-prefix-length": 24,
+      "mgmt-ipv6-address": "3fff:172:20:20::2",
+      "mgmt-ipv6-prefix-length": 64,
+      "mac-address": "",
+      "labels": {
+        "clab-mgmt-net-bridge": "br-c61145c1696b",
+        "clab-node-group": "",
+        "clab-node-kind": "linux",
+        "clab-node-lab-dir": "/home/clab/netconfbench/labs/clab-hello-world/pc1",
+        "clab-node-longname": "clab-hello-world-pc1",
+        "clab-node-name": "pc1",
+        "clab-node-type": "",
+        "clab-owner": "clab",
+        "clab-topo-file": "/home/clab/netconfbench/labs/hello-world.yml",
+        "containerlab": "hello-world"
+      },
+      "port-bindings": [
+      ]
+    },
+    "pc2": {
+      "index": "1",
+      "shortname": "pc2",
+      "longname": "clab-hello-world-pc2",
+      "fqdn": "pc2.hello-world.io",
+      "group": "",
+      "labdir": "/home/clab/netconfbench/labs/clab-hello-world/pc2",
+      "kind": "linux",
+      "image": "alpine:latest",
+      "mgmt-net": "",
+      "mgmt-intf": "",
+      "mgmt-ipv4-address": "172.20.20.3",
+      "mgmt-ipv4-prefix-length": 24,
+      "mgmt-ipv6-address": "3fff:172:20:20::3",
+      "mgmt-ipv6-prefix-length": 64,
+      "mac-address": "",
+      "labels": {
+        "clab-mgmt-net-bridge": "br-c61145c1696b",
+        "clab-node-group": "",
+        "clab-node-kind": "linux",
+        "clab-node-lab-dir": "/home/clab/netconfbench/labs/clab-hello-world/pc2",
+        "clab-node-longname": "clab-hello-world-pc2",
+        "clab-node-name": "pc2",
+        "clab-node-type": "",
+        "clab-owner": "clab",
+        "clab-topo-file": "/home/clab/netconfbench/labs/hello-world.yml",
+        "containerlab": "hello-world"
+      },
+      "port-bindings": [
+      ]
+    },
+    "router": {
+      "index": "2",
+      "shortname": "router",
+      "longname": "clab-hello-world-router",
+      "fqdn": "router.hello-world.io",
+      "group": "",
+      "labdir": "/home/clab/netconfbench/labs/clab-hello-world/router",
+      "kind": "linux",
+      "image": "frrouting/frr:latest",
+      "mgmt-net": "",
+      "mgmt-intf": "",
+      "mgmt-ipv4-address": "172.20.20.4",
+      "mgmt-ipv4-prefix-length": 24,
+      "mgmt-ipv6-address": "3fff:172:20:20::4",
+      "mgmt-ipv6-prefix-length": 64,
+      "mac-address": "",
+      "labels": {
+        "clab-mgmt-net-bridge": "br-c61145c1696b",
+        "clab-node-group": "",
+        "clab-node-kind": "linux",
+        "clab-node-lab-dir": "/home/clab/netconfbench/labs/clab-hello-world/router",
+        "clab-node-longname": "clab-hello-world-router",
+        "clab-node-name": "router",
+        "clab-node-type": "",
+        "clab-owner": "clab",
+        "clab-topo-file": "/home/clab/netconfbench/labs/hello-world.yml",
+        "containerlab": "hello-world"
+      },
+      "port-bindings": [
+      ]
+    }
+  },
+  "links": [
+    {
+      "endpoints": {
+        "a": {
+          "node": "pc1",
+          "interface": "eth1",
+          "mac": "aa:c1:ab:70:ee:38",
+          "peer": "z"
+        },
+        "z": {
+          "node": "router",
+          "interface": "eth1",
+          "mac": "aa:c1:ab:10:2e:ea",
+          "peer": "a"
+        }
+      }
+    },
+    {
+      "endpoints": {
+        "a": {
+          "node": "pc2",
+          "interface": "eth1",
+          "mac": "aa:c1:ab:83:5a:46",
+          "peer": "z"
+        },
+        "z": {
+          "node": "router",
+          "interface": "eth2",
+          "mac": "aa:c1:ab:8c:3d:16",
+          "peer": "a"
+        }
+      }
+    }
+  ]
+}

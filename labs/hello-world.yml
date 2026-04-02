@@ -1,0 +1,23 @@
+name: hello-world
+
+topology:
+  nodes:
+    pc1:
+      kind: linux
+      image: alpine:latest
+      exec:
+        - ip addr add 10.0.1.2/24 dev eth1
+        - ip route add 10.0.2.0/24 via 10.0.1.1 dev eth1
+    router:
+      kind: linux
+      image: frrouting/frr:latest
+    pc2:
+      kind: linux
+      image: alpine:latest
+      exec:
+        - ip addr add 10.0.2.2/24 dev eth1
+        - ip route add 10.0.1.0/24 via 10.0.2.1 dev eth1
+
+  links:
+    - endpoints: ["pc1:eth1", "router:eth1"]
+    - endpoints: ["pc2:eth1", "router:eth2"]

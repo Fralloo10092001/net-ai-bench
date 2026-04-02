@@ -1,0 +1,4 @@
+[
+  { "provider": "google", "model": "gemini-2.5-flash" },
+  { "provider": "openrouter", "model": "openai/gpt-4o-mini" }
+]
