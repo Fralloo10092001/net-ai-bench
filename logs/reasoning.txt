@@ -1,1 +1,1 @@
-All necessary configurations have been applied, and connectivity has been validated successfully between all devices in the network.
+All devices have been configured with the specified IP addresses and routes. IP forwarding was enabled on routers where needed. Connectivity between PC1 and PC2 has been successfully validated in both directions using ping.

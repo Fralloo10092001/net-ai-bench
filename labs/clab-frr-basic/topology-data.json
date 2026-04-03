@@ -6,7 +6,7 @@
       "prefix": "clab",
       "mgmt": {
         "network": "clab",
-        "bridge": "br-c61145c1696b",
+        "bridge": "br-d88a37cb00ba",
         "ipv4-subnet": "172.20.20.0/24",
         "ipv4-gw": "172.20.20.1",
         "ipv6-subnet": "3fff:172:20:20::/64",
@@ -28,13 +28,13 @@
       "image": "alpine:latest",
       "mgmt-net": "",
       "mgmt-intf": "",
-      "mgmt-ipv4-address": "172.20.20.7",
+      "mgmt-ipv4-address": "172.20.20.3",
       "mgmt-ipv4-prefix-length": 24,
-      "mgmt-ipv6-address": "3fff:172:20:20::7",
+      "mgmt-ipv6-address": "3fff:172:20:20::3",
       "mgmt-ipv6-prefix-length": 64,
       "mac-address": "",
       "labels": {
-        "clab-mgmt-net-bridge": "br-c61145c1696b",
+        "clab-mgmt-net-bridge": "br-d88a37cb00ba",
         "clab-node-group": "",
         "clab-node-kind": "linux",
         "clab-node-lab-dir": "/home/clab/netconfbench/labs/clab-frr-basic/pc1",
@@ -59,13 +59,13 @@
       "image": "alpine:latest",
       "mgmt-net": "",
       "mgmt-intf": "",
-      "mgmt-ipv4-address": "172.20.20.8",
+      "mgmt-ipv4-address": "172.20.20.5",
       "mgmt-ipv4-prefix-length": 24,
-      "mgmt-ipv6-address": "3fff:172:20:20::8",
+      "mgmt-ipv6-address": "3fff:172:20:20::5",
       "mgmt-ipv6-prefix-length": 64,
       "mac-address": "",
       "labels": {
-        "clab-mgmt-net-bridge": "br-c61145c1696b",
+        "clab-mgmt-net-bridge": "br-d88a37cb00ba",
         "clab-node-group": "",
         "clab-node-kind": "linux",
         "clab-node-lab-dir": "/home/clab/netconfbench/labs/clab-frr-basic/pc2",
@@ -90,13 +90,13 @@
       "image": "frrouting/frr:latest",
       "mgmt-net": "",
       "mgmt-intf": "",
-      "mgmt-ipv4-address": "172.20.20.6",
+      "mgmt-ipv4-address": "172.20.20.2",
       "mgmt-ipv4-prefix-length": 24,
-      "mgmt-ipv6-address": "3fff:172:20:20::6",
+      "mgmt-ipv6-address": "3fff:172:20:20::2",
       "mgmt-ipv6-prefix-length": 64,
       "mac-address": "",
       "labels": {
-        "clab-mgmt-net-bridge": "br-c61145c1696b",
+        "clab-mgmt-net-bridge": "br-d88a37cb00ba",
         "clab-node-group": "",
         "clab-node-kind": "linux",
         "clab-node-lab-dir": "/home/clab/netconfbench/labs/clab-frr-basic/r1",
@@ -121,13 +121,13 @@
       "image": "frrouting/frr:latest",
       "mgmt-net": "",
       "mgmt-intf": "",
-      "mgmt-ipv4-address": "172.20.20.5",
+      "mgmt-ipv4-address": "172.20.20.4",
       "mgmt-ipv4-prefix-length": 24,
-      "mgmt-ipv6-address": "3fff:172:20:20::5",
+      "mgmt-ipv6-address": "3fff:172:20:20::4",
       "mgmt-ipv6-prefix-length": 64,
       "mac-address": "",
       "labels": {
-        "clab-mgmt-net-bridge": "br-c61145c1696b",
+        "clab-mgmt-net-bridge": "br-d88a37cb00ba",
         "clab-node-group": "",
         "clab-node-kind": "linux",
         "clab-node-lab-dir": "/home/clab/netconfbench/labs/clab-frr-basic/r2",
@@ -148,13 +148,13 @@
         "a": {
           "node": "pc1",
           "interface": "eth1",
-          "mac": "aa:c1:ab:2b:d1:96",
+          "mac": "aa:c1:ab:cf:4b:c5",
           "peer": "z"
         },
         "z": {
           "node": "r1",
           "interface": "eth1",
-          "mac": "aa:c1:ab:26:e3:e5",
+          "mac": "aa:c1:ab:63:f9:aa",
           "peer": "a"
         }
       }
@@ -164,13 +164,13 @@
         "a": {
           "node": "r1",
           "interface": "eth2",
-          "mac": "aa:c1:ab:ec:70:6f",
+          "mac": "aa:c1:ab:10:56:0d",
           "peer": "z"
         },
         "z": {
           "node": "r2",
           "interface": "eth1",
-          "mac": "aa:c1:ab:b5:01:cf",
+          "mac": "aa:c1:ab:02:82:9c",
           "peer": "a"
         }
       }
@@ -180,13 +180,13 @@
         "a": {
           "node": "r2",
           "interface": "eth2",
-          "mac": "aa:c1:ab:19:45:c1",
+          "mac": "aa:c1:ab:f5:50:22",
           "peer": "z"
         },
         "z": {
           "node": "pc2",
           "interface": "eth1",
-          "mac": "aa:c1:ab:f1:96:05",
+          "mac": "aa:c1:ab:b8:8e:22",
           "peer": "a"
         }
       }

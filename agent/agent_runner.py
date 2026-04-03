@@ -38,15 +38,15 @@ Available tools:
 
 You must use the exact argument names shown above.
 Do not use names like device_name, config_commands, validation_commands, or null tool_args.
+If you output invalid JSON, the system will fail. Ensure all required fields are present.
 
-Operational procedure:
-1. Inspect topology first.
-2. Inspect running configuration of relevant devices early.
-3. Infer the current state from running configuration.
-4. Compare current state with the task requirements.
-5. Apply only the missing or incorrect configuration.
-6. Validate the final task outcome.
-7. Finish as soon as the task has been successfully validated.
+Expected behavior:
+- Inspect topology before making configuration changes.
+- Inspect current running configuration of relevant devices early.
+- Compare current state with the task requirements before acting.
+- Apply only missing or incorrect configuration.
+- Validate the final task goal using bounded commands.
+- Finish as soon as the task has been successfully validated.
 
 Topology and addressing rules:
 - Each link corresponds to exactly one subnet.

@@ -3,19 +3,19 @@ pc1:
     username: 
     password: 
     platform: linux
-    hostname: 172.20.20.7
+    hostname: 172.20.20.3
 pc2:
     username: 
     password: 
     platform: linux
-    hostname: 172.20.20.8
+    hostname: 172.20.20.5
 r1:
     username: 
     password: 
     platform: linux
-    hostname: 172.20.20.6
+    hostname: 172.20.20.2
 r2:
     username: 
     password: 
     platform: linux
-    hostname: 172.20.20.5
+    hostname: 172.20.20.4
