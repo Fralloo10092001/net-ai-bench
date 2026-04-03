@@ -2,7 +2,6 @@ import argparse
 import asyncio
 import json
 import sys
-import os
 from pathlib import Path
 from typing import Any, Dict
 
@@ -135,22 +134,53 @@ def _extract_mcp_text(result: Any) -> Any:
     return extracted
 
 
+def _load_task_text(task_path: str) -> str:
+    with open(task_path) as f:
+        task = json.load(f)
+    return json.dumps(task, indent=2)
+
+
+def _build_step_prompt(task_text: str, valid_tool_names: list[str], history: list[dict]) -> str:
+    return f"""
+CURRENT TASK:
+{task_text}
+
+VALID TOOL NAMES:
+{json.dumps(valid_tool_names, indent=2)}
+
+EXECUTION HISTORY:
+{json.dumps(history, indent=2)}
+
+INSTRUCTIONS FOR THIS STEP:
+- Read the CURRENT TASK carefully.
+- Use the exact IP addresses, gateways, and subnets required by the task.
+- Do not invent new subnets or alternative host addresses.
+- Inspect current state before changing configuration.
+- Apply only missing or incorrect configuration.
+- Do not repeat commands that are already satisfied.
+- Use only valid tool names.
+- Use only exact argument names required by the tools.
+- Validation must use bounded commands such as: ping -c 3 -W 2 <destination>
+- Finish immediately after the task goal has been successfully validated.
+
+Return exactly one JSON object matching the required schema.
+""".strip()
+
+
 async def _list_tool_names(session: ClientSession) -> list[str]:
     tools = await session.list_tools()
     return [t.name for t in tools.tools]
 
 
-async def _agent_loop(session: ClientSession, llm, max_steps: int = 25):
+async def _agent_loop(session: ClientSession, llm, task_text: str, max_steps: int = 25):
     history = []
     valid_tool_names = await _list_tool_names(session)
 
     for step in range(1, max_steps + 1):
-        prompt = (
-            SYSTEM_PROMPT
-            + "\n\nValid tool names:\n"
-            + json.dumps(valid_tool_names, indent=2)
-            + "\n\nHistory:\n"
-            + json.dumps(history, indent=2)
+        prompt = SYSTEM_PROMPT + "\n\n" + _build_step_prompt(
+            task_text=task_text,
+            valid_tool_names=valid_tool_names,
+            history=history,
         )
 
         response = await llm.ainvoke(prompt)
@@ -206,6 +236,7 @@ async def _agent_loop(session: ClientSession, llm, max_steps: int = 25):
 
     return history, "Agent reached maximum number of steps before finishing."
 
+
 async def _export_final_configs(session: ClientSession, devices: list[str]) -> dict[str, str]:
     final_configs = {}
 
@@ -222,6 +253,8 @@ async def _export_final_configs(session: ClientSession, devices: list[str]) -> d
             final_configs[device] = f"ERROR: {e}"
 
     return final_configs
+
+
 def run(
     lab: str,
     task_path: str,
@@ -244,6 +277,7 @@ def run(
     print(f"DEBUG reasoning_file={reasoning_file}")
 
     llm = get_model(provider, model)
+    task_text = _load_task_text(task_path)
 
     async def _run_async():
         mcp_server_path = PROJECT_ROOT / "ani" / "mcp_server.py"
@@ -265,6 +299,7 @@ def run(
                 history, reasoning = await _agent_loop(
                     session=session,
                     llm=llm,
+                    task_text=task_text,
                     max_steps=max_steps,
                 )
 
@@ -311,7 +346,6 @@ if __name__ == "__main__":
         model=args.model,
         max_steps=args.max_steps,
     )
-    
 
     print("\n" + "=" * 55)
     print("  AGENT COMPLETED")
