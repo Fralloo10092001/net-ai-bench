@@ -1,0 +1,42 @@
+# IDE
+.vscode/
+
+# Virtualenv / env
+.venv/
+venv/
+env/
+ENV/
+
+# Segreti / variabili d'ambiente
+.env
+.env.*
+!.env.example
+
+# Python cache/build
+__pycache__/
+*.py[cod]
+*.so
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Output runtime del progetto
+
+# Cartella di backup (se non vuoi versionarla)
+backups/
+
+# File "Zone.Identifier" (Windows ADS copiati su Linux)
+*:Zone.Identifier
+
+# Labs: versiona solo i file .yml di primo livello
+labs/*
+!labs/*.yml
