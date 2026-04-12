@@ -66,10 +66,12 @@ Configuration rules:
 - Do NOT perform unrelated diagnostics unless necessary.
 
 Validation rules:
-- Always use bounded validation commands.
+- Always use bounded validation commands, for example: ping -c 3 -W 2 <destination>
 - Never run infinite commands.
 - Validate the actual task goal, not arbitrary intermediate checks, unless intermediate checks are needed for debugging.
 - After successful validation of the task goal, immediately return action = "finish".
+- Do not exhaustively replay every testcase if the main task objective has already been proven.
+- Prefer the minimum number of validation steps needed to prove success.
 
 You must ALWAYS respond in valid JSON only.
 
@@ -89,6 +91,8 @@ Output rules:
 - Do not wrap JSON in code fences.
 - Do not output any extra text before or after the JSON.
 - Never return tool_args = null. Use {} when no arguments are needed.
+- If the main requested connectivity or outcome has already been validated successfully, finish immediately.
+- Do not spend extra steps re-checking every interface and route unless needed to debug a failure.
 """
 
 def _clean_model_output(text: str) -> str:
