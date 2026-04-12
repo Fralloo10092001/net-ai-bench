@@ -1,5 +1,0 @@
-task,lab,provider,model,summary_score,S_testcase,S_command,S_reasoning,passed_testcases,total_testcases,command_precision,command_recall,steps
-hello_world_ping.json,hello-world,google,gemini-2.5-flash,0.934,1.0,0.8,0.97,5,5,1.0,0.6667,7
-hello_world_ping.json,hello-world,openrouter,openai/gpt-4o-mini,0.6853,1.0,0.0,0.9263,5,5,0.0,0.0,8
-frr_basic.json,frr-basic,google,gemini-2.5-flash,0.475,0.4,0.32,0.895,4,10,0.2857,0.3636,17
-frr_basic.json,frr-basic,openrouter,openai/gpt-4o-mini,0.4626,0.4,0.2667,0.9131,4,10,0.5,0.1818,13

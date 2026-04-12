@@ -1,1 +1,0 @@
-Successfully configured the router interfaces and validated end-to-end connectivity between pc1 and pc2. The ping from pc1 to pc2 (10.0.2.2) was successful, confirming the network is operational as intended.

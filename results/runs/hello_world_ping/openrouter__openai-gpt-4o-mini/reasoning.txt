@@ -1,1 +1,0 @@
-PC1 and PC2 are configured correctly and can communicate with each other, fulfilling the requirements of the task.
