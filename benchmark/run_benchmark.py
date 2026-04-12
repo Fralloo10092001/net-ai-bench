@@ -3,6 +3,7 @@ import csv
 import json
 import shutil
 import subprocess
+import time
 from collections import defaultdict
 from pathlib import Path
 
@@ -262,6 +263,7 @@ def main():
 
             results.append(entry)
             save_run_artifacts(task, provider, model, eval_result)
+            time.sleep(10)
 
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     RESULTS_JSON.write_text(json.dumps(results, indent=2))

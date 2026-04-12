@@ -24,8 +24,9 @@ You are a network automation agent.
 Your job is to solve the task by inspecting the topology, inspecting current device configuration, applying only the necessary configuration changes, and validating the expected final connectivity.
 
 IMPORTANT:
-- Devices may be Linux-based. Use Linux networking commands such as ip addr, ip route, sysctl, ip link, and ping.
+- Devices may use different network operating systems and CLIs.
 - Do NOT assume Cisco CLI.
+- Use only commands appropriate for the device type and platform described in the task context.
 - You MUST use only the exact tool names provided.
 - Do NOT invent tool names.
 - You MUST strictly follow the topology and the exact addressing required by the task.
@@ -65,7 +66,7 @@ Configuration rules:
 - Do NOT perform unrelated diagnostics unless necessary.
 
 Validation rules:
-- Always use bounded validation commands, for example: ping -c 3 -W 2 <destination>
+- Always use bounded validation commands.
 - Never run infinite commands.
 - Validate the actual task goal, not arbitrary intermediate checks, unless intermediate checks are needed for debugging.
 - After successful validation of the task goal, immediately return action = "finish".
@@ -87,10 +88,28 @@ Output rules:
 - Do not use markdown.
 - Do not wrap JSON in code fences.
 - Do not output any extra text before or after the JSON.
+- Never return tool_args = null. Use {} when no arguments are needed.
 """
+
+def _clean_model_output(text: str) -> str:
+    text = text.strip()
+
+    if text.startswith("```"):
+        lines = text.splitlines()
+
+        if lines and lines[0].startswith("```"):
+            lines = lines[1:]
+        if lines and lines[-1].strip() == "```":
+            lines = lines[:-1]
+
+        text = "\n".join(lines).strip()
+
+    return text
 
 
 def _parse_agent_decision(text: str) -> Dict[str, Any]:
+    text = _clean_model_output(text)
+
     try:
         data = json.loads(text)
     except Exception:
@@ -137,13 +156,56 @@ def _extract_mcp_text(result: Any) -> Any:
 def _load_task_text(task_path: str) -> str:
     with open(task_path) as f:
         task = json.load(f)
-    return json.dumps(task, indent=2)
 
+    compact_task = {
+        "task_name": task.get("task_name"),
+        "intent": task.get("intent"),
+        "lab_file": task.get("lab_file"),
+        "ground_truth_configs": task.get("ground_truth_configs"),
+        "testcases": task.get("testcases"),
+    }
+    return json.dumps(compact_task, indent=2)
 
-def _build_step_prompt(task_text: str, valid_tool_names: list[str], history: list[dict]) -> str:
-    return f"""
+def _build_platform_guidance(task_text: str) -> str:
+    lower = task_text.lower()
+
+    if "nokia_srlinux" in lower or "srl" in lower:
+        return """
+PLATFORM GUIDANCE:
+- This task may involve Nokia SR Linux devices.
+- For SR Linux, do not assume Linux interface configuration commands such as ip addr add or ip route add for interface setup.
+- Prefer SR Linux CLI style configuration and SR Linux operational validation commands when interacting with SR Linux devices.
+- SR Linux validation output may differ from standard Linux ping output.
+- Use Linux-style commands only for Linux-based nodes if the task includes them.
+""".strip()
+
+    if "openbsd" in lower:
+        return """
+PLATFORM GUIDANCE:
+- This task may involve OpenBSD devices.
+- Use commands appropriate for OpenBSD where needed.
+- Do not assume Linux-only command behavior on OpenBSD devices.
+""".strip()
+
+    return """
+PLATFORM GUIDANCE:
+- This task uses Linux-like devices.
+- Linux networking commands such as ip addr, ip route, ip link, sysctl, and ping are appropriate when supported by the device.
+""".strip()
+
+def _build_step_prompt(task_text: str, valid_tool_names: list[str], history: list[dict], parse_warning: str = "") -> str:
+    parts = []
+
+    if parse_warning:
+        parts.append(parse_warning)
+
+    platform_guidance = _build_platform_guidance(task_text)
+
+    parts.append(f"""
 CURRENT TASK:
 {task_text}
+
+{platform_guidance}
 
 VALID TOOL NAMES:
 {json.dumps(valid_tool_names, indent=2)}
@@ -160,12 +222,16 @@ INSTRUCTIONS FOR THIS STEP:
 - Do not repeat commands that are already satisfied.
 - Use only valid tool names.
 - Use only exact argument names required by the tools.
-- Validation must use bounded commands such as: ping -c 3 -W 2 <destination>
+- Validation must use bounded commands appropriate for the platform and device type.
 - Finish immediately after the task goal has been successfully validated.
+- Return raw JSON only.
+- Do not use ```json fences.
+- tool_args must always be a JSON object, never null.
 
 Return exactly one JSON object matching the required schema.
-""".strip()
+""".strip())
 
+    return "\n\n".join(parts)
 
 async def _list_tool_names(session: ClientSession) -> list[str]:
     tools = await session.list_tools()
@@ -177,10 +243,23 @@ async def _agent_loop(session: ClientSession, llm, task_text: str, max_steps: in
     valid_tool_names = await _list_tool_names(session)
 
     for step in range(1, max_steps + 1):
+        recent_history = history[-4:]
+
+        parse_warning = ""
+        if recent_history and recent_history[-1].get("action") == "parse_error":
+            parse_warning = """
+IMPORTANT LAST ERROR:
+Your previous response was rejected because it was not raw JSON.
+Return ONLY raw JSON.
+Do NOT use markdown fences.
+tool_args must be {} or another JSON object, never null.
+""".strip()
+
         prompt = SYSTEM_PROMPT + "\n\n" + _build_step_prompt(
             task_text=task_text,
             valid_tool_names=valid_tool_names,
-            history=history,
+            history=recent_history,
+            parse_warning=parse_warning,
         )
 
         response = await llm.ainvoke(prompt)

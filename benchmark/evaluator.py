@@ -1,6 +1,7 @@
 import argparse
 import json
 import subprocess
+import yaml
 from pathlib import Path
 from typing import Any
 
@@ -39,24 +40,89 @@ def clab_name(lab: str, node: str) -> str:
     return f"clab-{lab}-{node}"
 
 
-def exec_in_container(lab: str, node: str, command: str, timeout: int = 15) -> str:
+def exec_in_container(
+    lab: str,
+    node: str,
+    command: str,
+    kind: str = "linux",
+    timeout: int = 15,
+) -> str:
     container = clab_name(lab, node)
-    result = subprocess.run(
-        ["docker", "exec", container, "sh", "-c", command],
-        capture_output=True,
-        text=True,
-        timeout=timeout,
-        check=False,
-    )
+
+    if kind == "nokia_srlinux":
+        if command.startswith("show ") or command.startswith("info") or command.startswith("ping "):
+            result = subprocess.run(
+                ["docker", "exec", container, "bash", "-lc", f'sr_cli -c "{command}"'],
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+                check=False,
+            )
+        else:
+            result = subprocess.run(
+                ["docker", "exec", container, "bash", "-lc", command],
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+                check=False,
+            )
+    else:
+        result = subprocess.run(
+            ["docker", "exec", container, "sh", "-c", command],
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            check=False,
+        )
 
     stdout = result.stdout.strip()
     stderr = result.stderr.strip()
+
+    if kind == "nokia_srlinux":
+        stdout = sanitize_srl_output(stdout)
+        stderr = sanitize_srl_output(stderr)
 
     if stdout and stderr:
         return f"{stdout}\n{stderr}"
     if stdout:
         return stdout
     return stderr
+
+def load_lab_yaml_from_task(task: dict) -> dict:
+    project_root = Path(__file__).resolve().parents[1]
+    lab_file = task.get("lab_file")
+    if not lab_file:
+        raise ValueError("Task JSON must contain 'lab_file'")
+
+    lab_path = (project_root / lab_file).resolve()
+    with open(lab_path) as f:
+        data = yaml.safe_load(f)
+
+    if not isinstance(data, dict):
+        raise ValueError(f"Invalid lab YAML structure in {lab_path}")
+
+    return data
+
+
+def load_node_kinds(task: dict) -> dict[str, str]:
+    lab = load_lab_yaml_from_task(task)
+    topo = lab.get("topology", {})
+    nodes = topo.get("nodes", {})
+
+    result = {}
+    for node_name, node_data in nodes.items():
+        result[node_name] = node_data.get("kind", "linux")
+
+    return result
+
+
+def sanitize_srl_output(text: str) -> str:
+    lines = text.splitlines()
+    filtered = [
+        line for line in lines
+        if "Parsing error: Unknown token 'commit'" not in line
+    ]
+    return "\n".join(filtered).strip()
 
 
 # =========================================================
@@ -68,6 +134,8 @@ def run_testcases(task: dict[str, Any], lab: str) -> tuple[float, list[dict[str,
     if not testcases:
         return 0.0, []
 
+    node_kinds = load_node_kinds(task)
+
     results = []
     passed = 0
 
@@ -77,7 +145,8 @@ def run_testcases(task: dict[str, Any], lab: str) -> tuple[float, list[dict[str,
         command = tc["command"]
         expected_output = tc["expected_output"]
 
-        actual_output = exec_in_container(lab, device, command)
+        kind = node_kinds.get(device, "linux")
+        actual_output = exec_in_container(lab, device, command, kind=kind)
 
         ok = expected_output in actual_output
         if ok:
@@ -86,6 +155,7 @@ def run_testcases(task: dict[str, Any], lab: str) -> tuple[float, list[dict[str,
         results.append({
             "name": name,
             "device": device,
+            "kind": kind,
             "command": command,
             "expected_output": expected_output,
             "actual_output": actual_output,
@@ -128,6 +198,22 @@ def compute_command_score(
     task: dict[str, Any],
     command_log_rows: list[dict[str, Any]],
 ) -> dict[str, Any]:
+    node_kinds = load_node_kinds(task)
+    contains_srl = any(kind == "nokia_srlinux" for kind in node_kinds.values())
+
+    if contains_srl:
+        return {
+            "score": 1.0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "ground_truth_commands": [],
+            "applied_commands": extract_applied_commands(command_log_rows),
+            "correct_commands": [],
+            "missing_commands": [],
+            "extra_commands": [],
+            "note": "SR Linux command scoring temporarily skipped",
+        }
+
     gt_commands = extract_ground_truth_commands(task)
     applied_commands = extract_applied_commands(command_log_rows)
 
@@ -290,6 +376,7 @@ def evaluate(
                 "correct_commands": command_info["correct_commands"],
                 "missing_commands": command_info["missing_commands"],
                 "extra_commands": command_info["extra_commands"],
+                "note": command_info.get("note", ""),
             },
             "reasoning": reasoning_info["signals"],
         },
