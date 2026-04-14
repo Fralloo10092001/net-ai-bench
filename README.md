@@ -1,6 +1,6 @@
 # NetConfBench
 
-**NetConfBench** è un framework leggero per valutare agenti basati su Large Language Models (LLM) su task di configurazione di rete, utilizzando ambienti containerizzati con [Containerlab](https://containerlab.dev/).
+**NetConfBench** è un framework per valutare agenti basati su Large Language Models (LLM) su task di configurazione di rete, utilizzando ambienti containerizzati con [Containerlab](https://containerlab.dev/).
 
 L'agente riceve un obiettivo espresso in linguaggio naturale (es. *"fai comunicare PC1 con PC2 attraverso due router"*), ispeziona la topologia, legge la configurazione corrente dei dispositivi, applica i comandi necessari e valida il risultato — tutto in autonomia.
 
@@ -58,7 +58,7 @@ L'agente riceve un obiettivo espresso in linguaggio naturale (es. *"fai comunica
 1. **`run_benchmark.py`** carica la lista di modelli (`benchmark/models.json`) e di task (`benchmark/tasks.json`), resetta il lab Containerlab per ogni task, avvia l'agente e infine salva i risultati.
 2. **`agent_runner.py`** istanzia il modello LLM tramite `model_registry.py` e avvia un loop ReAct: a ogni passo costruisce un prompt (system prompt + storia degli ultimi 4 step) e chiede al modello di restituire un JSON con `thought`, `action`, `tool_name`, `tool_args`. Gestisce errori di parsing con feedback esplicito al modello.
 3. **MCP Server** (`ani/mcp_server.py`) espone quattro strumenti via [FastMCP](https://gofastmcp.com/) su stdio. Legge la topologia dal file `.yml` del lab e seleziona il driver corretto in base al `kind` del nodo.
-4. I **driver** (`LinuxDriver`, `SRLinuxDriver`) traducono le chiamate agli strumenti in comandi Docker exec, con validazione di sicurezza (allowlist, blocklist, divieto di shell injection).
+4. I **driver** (`LinuxDriver`, `SRLinuxDriver`) traducono le chiamate agli strumenti in comandi Docker exec, con validazione di sicurezza (allowlist, blocklist).
 5. Al termine, **`evaluator.py`** misura tre dimensioni e calcola un punteggio aggregato.
 
 ---
@@ -85,11 +85,13 @@ net-ai-bench/
 ├── labs/                    # file .yml Containerlab
 │   ├── hello-world.yml
 │   ├── frr-basic.yml
-│   └── srl02.yml
+│   ├── srl02.yml
+│   └── ...
 ├── tasks/                   # definizioni dei task (JSON)
 │   ├── hello_world_ping.json
 │   ├── frr_basic.json
-│   └── srl02.json
+│   ├──srl02.json
+│   └── ...
 ├── results/                 # output persistente dei benchmark
 │   ├── results.json
 │   ├── results.csv
@@ -103,7 +105,6 @@ net-ai-bench/
 ## Requisiti
 
 - Python 3.10+
-- Docker
 - Containerlab
 - API key per almeno un provider LLM
 
