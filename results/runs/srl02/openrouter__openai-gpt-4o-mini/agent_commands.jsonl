@@ -1,0 +1,34 @@
+{"device": "srl1", "command": "interface ethernet-1/1.0"}
+{"device": "srl1", "command": "ipv4 address 10.0.12.1/30"}
+{"device": "srl1", "command": "interface ethernet-1/1"}
+{"device": "srl1", "command": "subinterface 0"}
+{"device": "srl1", "command": "ipv4 address 10.0.12.1/30"}
+{"device": "srl1", "command": "interface ethernet-1/1.0"}
+{"device": "srl1", "command": "admin-state enable"}
+{"device": "srl1", "command": "ipv4 address 10.0.12.1/30"}
+{"device": "srl2", "command": "interface ethernet-1/1.0"}
+{"device": "srl2", "command": "admin-state enable"}
+{"device": "srl2", "command": "ipv4 address 10.0.12.2/30"}
+{"device": "srl2", "command": "interface ethernet-1/1"}
+{"device": "srl2", "command": "subinterface 0"}
+{"device": "srl2", "command": "admin-state enable"}
+{"device": "srl2", "command": "ipv4 address 10.0.12.2/30"}
+{"device": "srl1", "command": "interface ethernet-1/1"}
+{"device": "srl1", "command": "subinterface 0"}
+{"device": "srl1", "command": "admin-state enable"}
+{"device": "srl1", "command": "ipv4 address 10.0.12.1/30"}
+{"device": "srl1", "command": "network-instance default {"}
+{"device": "srl1", "command": "interface ethernet-1/1.0 {"}
+{"device": "srl1", "command": "admin-state enable"}
+{"device": "srl1", "command": "}"}
+{"device": "srl1", "command": "}"}
+{"device": "srl1", "command": "network-instance default {"}
+{"device": "srl1", "command": "interface ethernet-1/1.0 {"}
+{"device": "srl1", "command": "admin-state enable"}
+{"device": "srl1", "command": "}"}
+{"device": "srl1", "command": "}"}
+{"device": "srl1", "command": "network-instance default {"}
+{"device": "srl1", "command": "interface ethernet-1/1.0 {"}
+{"device": "srl1", "command": "admin-state enable"}
+{"device": "srl1", "command": "}"}
+{"device": "srl1", "command": "}"}

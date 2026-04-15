@@ -1,1 +1,1 @@
-PC1 and PC2 are configured correctly and can communicate with each other, fulfilling the requirements of the task.
+Both PC1 and PC2 can ping each other successfully, validating the connectivity as specified in the task.

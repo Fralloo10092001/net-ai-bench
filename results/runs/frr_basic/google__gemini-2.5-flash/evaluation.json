@@ -1,134 +1,136 @@
 {
   "task_name": "FRR Basic Connectivity",
   "lab": "frr-basic",
-  "S_testcase": 0.4,
-  "S_command": 0.32,
-  "S_reasoning": 0.895,
-  "summary_score": 0.475,
+  "S_testcase": 1.0,
+  "S_command": 0.9091,
+  "S_reasoning": 0.9221,
+  "summary_score": 0.9572,
   "details": {
     "testcases": [
       {
         "name": "PC1 can ping PC2",
         "device": "pc1",
+        "kind": "linux",
         "command": "ping -c 3 -W 2 10.0.2.2",
         "expected_output": "3 packets transmitted, 3 packets received",
-        "actual_output": "PING 10.0.2.2 (10.0.2.2): 56 data bytes\n64 bytes from 10.0.2.2: seq=0 ttl=63 time=0.155 ms\n64 bytes from 10.0.2.2: seq=1 ttl=63 time=0.058 ms\n64 bytes from 10.0.2.2: seq=2 ttl=63 time=0.066 ms\n\n--- 10.0.2.2 ping statistics ---\n3 packets transmitted, 3 packets received, 0% packet loss\nround-trip min/avg/max = 0.058/0.093/0.155 ms",
+        "actual_output": "PING 10.0.2.2 (10.0.2.2): 56 data bytes\n64 bytes from 10.0.2.2: seq=0 ttl=62 time=0.058 ms\n64 bytes from 10.0.2.2: seq=1 ttl=62 time=0.165 ms\n64 bytes from 10.0.2.2: seq=2 ttl=62 time=0.180 ms\n\n--- 10.0.2.2 ping statistics ---\n3 packets transmitted, 3 packets received, 0% packet loss\nround-trip min/avg/max = 0.058/0.134/0.180 ms",
         "passed": true
       },
       {
         "name": "PC2 can ping PC1",
         "device": "pc2",
+        "kind": "linux",
         "command": "ping -c 3 -W 2 10.0.1.2",
         "expected_output": "3 packets transmitted, 3 packets received",
-        "actual_output": "PING 10.0.1.2 (10.0.1.2): 56 data bytes\n64 bytes from 10.0.1.2: seq=0 ttl=62 time=0.102 ms\n64 bytes from 10.0.1.2: seq=1 ttl=62 time=0.065 ms\n64 bytes from 10.0.1.2: seq=2 ttl=62 time=0.061 ms\n\n--- 10.0.1.2 ping statistics ---\n3 packets transmitted, 3 packets received, 0% packet loss\nround-trip min/avg/max = 0.061/0.076/0.102 ms",
+        "actual_output": "PING 10.0.1.2 (10.0.1.2): 56 data bytes\n64 bytes from 10.0.1.2: seq=0 ttl=62 time=0.086 ms\n64 bytes from 10.0.1.2: seq=1 ttl=62 time=0.218 ms\n64 bytes from 10.0.1.2: seq=2 ttl=62 time=0.216 ms\n\n--- 10.0.1.2 ping statistics ---\n3 packets transmitted, 3 packets received, 0% packet loss\nround-trip min/avg/max = 0.086/0.173/0.218 ms",
         "passed": true
       },
       {
         "name": "R1 eth1 has correct IP",
         "device": "r1",
+        "kind": "linux",
         "command": "ip addr show eth1",
         "expected_output": "10.0.1.1/24",
-        "actual_output": "247: eth1@if246: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 9500 qdisc noqueue state UP group default \n    link/ether aa:c1:ab:26:e3:e5 brd ff:ff:ff:ff:ff:ff link-netnsid 2\n    inet 10.0.1.1/24 scope global eth1\n       valid_lft forever preferred_lft forever\n    inet6 fe80::a8c1:abff:fe26:e3e5/64 scope link \n       valid_lft forever preferred_lft forever",
+        "actual_output": "23: eth1@if24: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 9500 qdisc noqueue state UP group default \n    link/ether aa:c1:ab:cd:b3:0c brd ff:ff:ff:ff:ff:ff link-netnsid 1\n    inet 10.0.1.1/24 scope global eth1\n       valid_lft forever preferred_lft forever\n    inet6 fe80::a8c1:abff:fecd:b30c/64 scope link \n       valid_lft forever preferred_lft forever",
         "passed": true
       },
       {
         "name": "R1 eth2 has correct IP",
         "device": "r1",
+        "kind": "linux",
         "command": "ip addr show eth2",
         "expected_output": "10.0.12.1/24",
-        "actual_output": "248: eth2@if249: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 9500 qdisc noqueue state UP group default \n    link/ether aa:c1:ab:ec:70:6f brd ff:ff:ff:ff:ff:ff link-netnsid 1\n    inet 10.0.2.1/24 scope global eth2\n       valid_lft forever preferred_lft forever\n    inet6 fe80::a8c1:abff:feec:706f/64 scope link \n       valid_lft forever preferred_lft forever",
-        "passed": false
+        "actual_output": "25: eth2@if26: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 9500 qdisc noqueue state UP group default \n    link/ether aa:c1:ab:e9:30:ec brd ff:ff:ff:ff:ff:ff link-netnsid 2\n    inet 10.0.12.1/24 scope global eth2\n       valid_lft forever preferred_lft forever\n    inet6 fe80::a8c1:abff:fee9:30ec/64 scope link \n       valid_lft forever preferred_lft forever",
+        "passed": true
       },
       {
         "name": "R2 eth1 has correct IP",
         "device": "r2",
+        "kind": "linux",
         "command": "ip addr show eth1",
         "expected_output": "10.0.12.2/24",
-        "actual_output": "249: eth1@if248: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 9500 qdisc noqueue state UP group default \n    link/ether aa:c1:ab:b5:01:cf brd ff:ff:ff:ff:ff:ff link-netnsid 1\n    inet 10.0.2.2/24 scope global eth1\n       valid_lft forever preferred_lft forever\n    inet6 fe80::a8c1:abff:feb5:1cf/64 scope link \n       valid_lft forever preferred_lft forever",
-        "passed": false
+        "actual_output": "26: eth1@if25: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 9500 qdisc noqueue state UP group default \n    link/ether aa:c1:ab:51:f4:25 brd ff:ff:ff:ff:ff:ff link-netnsid 2\n    inet 10.0.12.2/24 scope global eth1\n       valid_lft forever preferred_lft forever\n    inet6 fe80::a8c1:abff:fe51:f425/64 scope link \n       valid_lft forever preferred_lft forever",
+        "passed": true
       },
       {
         "name": "R2 eth2 has correct IP",
         "device": "r2",
+        "kind": "linux",
         "command": "ip addr show eth2",
         "expected_output": "10.0.2.1/24",
-        "actual_output": "251: eth2@if250: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 9500 qdisc noqueue state UP group default \n    link/ether aa:c1:ab:19:45:c1 brd ff:ff:ff:ff:ff:ff link-netnsid 2\n    inet 10.0.3.1/24 scope global eth2\n       valid_lft forever preferred_lft forever\n    inet6 fe80::a8c1:abff:fe19:45c1/64 scope link \n       valid_lft forever preferred_lft forever",
-        "passed": false
+        "actual_output": "27: eth2@if28: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 9500 qdisc noqueue state UP group default \n    link/ether aa:c1:ab:eb:a1:88 brd ff:ff:ff:ff:ff:ff link-netnsid 1\n    inet 10.0.2.1/24 scope global eth2\n       valid_lft forever preferred_lft forever\n    inet6 fe80::a8c1:abff:feeb:a188/64 scope link \n       valid_lft forever preferred_lft forever",
+        "passed": true
       },
       {
         "name": "PC1 has correct IP",
         "device": "pc1",
+        "kind": "linux",
         "command": "ip addr show eth1",
         "expected_output": "10.0.1.2/24",
-        "actual_output": "246: eth1@if247: <BROADCAST,MULTICAST,UP,LOWER_UP,M-DOWN> mtu 9500 qdisc noqueue state UP \n    link/ether aa:c1:ab:2b:d1:96 brd ff:ff:ff:ff:ff:ff\n    inet 10.0.1.2/24 scope global eth1\n       valid_lft forever preferred_lft forever\n    inet6 fe80::a8c1:abff:fe2b:d196/64 scope link \n       valid_lft forever preferred_lft forever",
+        "actual_output": "24: eth1@if23: <BROADCAST,MULTICAST,UP,LOWER_UP,M-DOWN> mtu 9500 qdisc noqueue state UP \n    link/ether aa:c1:ab:13:86:37 brd ff:ff:ff:ff:ff:ff\n    inet 10.0.1.2/24 scope global eth1\n       valid_lft forever preferred_lft forever\n    inet6 fe80::a8c1:abff:fe13:8637/64 scope link \n       valid_lft forever preferred_lft forever",
         "passed": true
       },
       {
         "name": "PC2 has correct IP",
         "device": "pc2",
+        "kind": "linux",
         "command": "ip addr show eth1",
         "expected_output": "10.0.2.2/24",
-        "actual_output": "250: eth1@if251: <BROADCAST,MULTICAST,UP,LOWER_UP,M-DOWN> mtu 9500 qdisc noqueue state UP \n    link/ether aa:c1:ab:f1:96:05 brd ff:ff:ff:ff:ff:ff\n    inet 10.0.3.2/24 scope global eth1\n       valid_lft forever preferred_lft forever\n    inet6 fe80::a8c1:abff:fef1:9605/64 scope link \n       valid_lft forever preferred_lft forever",
-        "passed": false
+        "actual_output": "28: eth1@if27: <BROADCAST,MULTICAST,UP,LOWER_UP,M-DOWN> mtu 9500 qdisc noqueue state UP \n    link/ether aa:c1:ab:37:6b:a6 brd ff:ff:ff:ff:ff:ff\n    inet 10.0.2.2/24 scope global eth1\n       valid_lft forever preferred_lft forever\n    inet6 fe80::a8c1:abff:fe37:6ba6/64 scope link \n       valid_lft forever preferred_lft forever",
+        "passed": true
       },
       {
         "name": "R1 has route to PC2 subnet",
         "device": "r1",
+        "kind": "linux",
         "command": "ip route show",
         "expected_output": "10.0.2.0/24 via 10.0.12.2",
-        "actual_output": "default via 172.20.20.1 dev eth0 \n10.0.1.0/24 dev eth1 proto kernel scope link src 10.0.1.1 \n10.0.2.0/24 dev eth2 proto kernel scope link src 10.0.2.1 \n10.0.3.0/24 via 10.0.2.2 dev eth2 \n172.20.20.0/24 dev eth0 proto kernel scope link src 172.20.20.6",
-        "passed": false
+        "actual_output": "default via 172.20.20.1 dev eth0 \n10.0.1.0/24 dev eth1 proto kernel scope link src 10.0.1.1 \n10.0.2.0/24 via 10.0.12.2 dev eth2 \n10.0.12.0/24 dev eth2 proto kernel scope link src 10.0.12.1 \n172.20.20.0/24 dev eth0 proto kernel scope link src 172.20.20.6",
+        "passed": true
       },
       {
         "name": "R2 has route to PC1 subnet",
         "device": "r2",
+        "kind": "linux",
         "command": "ip route show",
         "expected_output": "10.0.1.0/24 via 10.0.12.1",
-        "actual_output": "default via 172.20.20.1 dev eth0 \n10.0.1.0/24 via 10.0.2.1 dev eth1 \n10.0.2.0/24 dev eth1 proto kernel scope link src 10.0.2.2 \n10.0.3.0/24 dev eth2 proto kernel scope link src 10.0.3.1 \n172.20.20.0/24 dev eth0 proto kernel scope link src 172.20.20.5",
-        "passed": false
+        "actual_output": "default via 172.20.20.1 dev eth0 \n10.0.1.0/24 via 10.0.12.1 dev eth1 \n10.0.2.0/24 dev eth2 proto kernel scope link src 10.0.2.1 \n10.0.12.0/24 dev eth1 proto kernel scope link src 10.0.12.2 \n172.20.20.0/24 dev eth0 proto kernel scope link src 172.20.20.7",
+        "passed": true
       }
     ],
     "command": {
-      "precision": 0.2857,
-      "recall": 0.3636,
+      "precision": 0.9091,
+      "recall": 0.9091,
       "correct_commands": [
         "ip addr add 10.0.1.1/24 dev eth1",
         "ip addr add 10.0.1.2/24 dev eth1",
-        "ip addr add 10.0.2.1/24 dev eth2",
-        "ip addr add 10.0.2.2/24 dev eth1"
-      ],
-      "missing_commands": [
-        "echo 1 > /proc/sys/net/ipv4/ip_forward",
         "ip addr add 10.0.12.1/24 dev eth2",
         "ip addr add 10.0.12.2/24 dev eth1",
+        "ip addr add 10.0.2.1/24 dev eth2",
+        "ip addr add 10.0.2.2/24 dev eth1",
         "ip route add 10.0.1.0/24 via 10.0.12.1",
         "ip route add 10.0.2.0/24 via 10.0.12.2",
         "ip route add default via 10.0.1.1",
         "ip route add default via 10.0.2.1"
       ],
+      "missing_commands": [
+        "echo 1 > /proc/sys/net/ipv4/ip_forward"
+      ],
       "extra_commands": [
-        "ip addr add 10.0.3.1/24 dev eth2",
-        "ip addr add 10.0.3.2/24 dev eth1",
-        "ip link set eth1 up",
-        "ip link set eth2 up",
-        "ip route add 10.0.1.0/24 via 10.0.2.1 dev eth1",
-        "ip route add 10.0.3.0/24 via 10.0.2.2 dev eth2",
-        "ip route add default via 10.0.1.1 dev eth1",
-        "ip route add default via 10.0.3.1 dev eth1",
-        "ip route del default via 172.20.20.1 dev eth0",
-        "sysctl -w net.ipv4.ip_forward=1"
-      ]
+        "ip route del default via 172.20.20.1"
+      ],
+      "note": ""
     },
     "reasoning": {
       "starts_with_topology": 1.0,
       "used_running_cfg_early": 1.0,
       "validated": 1.0,
       "finished": 1.0,
-      "efficiency": 0.3,
-      "error_penalty": 0.0,
-      "parse_penalty": 0.0,
+      "efficiency": 0.6,
+      "error_penalty": 0.14285714285714285,
+      "parse_penalty": 0.07142857142857142,
       "invalid_tool_penalty": 0.0,
-      "total_steps": 17
+      "total_steps": 14
     }
   }
 }

@@ -1,1 +1,0 @@
-All devices have been configured according to the task requirements, and the end-to-end connectivity between PC1 and PC2 has been successfully validated in both directions. The primary goal of the task has been achieved.
