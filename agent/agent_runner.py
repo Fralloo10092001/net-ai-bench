@@ -242,7 +242,7 @@ async def _list_tool_names(session: ClientSession) -> list[str]:
     return [t.name for t in tools.tools]
 
 
-async def _agent_loop(session: ClientSession, llm, task_text: str, max_steps: int = 25):
+async def _agent_loop(session: ClientSession, llm, task_text: str, max_steps: int = 35):
     history = []
     valid_tool_names = await _list_tool_names(session)
 
