@@ -9,16 +9,12 @@ from typing import Any
 BASE_DIR = Path(__file__).resolve().parent.parent
 LOGS_DIR = BASE_DIR / "logs"
 
-
-# =========================================================
-# I/O
-# =========================================================
-
+#Carica JSON
 def load_json(path: Path) -> dict[str, Any]:
     with open(path) as f:
         return json.load(f)
 
-
+#Carica file JSON Lines, usato per agent_commands.jsonl
 def load_jsonl(path: Path) -> list[dict[str, Any]]:
     if not path.exists():
         return []
@@ -32,9 +28,6 @@ def load_jsonl(path: Path) -> list[dict[str, Any]]:
     return rows
 
 
-# =========================================================
-# Docker helpers
-# =========================================================
 
 def clab_name(lab: str, node: str) -> str:
     return f"clab-{lab}-{node}"
@@ -88,6 +81,7 @@ def exec_in_container(
         return stdout
     return stderr
 
+#Legge il lab YAML associato al task
 def load_lab_yaml_from_task(task: dict) -> dict:
     project_root = Path(__file__).resolve().parents[1]
     lab_file = task.get("lab_file")
@@ -103,7 +97,7 @@ def load_lab_yaml_from_task(task: dict) -> dict:
 
     return data
 
-
+#Ricava node -> kind
 def load_node_kinds(task: dict) -> dict[str, str]:
     lab = load_lab_yaml_from_task(task)
     topo = lab.get("topology", {})
@@ -115,7 +109,7 @@ def load_node_kinds(task: dict) -> dict[str, str]:
 
     return result
 
-
+#Rimuove righe non desiderate
 def sanitize_srl_output(text: str) -> str:
     lines = text.splitlines()
     filtered = [
@@ -124,11 +118,13 @@ def sanitize_srl_output(text: str) -> str:
     ]
     return "\n".join(filtered).strip()
 
-
-# =========================================================
-# Testcase Score
-# =========================================================
-
+"""Per ogni testcase:
+legge device
+legge command
+legge expected_output
+identifica kind
+esegue comando nel container
+controlla se expected_output in actual_output """
 def run_testcases(task: dict[str, Any], lab: str) -> tuple[float, list[dict[str, Any]]]:
     testcases = task.get("testcases", [])
     if not testcases:
@@ -165,15 +161,11 @@ def run_testcases(task: dict[str, Any], lab: str) -> tuple[float, list[dict[str,
     score = passed / len(testcases)
     return score, results
 
-
-# =========================================================
-# Command Score
-# =========================================================
-
+#Normalizza spazi
 def normalize_command(cmd: str) -> str:
     return " ".join(cmd.strip().split())
 
-
+#Prende i comandi attesi da ground_truth_configs
 def extract_ground_truth_commands(task: dict[str, Any]) -> list[str]:
     gt = task.get("ground_truth_configs", {})
     commands = []
@@ -184,7 +176,7 @@ def extract_ground_truth_commands(task: dict[str, Any]) -> list[str]:
 
     return commands
 
-
+#Prende i comandi realmente eseguiti dal log
 def extract_applied_commands(command_log_rows: list[dict[str, Any]]) -> list[str]:
     commands = []
     for row in command_log_rows:
@@ -241,11 +233,8 @@ def compute_command_score(
         "extra_commands": sorted(applied_set - gt_set),
     }
 
-
-# =========================================================
-# Reasoning Score (proxy, not cosine yet)
-# =========================================================
-
+#Usa segnali proxy, non embedding o cosine similarity.
+#Non misura il reasoning “vero”, ma premia comportamento agentico ragionevole
 def compute_reasoning_score(history: list[dict[str, Any]]) -> dict[str, Any]:
     if not history:
         return {
@@ -262,23 +251,19 @@ def compute_reasoning_score(history: list[dict[str, Any]]) -> dict[str, Any]:
     observations = [str(step.get("observation", "")) for step in history]
     actions = [step.get("action", "") for step in history]
 
-    # signal 1: starts with topology inspection
     starts_with_topology = 1.0 if tool_sequence and tool_sequence[0] == "get_topology" else 0.0
 
-    # signal 2: uses running config early
     used_running_cfg_early = 0.0
     for i, name in enumerate(tool_sequence[:3]):
         if name == "get_running_config":
             used_running_cfg_early = 1.0
             break
 
-    # signal 3: validates before finishing
     validated = 1.0 if "execute_validation" in tool_sequence else 0.0
 
-    # signal 4: finished successfully
     finished = 1.0 if actions and actions[-1] == "finish" else 0.0
 
-    # penalties
+    # errori e penalità
     error_count = sum("error" in obs.lower() for obs in observations)
     parse_error_count = sum(step.get("action") == "parse_error" for step in history)
     invalid_tool_count = sum("invalid tool name" in obs.lower() for obs in observations)
@@ -288,7 +273,6 @@ def compute_reasoning_score(history: list[dict[str, Any]]) -> dict[str, Any]:
     parse_penalty = parse_error_count / max(total_steps, 1)
     invalid_tool_penalty = invalid_tool_count / max(total_steps, 1)
 
-    # mild efficiency component
     if total_steps <= 6:
         efficiency = 1.0
     elif total_steps <= 10:
@@ -326,11 +310,20 @@ def compute_reasoning_score(history: list[dict[str, Any]]) -> dict[str, Any]:
         },
     }
 
+""" Carica:
+        task
+        history
+        command log
 
-# =========================================================
-# Aggregation
-# =========================================================
+        Calcola:
+        S_testcase
+        S_command
+        S_reasoning
 
+        Poi:
+        summary_score = 0.5 * testcase + 0.3 * command + 0.2 * reasoning
+
+        Ritorna JSON finale con dettagli. """
 def evaluate(
     task_path: Path,
     lab: str,
@@ -382,11 +375,7 @@ def evaluate(
         },
     }
 
-
-# =========================================================
-# CLI
-# =========================================================
-
+#Permette di eseguire evaluator da terminale
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="NetConfBench-style evaluator")
     parser.add_argument("--task", required=True, help="Path to task JSON")

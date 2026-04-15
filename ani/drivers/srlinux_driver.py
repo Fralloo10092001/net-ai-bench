@@ -4,7 +4,7 @@ from pathlib import Path
 
 from .base import BaseDriver
 
-
+#Comandi read-only ammessi
 SHOW_PREFIXES = [
     "show ",
     "info",
@@ -15,6 +15,7 @@ SHOW_PREFIXES = [
     "uname ",
 ]
 
+#Divieti focalizzati sul non permettere shell dannose
 CONFIG_BLOCKED_SUBSTRINGS = [
     "rm ",
     "reboot",
@@ -51,6 +52,7 @@ class SRLinuxDriver(BaseDriver):
         )
         return container_name in result.stdout.splitlines()
 
+    #Esegue shell nel container con docker exec ... bash -lc ...
     def _exec_shell(self, node: str, command: str, check: bool = True) -> str:
         container_name = self._clab(node)
 
@@ -74,6 +76,7 @@ class SRLinuxDriver(BaseDriver):
             return f"{stdout}\n{stderr}"
         return stdout
 
+    #Invia uno script via stdin a sr_cli, questa è la logica di configurazione SR Linux.
     def _exec_sr_cli_script(self, node: str, lines: list[str]) -> str:
         container_name = self._clab(node)
 
@@ -100,6 +103,8 @@ class SRLinuxDriver(BaseDriver):
             return f"{stdout}\n{stderr}"
         return stdout
 
+    #Rimuove righe spazzatura, in particolare l’errore 
+    # Parsing error: Unknown token 'commit'
     def _sanitize_show_output(self, text: str) -> str:
         lines = text.splitlines()
         filtered = [
@@ -108,6 +113,7 @@ class SRLinuxDriver(BaseDriver):
         ]
         return "\n".join(filtered).strip()
 
+    #Controlla che i comandi di validazione siano sicuri
     def _is_allowed_show_command(self, cmd: str) -> bool:
         cmd = cmd.strip()
 
@@ -126,6 +132,7 @@ class SRLinuxDriver(BaseDriver):
 
         return any(cmd.startswith(prefix) for prefix in SHOW_PREFIXES)
 
+    #Controlla che le linee di configurazione non contengano token/sottostringhe vietati
     def _is_allowed_config_line(self, line: str) -> bool:
         line = line.strip()
 

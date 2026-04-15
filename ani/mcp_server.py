@@ -8,24 +8,30 @@ import yaml
 from drivers import get_driver
 from mcp.server.fastmcp import FastMCP
 
+#Questo file espone i tool via FastMCP
+
 _lab_name: str = ""
 _task_file: Path = Path()
 _log_file: Path = Path()
 _project_root: Path = Path()
 _node_kinds: dict[str, str] = {}
+#Sono globali perché il server MCP viene avviato una volta per run e 
+# poi i tool devono sapere su quale lab/task operano
 
+#Crea il server MCP
 mcp = FastMCP("netconfbench-ani")
 
-
+#Costruisce il nome del container dato il nome del nodo in containerlab
 def _clab(node: str) -> str:
     return f"clab-{_lab_name}-{node}"
 
-
+#Carica il task JSON
 def _load_task() -> dict:
     with open(_task_file) as f:
         return json.load(f)
 
-
+#Dal task ricava lab_file, lo risolve rispetto 
+# alla root progetto e controlla che esista
 def _resolve_lab_file() -> Path:
     task = _load_task()
     lab_file = task.get("lab_file")
@@ -38,7 +44,7 @@ def _resolve_lab_file() -> Path:
 
     return lab_path
 
-
+#Legge il YAML Containerlab
 def _load_lab_yaml() -> dict:
     lab_path = _resolve_lab_file()
     with open(lab_path) as f:
@@ -49,7 +55,7 @@ def _load_lab_yaml() -> dict:
 
     return data
 
-
+#Estrae dal YAML: lista nodi,  lista link in formato leggibile "a:if <-> b:if"
 def _load_topology_from_lab() -> dict:
     lab = _load_lab_yaml()
 
@@ -70,7 +76,8 @@ def _load_topology_from_lab() -> dict:
         "links": links,
     }
 
-
+#Costruisce un dict: node_name -> kind, 
+# così il server capisce quale driver usare per ciascun nodo
 def _load_node_kinds_from_lab() -> dict[str, str]:
     lab = _load_lab_yaml()
     topo = lab.get("topology", {})
@@ -82,12 +89,12 @@ def _load_node_kinds_from_lab() -> dict[str, str]:
 
     return result
 
-
+#Guarda _node_kinds, poi chiama get_driver(...)
 def _driver_for(device: str):
     kind = _node_kinds.get(device, "linux")
     return get_driver(kind=kind, lab_name=_lab_name, log_file=_log_file)
 
-
+#Usa docker ps per elencare container attivi
 def _list_running_containers() -> list[str]:
     result = subprocess.run(
         ["docker", "ps", "--format", "{{.Names}}"],
@@ -98,7 +105,8 @@ def _list_running_containers() -> list[str]:
     )
     return result.stdout.splitlines()
 
-
+#Controlla se i container attesi dal lab sono attivi.
+#Se mancano, stampa warning su stderr.
 def _warn_if_lab_not_running() -> None:
     try:
         topology = _load_topology_from_lab()
@@ -116,7 +124,7 @@ def _warn_if_lab_not_running() -> None:
     except Exception as e:
         print(f"WARNING: could not verify lab status: {e}", file=sys.stderr)
 
-
+#Ritorna la topologia intera o filtrata per devices
 @mcp.tool()
 def get_topology(devices: list[str] | None = None) -> dict:
     """
@@ -134,7 +142,7 @@ def get_topology(devices: list[str] | None = None) -> dict:
 
     return {"topology": topology}
 
-
+#Delegato al driver del device
 @mcp.tool()
 def get_running_config(device: str) -> dict:
     """
@@ -143,7 +151,7 @@ def get_running_config(device: str) -> dict:
     driver = _driver_for(device)
     return driver.get_running_config(device)
 
-
+#Delegato al driver del device
 @mcp.tool()
 def update_config(device: str, commands: list[str]) -> dict:
     """
@@ -152,7 +160,7 @@ def update_config(device: str, commands: list[str]) -> dict:
     driver = _driver_for(device)
     return driver.update_config(device, commands)
 
-
+#Delegato al driver del device
 @mcp.tool()
 def execute_validation(device: str, command: str) -> dict:
     """

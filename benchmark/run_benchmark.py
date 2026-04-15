@@ -19,10 +19,7 @@ LOGS_DIR = PROJECT_ROOT / "logs"
 MODELS_FILE = PROJECT_ROOT / "benchmark" / "models.json"
 TASKS_FILE = PROJECT_ROOT / "benchmark" / "tasks.json"
 
-
-# ----------------------------
-# CONFIG LOADERS
-# ----------------------------
+#Legge models.json, valida le entry e ritorna lista di tuple (provider, model)
 def load_models() -> list[tuple[str, str]]:
     if not MODELS_FILE.exists():
         raise FileNotFoundError(f"Models config not found: {MODELS_FILE}")
@@ -40,7 +37,7 @@ def load_models() -> list[tuple[str, str]]:
 
     return models
 
-
+#Legge tasks.json, verifica che sia lista di stringhe
 def load_tasks() -> list[str]:
     if not TASKS_FILE.exists():
         raise FileNotFoundError(f"Tasks config not found: {TASKS_FILE}")
@@ -53,10 +50,8 @@ def load_tasks() -> list[str]:
 
     return tasks
 
-
-# ----------------------------
-# AGENT RUNNER
-# ----------------------------
+#Costruisce il comando CLI: python -m agent.agent_runner ...
+#Lancia il singolo agente su un task.
 def run_agent(lab: str, task: str, provider: str, model: str) -> bool:
     cmd = [
         "python", "-m", "agent.agent_runner",
@@ -78,10 +73,7 @@ def run_agent(lab: str, task: str, provider: str, model: str) -> bool:
 
     return True
 
-
-# ----------------------------
-# EVALUATOR
-# ----------------------------
+#Lancia benchmark/evaluator.py e prova a fare parse del suo stdout JSON
 def run_evaluator(task: str, lab: str):
     cmd = [
         "python", "benchmark/evaluator.py",
@@ -103,10 +95,7 @@ def run_evaluator(task: str, lab: str):
         print(result.stdout)
         return None
 
-
-# ----------------------------
-# TASK -> LAB
-# ----------------------------
+#Legge il task e ne ricava il nome del lab dal campo lab_file
 def extract_lab_from_task(task_path: str) -> str:
     with open(task_path) as f:
         task = json.load(f)
@@ -117,10 +106,7 @@ def extract_lab_from_task(task_path: str) -> str:
 
     return Path(lab_file).stem
 
-
-# ----------------------------
-# CSV WRITER
-# ----------------------------
+#Scrive il CSV aggregato con i vari campi
 def write_csv(results: list[dict]) -> None:
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -147,9 +133,7 @@ def write_csv(results: list[dict]) -> None:
             writer.writerow(row)
 
 
-# ----------------------------
-# RANKING
-# ----------------------------
+#Raggruppa per provider:model, media summary_score, ordina decrescente
 def print_ranking(results: list[dict]) -> None:
     grouped = defaultdict(list)
 
@@ -169,9 +153,7 @@ def print_ranking(results: list[dict]) -> None:
         print(f"{idx}. {model_name} | avg={avg_score:.3f} | runs={n}")
 
 
-# ----------------------------
-# LAB RESET
-# ----------------------------
+#Fa: containerlab destroy -t labs/<lab>.yml e poi containerlab deploy -t labs/<lab>.yml
 def reset_lab(lab: str) -> None:
     lab_file = f"labs/{lab}.yml"
 
@@ -179,10 +161,7 @@ def reset_lab(lab: str) -> None:
     subprocess.run(["containerlab", "destroy", "-t", lab_file])
     subprocess.run(["containerlab", "deploy", "-t", lab_file])
 
-
-# ----------------------------
-# PER-RUN ARTIFACTS
-# ----------------------------
+#Copia da logs/ ai risultati persistenti del run
 def save_run_artifacts(task: str, provider: str, model: str, eval_result: dict | None = None) -> None:
     task_name = Path(task).stem
     safe_model = model.replace("/", "-")
@@ -205,10 +184,6 @@ def save_run_artifacts(task: str, provider: str, model: str, eval_result: dict |
     if eval_result is not None:
         (run_dir / "evaluation.json").write_text(json.dumps(eval_result, indent=2))
 
-
-# ----------------------------
-# MAIN
-# ----------------------------
 def main():
     parser = argparse.ArgumentParser(description="Run NetConfBench benchmark")
     parser.add_argument("--task", help="Run only one task")

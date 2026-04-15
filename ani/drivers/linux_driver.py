@@ -2,8 +2,11 @@ import json
 import subprocess
 from pathlib import Path
 
+from torch import cat
+
 from .base import BaseDriver
 
+#Lista di prefissi ammessi
 ALLOWED_PREFIXES = [
     "ip addr add",
     "ip addr del",
@@ -34,6 +37,7 @@ ALLOWED_PREFIXES = [
     "uname ",
 ]
 
+#Lista di prefissi non ammessi
 BLOCKED_SUBSTRINGS = [
     "rm ",
     "reboot",
@@ -60,13 +64,17 @@ FORBIDDEN_TOKENS = ["&&", "||", ";"]
 
 
 class LinuxDriver(BaseDriver):
+
+    #Salva nome lab e file di log
     def __init__(self, lab_name: str, log_file: Path):
         self.lab_name = lab_name
         self.log_file = log_file
 
+    #Costruisce nome container
     def _clab(self, node: str) -> str:
         return f"clab-{self.lab_name}-{node}"
 
+    #Verifica con docker ps se esiste il container
     def _container_exists(self, container_name: str) -> bool:
         result = subprocess.run(
             ["docker", "ps", "--format", "{{.Names}}"],
@@ -77,6 +85,7 @@ class LinuxDriver(BaseDriver):
         )
         return container_name in result.stdout.splitlines()
 
+    #Gestisce timeout, stdout/stderr, output combinato
     def _exec(self, node: str, command: str, check: bool = True) -> str:
         container_name = self._clab(node)
 
@@ -99,7 +108,9 @@ class LinuxDriver(BaseDriver):
         if stdout and stderr:
             return f"{stdout}\n{stderr}"
         return stdout
-
+    
+    #Verifica:comando non vuoto, no token vietati, no sottostringhe bloccate,
+    #se è ping, deve essere bounded con -c ,deve iniziare con uno dei prefissi ammessi
     def _is_allowed_command(self, cmd: str) -> bool:
         cmd = cmd.strip()
 
@@ -118,6 +129,11 @@ class LinuxDriver(BaseDriver):
 
         return any(cmd.startswith(prefix) for prefix in ALLOWED_PREFIXES)
 
+    #Esegue:
+    #ip addr show
+    #ip route show
+    #cat /proc/sys/net/ipv4/ip_forward
+    #e li concatena in un unico blob di stato
     def get_running_config(self, device: str) -> dict:
         ip_out = self._exec(device, "ip addr show")
         route_out = self._exec(device, "ip route show")
@@ -130,6 +146,12 @@ class LinuxDriver(BaseDriver):
         )
         return {"running_config": config}
 
+    #Per ogni comando:
+    #strip
+    #verifica allowlist
+    #logga in agent_commands.jsonl
+    #prova esecuzione
+    #registra status
     def update_config(self, device: str, commands: list[str]) -> dict:
         results = []
 
@@ -178,6 +200,7 @@ class LinuxDriver(BaseDriver):
 
         return {"results": results}
 
+    #Esegue il comando in modalità check=False, cioè non esplode se il comando fallisce
     def execute_validation(self, device: str, command: str) -> dict:
         try:
             out = self._exec(device, command, check=False)

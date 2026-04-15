@@ -94,7 +94,7 @@ Output rules:
 - If the main requested connectivity or outcome has already been validated successfully, finish immediately.
 - Do not spend extra steps re-checking every interface and route unless needed to debug a failure.
 """
-
+#Serve a ripulire output del modello
 def _clean_model_output(text: str) -> str:
     text = text.strip()
 
@@ -110,7 +110,7 @@ def _clean_model_output(text: str) -> str:
 
     return text
 
-
+#È il parser/validator della risposta del modello
 def _parse_agent_decision(text: str) -> Dict[str, Any]:
     text = _clean_model_output(text)
 
@@ -140,7 +140,7 @@ def _parse_agent_decision(text: str) -> Dict[str, Any]:
 
     return data
 
-
+#Converte la risposta MCP in testo semplice
 def _extract_mcp_text(result: Any) -> Any:
     if not hasattr(result, "content"):
         return str(result)
@@ -156,7 +156,7 @@ def _extract_mcp_text(result: Any) -> Any:
         return extracted[0]
     return extracted
 
-
+#Legge il JSON del task
 def _load_task_text(task_path: str) -> str:
     with open(task_path) as f:
         task = json.load(f)
@@ -170,6 +170,7 @@ def _load_task_text(task_path: str) -> str:
     }
     return json.dumps(compact_task, indent=2)
 
+#Aggiunge guida specifica per piattaforma, evita di usare comandi Linux in ogni task
 def _build_platform_guidance(task_text: str) -> str:
     lower = task_text.lower()
 
@@ -197,6 +198,7 @@ PLATFORM GUIDANCE:
 - Linux networking commands such as ip addr, ip route, ip link, sysctl, and ping are appropriate when supported by the device.
 """.strip()
 
+#Costruisce il prompt per un singolo step, usa solo gli ultimi 4 step di history
 def _build_step_prompt(task_text: str, valid_tool_names: list[str], history: list[dict], parse_warning: str = "") -> str:
     parts = []
 
@@ -237,6 +239,7 @@ Return exactly one JSON object matching the required schema.
 
     return "\n\n".join(parts)
 
+#Chiede al server MCP la lista dei tool disponibili
 async def _list_tool_names(session: ClientSession) -> list[str]:
     tools = await session.list_tools()
     return [t.name for t in tools.tools]
@@ -266,6 +269,7 @@ tool_args must be {} or another JSON object, never null.
             parse_warning=parse_warning,
         )
 
+        #Invoca il modello
         response = await llm.ainvoke(prompt)
         raw_output = response.content if hasattr(response, "content") else str(response)
 
@@ -319,7 +323,7 @@ tool_args must be {} or another JSON object, never null.
 
     return history, "Agent reached maximum number of steps before finishing."
 
-
+#Alla fine del run legge la config finale di ogni dispositivo usando get_running_config
 async def _export_final_configs(session: ClientSession, devices: list[str]) -> dict[str, str]:
     final_configs = {}
 
@@ -337,7 +341,7 @@ async def _export_final_configs(session: ClientSession, devices: list[str]) -> d
 
     return final_configs
 
-
+#Questa funzione coordina il singolo run dell’agente
 def run(
     lab: str,
     task_path: str,

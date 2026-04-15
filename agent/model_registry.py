@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-
+#Questo file è una factory per i modelli
 def get_model(provider: str, model: str, temperature: float = 0):
     provider = provider.lower()
 
