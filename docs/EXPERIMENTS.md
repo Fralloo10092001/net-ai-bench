@@ -13,7 +13,8 @@ Nel progetto convivono più concetti che rischiano di confondersi. Fissiamo i te
 | **lab** | Topologia Containerlab (file YAML in `labs/`). È l'ambiente fisico emulato. |
 | **task** | Una singola unità di valutazione (file JSON in `tasks/`): intent + lab + ground truth + testcases + baseline invariants + dominio. |
 | **agent_mode** | Architettura dell'agente: `single_turn`, `react`, `planner_executor`. |
-| **cell** | Una tupla `(llm, agent_mode, task)`. È la più piccola unità valutabile. |
+| **transactional** | Flag booleano ortogonale ad `agent_mode`: quando attivo, il server MCP tiene uno stack di snapshot per device (push automatico prima di ogni `apply_commands` / `write_config_file`) e l'agente ha accesso al tool `rollback(device)` che disfà l'ultima scrittura. |
+| **cell** | Una tupla `(llm, agent_mode, transactional, task)`. È la più piccola unità valutabile. |
 | **run** | L'esecuzione concreta di una cell. Una cell può avere N run (ripetizioni). |
 | **experiment** | Una campagna che fissa un sottoinsieme di assi e varia gli altri. Ha obiettivo scientifico, setup, metriche attese, costo stimato. |
 
@@ -35,6 +36,9 @@ Tutte calcolate per singolo run, poi aggregate.
 | `outcome_class` | `clean_success` / `clean_fail` / `dangerous_success` / `destructive_fail` | **Nuovo** |
 | `steps_used` | Numero di tool call fatte dall'agente | Già implementato |
 | `cost_tokens` | Token consumati (in + out) | Già implementato |
+| `rollback_used` | Bool: l'agente ha chiamato `rollback` almeno una volta nel run | **Nuovo** (solo transactional) |
+| `rollback_count` | Int: quante volte ha chiamato `rollback` | **Nuovo** (solo transactional) |
+| `max_undo_depth` | Int: profondità massima dello stack di snapshot raggiunta (≈ numero di scritture fatte) | **Nuovo** (solo transactional) |
 | `failure_mode` | Tag manuale: `syntax` / `semantic` / `topology_misread` / `planning` / `validation` / `exhaustion` / `destructive` | **Nuovo**, post-hoc |
 
 **Classificazione outcome** (dato un run):
@@ -150,6 +154,7 @@ Temperature fissata a `0` per tutti, `max_steps = 35` per agent_mode con loop.
 **Setup.**
 - LLM: 2 modelli (1 frontier + 1 open-weight)
 - agent_mode: `react`
+- transactional: `false`
 - task: 3 task (1 facile, 1 medio, 1 hard)
 - ripetizioni: **5**
 
@@ -161,7 +166,37 @@ Temperature fissata a `0` per tutti, `max_steps = 35` per agent_mode con loop.
 
 ---
 
-## Analisi derivate (su dati E3)
+## E5 — Transactional ablation
+
+**Obiettivo.** Isolare l'effetto del wrapper transazionale (rollback agent-driven) sulla safety. Risponde: *l'accesso a `rollback` riduce i `dangerous_success` e `destructive_fail`? Gli LLM sono abbastanza "self-aware" da invocarlo quando serve, o il tool resta inutilizzato?*
+
+**Perché non inglobare in E3.** Mettere transactional come 4° asse in E3 raddoppia le celle (da 180 a 360) senza che tutte le combinazioni siano interessanti. In particolare `single_turn × transactional` è degenere (nessun feedback loop in cui il rollback possa essere usato). Meglio una campagna focalizzata.
+
+**Setup.**
+- LLM: **fissato** al migliore di E1
+- agent_mode: tutti e tre (mantenuti anche `single_turn` per completezza/controllo)
+- transactional: **`false` e `true`**
+- task: tutti i 12 task (ma l'analisi principale si concentra sui task con `baseline_invariants` non triviali, dove il rollback ha senso)
+- ripetizioni: 1
+
+**Celle totali.** `1 × 3 × 2 × 12 = 72 run`.
+
+**Ipotesi da testare.**
+1. Con `transactional=true`, i `destructive_fail` diminuiscono (l'LLM usa il rollback per recuperare).
+2. Con `transactional=true`, `rollback_used` è significativamente più alto nei task dove l'approccio naive rompe un invariant — es. `f2_port_blocking` se l'agente applica una regola `DROP` troppo larga.
+3. Il rollback è usato più in `react` che in `planner_executor` (il planner ragiona più a monte, fa meno esplorazione distruttiva).
+4. Esiste un LLM che ha accesso al rollback ma non lo usa mai (evidenza di scarsa self-awareness).
+
+**Output atteso.**
+- Tabella `agent_mode × transactional` con distribuzione outcome_class.
+- Per ogni cella transactional: `rollback_used` rate e media di `rollback_count`.
+- Lista qualitativa dei run in cui il rollback ha "salvato" l'esito (transizione `destructive_fail → clean_success` rispetto alla controparte non-transactional sullo stesso task).
+
+**Costo stimato.** ~72 run × ~40k token medi (più token perché prompt più lungo per il rollback tool) = 2.9M token, ~$40.
+
+---
+
+## Analisi derivate (su dati E3 + E5)
 
 Non sono esperimenti separati — riutilizzano i run di E3, applicando analisi diverse.
 
@@ -172,7 +207,7 @@ Tabella pivot `domain × (LLM, agent_mode)`. Evidenzia i domini dove tutti falli
 Tagging manuale via `analysis/failure_tagging.py` su un campione di run falliti (stratificato per dominio). Produce la distribuzione dei `failure_mode`. **Questo è il contributo qualitativo più forte del paper.**
 
 ### A3 — Safety drill-down
-Focus sui `dangerous_success` e `destructive_fail`: quali invariants rompono più spesso? Esiste un pattern per agent_mode? Per dominio?
+Focus sui `dangerous_success` e `destructive_fail`: quali invariants rompono più spesso? Esiste un pattern per agent_mode? Per dominio? Sui run di E5, incrocio con `rollback_used` per isolare i casi di recupero riuscito.
 
 ### A4 — Efficienza
 Scatter `composite_score` vs `cost_tokens` per cella. Frontier di Pareto: quale combinazione `(LLM, agent_mode)` massimizza la qualità per dollaro?
@@ -185,15 +220,16 @@ Scatter `composite_score` vs `cost_tokens` per cella. Frontier di Pareto: quale 
 2. **E1** — ranking LLM, ~mezza giornata.
 3. **E2** — scelta dell'LLM pilota basata su E1.
 4. **E3** — la campagna grossa, in overnight.
-5. **Analisi A1–A4** — iterativa, dopo E3.
+5. **E5** — transactional ablation, dopo aver scelto l'LLM pilota (può girare in parallelo con l'analisi di E3).
+6. **Analisi A1–A4** — iterativa, dopo E3 + E5.
 
-Tra E1–E3 c'è overlap (E1 ⊂ E3). Con `--skip-existing` (vedi TODO punto 6) si evita di rifare celle.
+Tra E1–E3 c'è overlap (E1 ⊂ E3). Con `--skip-existing` (vedi TODO punto 6) si evita di rifare celle. E5 è disgiunto perché aggiunge l'asse `transactional`.
 
 ---
 
 ## Riproducibilità
 
-Ogni run salva in `results/runs/<task>/<provider>__<model>/<agent_mode>/rep<N>/`:
+Ogni run salva in `results/runs/<task>/<provider>__<model>/<agent_mode>[__tx]/rep<N>/` (suffisso `__tx` se `transactional=true`):
 - `run.json` (RunResult serializzato)
 - `history.jsonl` (tool call + risposte)
 - `evaluation.json` (tutte le metriche)
