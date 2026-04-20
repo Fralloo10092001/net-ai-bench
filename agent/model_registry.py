@@ -1,12 +1,15 @@
-from langchain_openai import ChatOpenAI
+from __future__ import annotations
+
+import os
+
+from dotenv import load_dotenv
 from langchain_anthropic import ChatAnthropic
 from langchain_google_genai import ChatGoogleGenerativeAI
-import os
-from dotenv import load_dotenv
+from langchain_openai import ChatOpenAI
 
 load_dotenv()
 
-#Questo file è una factory per i modelli
+
 def get_model(provider: str, model: str, temperature: float = 0):
     provider = provider.lower()
 
@@ -27,7 +30,7 @@ def get_model(provider: str, model: str, temperature: float = 0):
             model=model,
             temperature=temperature,
         )
-    
+
     if provider == "openrouter":
         api_key = os.environ.get("OPENROUTER_API_KEY")
         if not api_key:

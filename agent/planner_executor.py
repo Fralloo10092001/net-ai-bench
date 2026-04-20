@@ -1,0 +1,507 @@
+from __future__ import annotations
+
+import json
+from typing import Any
+
+from mcp.client.session import ClientSession
+
+from .base import Agent, RunResult
+
+
+PLANNER_SYSTEM_PROMPT = """
+You are the PLANNER for a network automation agent.
+
+You must produce a concise execution plan for the task.
+You do NOT call tools.
+You do NOT output commands.
+You only output a JSON array of plan steps.
+
+Each step must have this schema:
+{
+  "step_id": 1,
+  "description": "What should be achieved in this step",
+  "target_device": "device-name"
+}
+
+Rules:
+- Return valid JSON only.
+- Return a JSON array.
+- step_id must be an integer.
+- description must be a string.
+- target_device must be a string.
+- Keep the plan concise and actionable.
+- Prefer device-scoped steps.
+- Do not use markdown.
+""".strip()
+
+
+EXECUTOR_SYSTEM_PROMPT = """
+You are the EXECUTOR for a network automation agent.
+
+You are executing one step of a previously generated plan.
+You may use tools to inspect state, apply configuration, and validate progress.
+
+IMPORTANT:
+- Devices may use different CLIs and operating systems.
+- Use only the exact tool names provided.
+- Do NOT invent tool names.
+- Apply only the changes needed for the current plan step.
+- If the current plan step is complete, return action="finish".
+
+Available tools:
+- get_topology(devices: list[str] | None = None)
+- get_running_config(device: str)
+- update_config(device: str, commands: list[str])
+- execute_validation(device: str, command: str)
+
+You must ALWAYS respond in valid JSON only.
+
+Schema:
+{
+  "thought": "...",
+  "action": "tool_call" | "finish",
+  "tool_name": "...",
+  "tool_args": { ... },
+  "final_reasoning": "..."
+}
+
+Output rules:
+- If action == "tool_call", tool_name must be valid and tool_args must be a JSON object.
+- If action == "finish", include final_reasoning.
+- No markdown.
+- No code fences.
+- No extra text.
+""".strip()
+
+
+VALIDATOR_SYSTEM_PROMPT = """
+You are the FINAL VALIDATOR for a network automation agent.
+
+You will receive:
+- the task
+- the finished execution plan
+- testcase results
+
+Your job is to summarize whether the overall task goal appears satisfied.
+
+Return valid JSON only with schema:
+{
+  "final_reasoning": "..."
+}
+
+Do not use markdown.
+""".strip()
+
+
+# Pulisce l'output del modello rimuovendo eventuali code fences markdown
+def _clean_model_output(text: str) -> str:
+    text = text.strip()
+
+    if text.startswith("```"):
+        lines = text.splitlines()
+
+        if lines and lines[0].startswith("```"):
+            lines = lines[1:]
+        if lines and lines[-1].strip() == "```":
+            lines = lines[:-1]
+
+        text = "\n".join(lines).strip()
+
+    return text
+
+
+# Estrae il contenuto testuale della risposta MCP in un formato semplice e serializzabile
+def _extract_mcp_text(result: Any) -> Any:
+    if not hasattr(result, "content"):
+        return str(result)
+
+    extracted = []
+    for item in result.content:
+        if hasattr(item, "text"):
+            extracted.append(item.text)
+        else:
+            extracted.append(str(item))
+
+    if len(extracted) == 1:
+        return extracted[0]
+    return extracted
+
+
+# Converte il testo JSON del task in dizionario Python
+def _load_task_dict(task_text: str) -> dict[str, Any]:
+    return json.loads(task_text)
+
+
+# Fa il parse del piano JSON prodotto dal planner
+def _parse_plan(text: str) -> list[dict[str, Any]]:
+    text = _clean_model_output(text)
+
+    try:
+        data = json.loads(text)
+    except Exception:
+        raise ValueError(f"Planner output is not valid JSON:\n{text}")
+
+    if not isinstance(data, list):
+        raise ValueError("Planner output must be a JSON array")
+
+    for item in data:
+        if not isinstance(item, dict):
+            raise ValueError("Each plan step must be an object")
+        for key in ["step_id", "description", "target_device"]:
+            if key not in item:
+                raise ValueError(f"Missing key in plan step: {key}")
+
+    return data
+
+
+# Fa il parse della decisione JSON prodotta dall'executor
+def _parse_executor_decision(text: str) -> dict[str, Any]:
+    text = _clean_model_output(text)
+
+    try:
+        data = json.loads(text)
+    except Exception:
+        raise ValueError(f"Executor output is not valid JSON:\n{text}")
+
+    required = {"thought", "action"}
+    missing = required - set(data.keys())
+    if missing:
+        raise ValueError(f"Missing keys in executor output: {sorted(missing)}")
+
+    if data["action"] == "tool_call":
+        for key in ["tool_name", "tool_args"]:
+            if key not in data:
+                raise ValueError(f"Missing key in tool_call output: {key}")
+        if not isinstance(data["tool_args"], dict):
+            raise ValueError("tool_args must be a JSON object")
+
+    elif data["action"] == "finish":
+        if "final_reasoning" not in data:
+            data["final_reasoning"] = ""
+
+    else:
+        raise ValueError(f"Invalid action: {data['action']}")
+
+    return data
+
+
+# Fa il parse dell'output del validator finale e restituisce una reasoning string
+def _parse_validator_output(text: str) -> str:
+    text = _clean_model_output(text)
+
+    try:
+        data = json.loads(text)
+    except Exception:
+        return "Final validation completed."
+
+    if isinstance(data, dict) and isinstance(data.get("final_reasoning"), str):
+        return data["final_reasoning"]
+
+    return "Final validation completed."
+
+
+# Chiede al server MCP la lista dei tool disponibili
+async def _list_tool_names(session: ClientSession) -> list[str]:
+    tools = await session.list_tools()
+    return [t.name for t in tools.tools]
+
+
+# Costruisce il prompt dell'executor per uno specifico step del piano
+def _build_executor_prompt(
+    task_text: str,
+    full_plan: list[dict[str, Any]],
+    current_step: dict[str, Any],
+    valid_tool_names: list[str],
+    history: list[dict[str, Any]],
+    parse_warning: str = "",
+) -> str:
+    parts = []
+
+    if parse_warning:
+        parts.append(parse_warning)
+
+    parts.append(
+        f"""
+CURRENT TASK:
+{task_text}
+
+FULL PLAN:
+{json.dumps(full_plan, indent=2)}
+
+CURRENT PLAN STEP:
+{json.dumps(current_step, indent=2)}
+
+VALID TOOL NAMES:
+{json.dumps(valid_tool_names, indent=2)}
+
+EXECUTION HISTORY FOR THIS PLAN STEP:
+{json.dumps(history, indent=2)}
+
+INSTRUCTIONS:
+- Focus on completing only the CURRENT PLAN STEP.
+- Prefer the target_device specified by the plan.
+- Inspect state before changing configuration when needed.
+- Apply only missing or incorrect configuration.
+- Validate enough to know whether the step is complete.
+- Return finish as soon as the current plan step is completed.
+- Return raw JSON only.
+""".strip()
+    )
+
+    return "\n\n".join(parts)
+
+
+# Esegue tutti i testcases finali del task usando execute_validation
+async def _run_testcases(
+    session: ClientSession,
+    testcases: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    results: list[dict[str, Any]] = []
+
+    for testcase in testcases:
+        device = testcase.get("device")
+        command = testcase.get("command")
+        expected_output = testcase.get("expected_output")
+        name = testcase.get("name", f"{device}:{command}")
+
+        entry: dict[str, Any] = {
+            "name": name,
+            "device": device,
+            "command": command,
+            "expected_output": expected_output,
+            "status": "error",
+        }
+
+        if not device or not command:
+            entry["status"] = "invalid_testcase"
+            results.append(entry)
+            continue
+
+        try:
+            tool_result = await session.call_tool(
+                "execute_validation",
+                {"device": device, "command": command},
+            )
+            output = _extract_mcp_text(tool_result)
+
+            if isinstance(output, list):
+                output = "\n".join(str(x) for x in output)
+
+            output_str = str(output)
+            entry["output"] = output_str
+            entry["status"] = "pass" if expected_output and expected_output in output_str else "fail"
+        except Exception as e:
+            entry["status"] = "error"
+            entry["output"] = f"ERROR: {e}"
+
+        results.append(entry)
+
+    return results
+
+
+# Agente che separa una fase di planning senza tool da una fase di esecuzione locale step-by-step
+class PlannerExecutorAgent(Agent):
+    # Inizializza l'agente planner-executor con il modello e il budget per ciascun step del piano
+    def __init__(self, llm, executor_step_budget: int = 3):
+        self.llm = llm
+        self.executor_step_budget = executor_step_budget
+
+    # Esegue prima il planner, poi un mini-executor per ogni step del piano e infine una validazione globale
+    async def run(self, session: ClientSession, task_text: str, max_steps: int) -> RunResult:
+        del max_steps
+
+        history: list[dict[str, Any]] = []
+        valid_tool_names = await _list_tool_names(session)
+        task = _load_task_dict(task_text)
+
+        planner_prompt = f"""
+{PLANNER_SYSTEM_PROMPT}
+
+CURRENT TASK:
+{task_text}
+
+Return only the JSON plan array.
+""".strip()
+
+        planner_response = await self.llm.ainvoke(planner_prompt)
+        planner_raw = planner_response.content if hasattr(planner_response, "content") else str(planner_response)
+
+        if isinstance(planner_raw, list):
+            planner_raw = "".join(str(x) for x in planner_raw)
+
+        try:
+            plan = _parse_plan(str(planner_raw))
+        except Exception as e:
+            history.append(
+                {
+                    "step": 1,
+                    "thought": "Planner output could not be parsed",
+                    "action": "parse_error",
+                    "raw_output": str(planner_raw),
+                    "observation": f"ERROR: {e}",
+                }
+            )
+            return RunResult(
+                history=history,
+                final_reasoning="Planner-executor agent failed because planner output was invalid.",
+                mode="planner_executor",
+            )
+
+        history.append(
+            {
+                "step": 1,
+                "thought": "Generated execution plan.",
+                "action": "plan_created",
+                "plan": plan,
+            }
+        )
+
+        global_step = 2
+
+        for plan_step in plan:
+            local_history: list[dict[str, Any]] = []
+
+            for _ in range(self.executor_step_budget):
+                parse_warning = ""
+                if local_history and local_history[-1].get("action") == "parse_error":
+                    parse_warning = """
+IMPORTANT LAST ERROR:
+Your previous response was rejected because it was not raw JSON.
+Return ONLY raw JSON.
+tool_args must be a JSON object, never null.
+""".strip()
+
+                prompt = EXECUTOR_SYSTEM_PROMPT + "\n\n" + _build_executor_prompt(
+                    task_text=task_text,
+                    full_plan=plan,
+                    current_step=plan_step,
+                    valid_tool_names=valid_tool_names,
+                    history=local_history[-4:],
+                    parse_warning=parse_warning,
+                )
+
+                response = await self.llm.ainvoke(prompt)
+                raw_output = response.content if hasattr(response, "content") else str(response)
+
+                if isinstance(raw_output, list):
+                    raw_output = "".join(str(x) for x in raw_output)
+
+                try:
+                    decision = _parse_executor_decision(str(raw_output))
+                except Exception as e:
+                    entry = {
+                        "step": global_step,
+                        "thought": "Executor output could not be parsed",
+                        "action": "parse_error",
+                        "raw_output": str(raw_output),
+                        "observation": f"ERROR: {e}",
+                        "plan_step": plan_step,
+                    }
+                    local_history.append(entry)
+                    history.append(entry)
+                    global_step += 1
+                    continue
+
+                entry: dict[str, Any] = {
+                    "step": global_step,
+                    "thought": decision["thought"],
+                    "action": decision["action"],
+                    "plan_step": plan_step,
+                }
+
+                if decision["action"] == "finish":
+                    entry["final_reasoning"] = decision.get("final_reasoning", "") or decision["thought"]
+                    local_history.append(entry)
+                    history.append(entry)
+                    global_step += 1
+                    break
+
+                tool_name = decision["tool_name"]
+                tool_args = decision["tool_args"]
+
+                entry["tool_name"] = tool_name
+                entry["tool_args"] = tool_args
+
+                if tool_name not in valid_tool_names:
+                    entry["observation"] = (
+                        f"ERROR: invalid tool name '{tool_name}'. "
+                        f"Use one of: {valid_tool_names}"
+                    )
+                    local_history.append(entry)
+                    history.append(entry)
+                    global_step += 1
+                    continue
+
+                try:
+                    result = await session.call_tool(tool_name, tool_args)
+                    entry["observation"] = _extract_mcp_text(result)
+                except Exception as e:
+                    entry["observation"] = f"Error executing tool {tool_name}: {e}"
+
+                local_history.append(entry)
+                history.append(entry)
+                global_step += 1
+
+        testcases = task.get("testcases") or []
+        testcase_results = await _run_testcases(session, testcases)
+
+        passed = sum(1 for x in testcase_results if x["status"] == "pass")
+        total = len(testcase_results)
+
+        history.append(
+            {
+                "step": global_step,
+                "thought": "Executed final testcase validation after completing all planned steps.",
+                "action": "validation_summary",
+                "observation": {
+                    "passed": passed,
+                    "total": total,
+                    "results": testcase_results,
+                },
+            }
+        )
+        global_step += 1
+
+        validator_prompt = f"""
+{VALIDATOR_SYSTEM_PROMPT}
+
+CURRENT TASK:
+{task_text}
+
+FINISHED PLAN:
+{json.dumps(plan, indent=2)}
+
+TESTCASE RESULTS:
+{json.dumps(testcase_results, indent=2)}
+
+Return the final JSON object now.
+""".strip()
+
+        validator_response = await self.llm.ainvoke(validator_prompt)
+        validator_raw = validator_response.content if hasattr(validator_response, "content") else str(validator_response)
+
+        if isinstance(validator_raw, list):
+            validator_raw = "".join(str(x) for x in validator_raw)
+
+        final_reasoning = _parse_validator_output(str(validator_raw))
+
+        if total > 0:
+            final_reasoning = (
+                f"{final_reasoning}\n\n"
+                f"Final validation result: passed {passed}/{total} testcases."
+            )
+
+        history.append(
+            {
+                "step": global_step,
+                "thought": final_reasoning,
+                "action": "finish",
+                "final_reasoning": final_reasoning,
+            }
+        )
+
+        return RunResult(
+            history=history,
+            final_reasoning=final_reasoning,
+            mode="planner_executor",
+        )

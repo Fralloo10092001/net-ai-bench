@@ -1,6 +1,2 @@
-{"device": "srl1", "command": "enter candidate"}
-{"device": "srl1", "command": "delete interface ethernet-1/1 subinterface 0"}
-{"device": "srl1", "command": "commit now"}
-{"device": "srl1", "command": "enter candidate"}
-{"device": "srl1", "command": "delete interface ethernet-1/1 subinterface 0 ipv4"}
-{"device": "srl1", "command": "commit now"}
+{"device": "router", "command": "ip addr add 10.0.1.1/24 dev eth1"}
+{"device": "router", "command": "ip addr add 10.0.2.1/24 dev eth2"}

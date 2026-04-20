@@ -1,7 +1,9 @@
 {
   "name": "SR Linux Basic L3 Link",
-  "description": "Configure a basic Layer 3 point-to-point link between srl1 and srl2 over e1-1. Enable the interface on both routers, create subinterface 0, enable IPv4, assign 10.0.12.1/30 to srl1 and 10.0.12.2/30 to srl2, and validate connectivity with ping.",
   "lab_file": "labs/srl02.yml",
+  "domain": "routing",
+  "difficulty": "easy",
+  "description": "Configure a basic Layer 3 point-to-point link between srl1 and srl2 over e1-1. Enable the interface on both routers, create subinterface 0, enable IPv4, assign 10.0.12.1/30 to srl1 and 10.0.12.2/30 to srl2, and validate connectivity with ping.",
   "intent": {
     "goal": "Make srl1 and srl2 reach each other over a routed point-to-point link",
     "requirements": [
@@ -13,6 +15,32 @@
       "srl2 must be able to ping 10.0.12.1"
     ]
   },
+  "baseline_invariants": [
+    {
+      "name": "SRL1 management interface is still up",
+      "device": "srl1",
+      "command": "show interface brief",
+      "expected_output": "mgmt0"
+    },
+    {
+      "name": "SRL2 management interface is still up",
+      "device": "srl2",
+      "command": "show interface brief",
+      "expected_output": "mgmt0"
+    },
+    {
+      "name": "SRL1 management route is still present",
+      "device": "srl1",
+      "command": "show network-instance default route-table ipv4-unicast",
+      "expected_output": "0.0.0.0/0"
+    },
+    {
+      "name": "SRL2 management route is still present",
+      "device": "srl2",
+      "command": "show network-instance default route-table ipv4-unicast",
+      "expected_output": "0.0.0.0/0"
+    }
+  ],
   "testcases": [
     {
       "name": "SRL1 can ping SRL2",

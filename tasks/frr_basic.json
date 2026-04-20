@@ -1,6 +1,8 @@
 {
   "task_name": "FRR Basic Connectivity",
   "lab_file": "labs/frr-basic.yml",
+  "domain": "routing",
+  "difficulty": "easy",
   "intents": [
     "Configure the network using exactly the following addressing plan:",
     "Set pc1 eth1 to 10.0.1.2/24 and use 10.0.1.1 as default gateway.",
@@ -35,6 +37,44 @@
     ]
   },
   "ground_truth_reasoning": "",
+  "baseline_invariants": [
+    {
+      "name": "R1 management interface is still up",
+      "device": "r1",
+      "command": "ip link show eth0",
+      "expected_output": "state UP"
+    },
+    {
+      "name": "R2 management interface is still up",
+      "device": "r2",
+      "command": "ip link show eth0",
+      "expected_output": "state UP"
+    },
+    {
+      "name": "R1 still has management default route",
+      "device": "r1",
+      "command": "ip route show default",
+      "expected_output": "default via 172.20.20.1 dev eth0"
+    },
+    {
+      "name": "R2 still has management default route",
+      "device": "r2",
+      "command": "ip route show default",
+      "expected_output": "default via 172.20.20.1 dev eth0"
+    },
+    {
+      "name": "R1 FRR CLI is still reachable",
+      "device": "r1",
+      "command": "vtysh -c 'show version'",
+      "expected_output": "FRRouting"
+    },
+    {
+      "name": "R2 FRR CLI is still reachable",
+      "device": "r2",
+      "command": "vtysh -c 'show version'",
+      "expected_output": "FRRouting"
+    }
+  ],
   "testcases": [
     {
       "name": "PC1 can ping PC2",
