@@ -1,10 +1,12 @@
 import json
 import subprocess
 from pathlib import Path
+from typing import Any
 
 from .base import BaseDriver
 
-#Comandi read-only ammessi
+
+# Prefissi ammessi per comandi read-only su SR Linux
 SHOW_PREFIXES = [
     "show ",
     "info",
@@ -15,7 +17,7 @@ SHOW_PREFIXES = [
     "uname ",
 ]
 
-#Divieti focalizzati sul non permettere shell dannose
+# Sottostringhe vietate nei comandi di configurazione o shell
 CONFIG_BLOCKED_SUBSTRINGS = [
     "rm ",
     "reboot",
@@ -31,17 +33,22 @@ CONFIG_BLOCKED_SUBSTRINGS = [
     "bash -c",
 ]
 
+# Token shell vietati
 FORBIDDEN_TOKENS = ["&&", "||", ";"]
 
 
+# Driver per nodi Nokia SR Linux
 class SRLinuxDriver(BaseDriver):
+    # Inizializza il driver salvando il nome del lab e il file di log
     def __init__(self, lab_name: str, log_file: Path):
         self.lab_name = lab_name
         self.log_file = log_file
 
+    # Costruisce il nome del container Containerlab per un nodo SR Linux
     def _clab(self, node: str) -> str:
         return f"clab-{self.lab_name}-{node}"
 
+    # Verifica che il container del nodo esista ed sia attivo
     def _container_exists(self, container_name: str) -> bool:
         result = subprocess.run(
             ["docker", "ps", "--format", "{{.Names}}"],
@@ -52,7 +59,7 @@ class SRLinuxDriver(BaseDriver):
         )
         return container_name in result.stdout.splitlines()
 
-    #Esegue shell nel container con docker exec ... bash -lc ...
+    # Esegue un comando shell nel container SR Linux
     def _exec_shell(self, node: str, command: str, check: bool = True) -> str:
         container_name = self._clab(node)
 
@@ -76,7 +83,7 @@ class SRLinuxDriver(BaseDriver):
             return f"{stdout}\n{stderr}"
         return stdout
 
-    #Invia uno script via stdin a sr_cli, questa è la logica di configurazione SR Linux.
+    # Esegue uno script via stdin dentro sr_cli per applicare configurazione candidate/commit
     def _exec_sr_cli_script(self, node: str, lines: list[str]) -> str:
         container_name = self._clab(node)
 
@@ -103,8 +110,7 @@ class SRLinuxDriver(BaseDriver):
             return f"{stdout}\n{stderr}"
         return stdout
 
-    #Rimuove righe spazzatura, in particolare l’errore 
-    # Parsing error: Unknown token 'commit'
+    # Ripulisce l'output dei comandi show/info rimuovendo rumore noto
     def _sanitize_show_output(self, text: str) -> str:
         lines = text.splitlines()
         filtered = [
@@ -113,7 +119,7 @@ class SRLinuxDriver(BaseDriver):
         ]
         return "\n".join(filtered).strip()
 
-    #Controlla che i comandi di validazione siano sicuri
+    # Verifica che un comando di validazione/show sia consentito e bounded
     def _is_allowed_show_command(self, cmd: str) -> bool:
         cmd = cmd.strip()
 
@@ -132,7 +138,7 @@ class SRLinuxDriver(BaseDriver):
 
         return any(cmd.startswith(prefix) for prefix in SHOW_PREFIXES)
 
-    #Controlla che le linee di configurazione non contengano token/sottostringhe vietati
+    # Verifica che una riga di configurazione candidate non contenga contenuti pericolosi
     def _is_allowed_config_line(self, line: str) -> bool:
         line = line.strip()
 
@@ -147,24 +153,53 @@ class SRLinuxDriver(BaseDriver):
 
         return True
 
+    # Esegue un comando SR Linux read-only e ne sanifica l'output
+    def _exec_readonly_srl(self, device: str, command: str) -> str:
+        if not self._is_allowed_show_command(command):
+            raise RuntimeError(f"Read-only command not allowed: {command}")
+
+        if command.startswith(("show ", "info")):
+            out = self._exec_shell(device, f'sr_cli -c "{command}"', check=False)
+            return self._sanitize_show_output(out)
+
+        out = self._exec_shell(device, command, check=False)
+        return self._sanitize_show_output(out)
+
+    # Ricava uno snapshot read-only dello stato corrente di un nodo SR Linux
     def get_running_config(self, device: str) -> dict:
-        info_out = self._sanitize_show_output(
-            self._exec_shell(device, 'sr_cli -c "info from running"', check=False)
-        )
-        intf_out = self._sanitize_show_output(
-            self._exec_shell(device, 'sr_cli -c "show interface brief"', check=False)
-        )
-        version_out = self._sanitize_show_output(
-            self._exec_shell(device, 'sr_cli -c "show version"', check=False)
-        )
+        sections = [
+            ("show version", 'sr_cli -c "show version"'),
+            ("show interface brief", 'sr_cli -c "show interface brief"'),
+            ("info from running", 'sr_cli -c "info from running"'),
+        ]
 
-        config = (
-            f"=== show version ===\n{version_out}\n"
-            f"=== show interface brief ===\n{intf_out}\n"
-            f"=== info from running ===\n{info_out}"
-        )
-        return {"running_config": config}
+        outputs = []
+        for title, shell_command in sections:
+            try:
+                out = self._exec_shell(device, shell_command, check=False)
+                out = self._sanitize_show_output(out)
+            except Exception as e:
+                out = f"ERROR: {e}"
+            outputs.append(f"=== {title} ===\n{out}")
 
+        return {"running_config": "\n".join(outputs)}
+
+    # Cattura uno snapshot minimale per SR Linux, utile per diagnostica ma non ancora per restore
+    def capture_rollback_state(self, device: str) -> dict[str, Any]:
+        return {
+            "kind": "nokia_srlinux",
+            "running_config": self.get_running_config(device).get("running_config", ""),
+        }
+
+    # Per SR Linux il rollback non è ancora supportato in questa v1
+    def restore_rollback_state(self, device: str, snapshot: dict[str, Any]) -> dict:
+        return {
+            "status": "unsupported",
+            "device": device,
+            "message": "rollback is not yet supported for nokia_srlinux in rollback v1",
+        }
+
+    # Applica una lista di comandi di configurazione dentro candidate e commit now
     def update_config(self, device: str, commands: list[str]) -> dict:
         cleaned = []
         blocked = []
@@ -222,18 +257,12 @@ class SRLinuxDriver(BaseDriver):
             }]
             return {"results": results}
 
+    # Esegue un comando di validazione SR Linux, purché read-only
     def execute_validation(self, device: str, command: str) -> dict:
         command = command.strip()
 
-        if not self._is_allowed_show_command(command):
-            return {"output": "validation command not allowed"}
-
         try:
-            if command.startswith(("show ", "info")):
-                out = self._exec_shell(device, f'sr_cli -c "{command}"', check=False)
-                return {"output": self._sanitize_show_output(out)}
-
-            out = self._exec_shell(device, command, check=False)
+            out = self._exec_readonly_srl(device, command)
             return {"output": out}
         except subprocess.TimeoutExpired:
             return {"output": "validation command timed out"}

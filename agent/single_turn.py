@@ -28,6 +28,11 @@ IMPORTANT:
 - Do not include validation commands in device command lists.
 - Do not include explanations outside JSON.
 - Return valid JSON only.
+- Preserve healthy pre-existing system state unless the task explicitly requires changing it.
+- Do not remove or replace existing management connectivity unless the task explicitly requires it.
+- Prefer additive and minimal configuration changes over destructive replacements.
+- Do not modify management interfaces, management routes, or unrelated control-plane state if the task can be solved without touching them.
+- Before replacing an existing default route, consider whether it belongs to management connectivity and should remain unchanged.
 
 Expected schema:
 {

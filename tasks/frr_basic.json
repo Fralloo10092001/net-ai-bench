@@ -38,6 +38,30 @@
   },
   "ground_truth_reasoning": "",
   "baseline_invariants": [
+          {
+      "name": "PC1 management interface is still up",
+      "device": "pc1",
+      "command": "ip link show eth0",
+      "expected_output": "state UP"
+    },
+    {
+      "name": "PC2 management interface is still up",
+      "device": "pc2",
+      "command": "ip link show eth0",
+      "expected_output": "state UP"
+    },
+    {
+      "name": "PC1 still has management default route",
+      "device": "pc1",
+      "command": "ip route show default",
+      "expected_output": "default via 172.20.20.1 dev eth0"
+    },
+    {
+      "name": "PC2 still has management default route",
+      "device": "pc2",
+      "command": "ip route show default",
+      "expected_output": "default via 172.20.20.1 dev eth0"
+    },
     {
       "name": "R1 management interface is still up",
       "device": "r1",

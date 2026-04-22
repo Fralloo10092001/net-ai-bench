@@ -2,9 +2,9 @@ from pathlib import Path
 
 from .linux_driver import LinuxDriver
 from .srlinux_driver import SRLinuxDriver
-#Factory dei driver
 
 
+# Restituisce il driver corretto in base al kind del nodo Containerlab
 def get_driver(kind: str, lab_name: str, log_file: Path):
     if kind == "linux":
         return LinuxDriver(lab_name=lab_name, log_file=log_file)

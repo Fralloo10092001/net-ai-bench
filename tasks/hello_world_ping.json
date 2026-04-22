@@ -41,6 +41,30 @@
   "ground_truth_reasoning": "The router needs an IP on each interface to act as the default gateway for each subnet. eth1 faces PC1 on 10.0.1.0/24, so it gets 10.0.1.1/24. eth2 faces PC2 on 10.0.2.0/24, so it gets 10.0.2.1/24. Finally, IP forwarding must be enabled so the kernel routes packets between the two subnets.",
   "baseline_invariants": [
     {
+      "name": "PC1 still has management default route",
+      "device": "pc1",
+      "command": "ip route show default",
+      "expected_output": "default via 172.20.20.1 dev eth0"
+    },
+    {
+      "name": "PC2 still has management default route",
+      "device": "pc2",
+      "command": "ip route show default",
+      "expected_output": "default via 172.20.20.1 dev eth0"
+    },
+    {
+    "name": "PC1 still has management IPv4 on eth0",
+    "device": "pc1",
+    "command": "ip addr show eth0",
+    "expected_output": "inet 172.20.20."
+    },
+    {
+      "name": "PC2 still has management IPv4 on eth0",
+      "device": "pc2",
+      "command": "ip addr show eth0",
+      "expected_output": "inet 172.20.20."
+    },
+    {
       "name": "Router management interface is still up",
       "device": "router",
       "command": "ip link show eth0",

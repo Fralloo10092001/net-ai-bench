@@ -32,6 +32,9 @@ Rules:
 - Keep the plan concise and actionable.
 - Prefer device-scoped steps.
 - Do not use markdown.
+- The plan should preserve healthy pre-existing system state unless the task explicitly requires changing it.
+- Do not plan destructive changes to management interfaces, management routes, or unrelated control-plane state unless explicitly required by the task.
+- Prefer additive and minimal plans over replacement-oriented plans.
 """.strip()
 
 
@@ -47,6 +50,11 @@ IMPORTANT:
 - Do NOT invent tool names.
 - Apply only the changes needed for the current plan step.
 - If the current plan step is complete, return action="finish".
+- Preserve healthy pre-existing system state unless the current plan step explicitly requires changing it.
+- Do not remove or replace existing management connectivity unless explicitly required by the task.
+- Prefer additive and minimal changes over destructive replacements.
+- Before deleting or replacing an existing route, address, or setting, verify that it is necessary for the current plan step.
+- Avoid modifying management interfaces, management routes, or unrelated control-plane state if the step can be completed without touching them.
 
 Available tools:
 - get_topology(devices: list[str] | None = None)
