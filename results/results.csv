@@ -1,9 +1,3 @@
-task,lab,provider,model,summary_score,S_testcase,S_command,S_reasoning,passed_testcases,total_testcases,command_precision,command_recall,steps
-hello_world_ping.json,hello-world,google,gemini-2.5-flash,0.9303,1.0,0.8,0.9513,5,5,1.0,0.6667,8
-hello_world_ping.json,hello-world,openrouter,openai/gpt-4o-mini,0.7,1.0,0.0,1.0,5,5,0.0,0.0,5
-hello_world_ping.json,hello-world,google,gemini-2.5-pro,0.7,1.0,0.0,1.0,5,5,0.0,0.0,4
-frr_basic.json,frr-basic,google,gemini-2.5-flash,0.9572,1.0,0.9091,0.9221,10,10,0.9091,0.9091,14
-frr_basic.json,frr-basic,openrouter,openai/gpt-4o-mini,0.694,1.0,0.0,0.97,10,10,0.0,0.0,8
-frr_basic.json,frr-basic,google,gemini-2.5-pro,0.694,1.0,0.0,0.97,10,10,0.0,0.0,7
-srl02.json,srl02,google,gemini-2.5-flash,0.7867,0.6667,1.0,0.767,4,6,1.0,1.0,25
-srl02.json,srl02,openrouter,openai/gpt-4o-mini,0.7875,0.6667,1.0,0.771,4,6,1.0,1.0,25
+task,lab,domain,difficulty,provider,model,mode,summary_score,composite_score,S_testcase,S_command,S_reasoning,S_safety,outcome_class,passed_testcases,total_testcases,passed_invariants,total_invariants,command_precision,command_recall,steps,prompt_tokens,completion_tokens,total_tokens,estimated_cost_usd
+hello_world_ping.json,hello-world,routing,easy,google,gemini-2.5-flash,react,0.9425,1.0,1.0,0.8,0.9127,1.0,clean_success,5,5,8,8,1.0,0.6667,11,0,0,0,0.0
+hello_world_ping.json,hello-world,routing,easy,google,gemini-2.5-pro,react,0.96,1.0,1.0,0.8,1.0,1.0,clean_success,5,5,8,8,1.0,0.6667,6,0,0,0,0.0

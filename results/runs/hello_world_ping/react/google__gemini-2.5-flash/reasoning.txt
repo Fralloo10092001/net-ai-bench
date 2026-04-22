@@ -1,0 +1,1 @@
+PC1 (10.0.1.2) can ping PC2 (10.0.2.2) and PC2 (10.0.2.2) can ping PC1 (10.0.1.2). The router interfaces eth1 and eth2 have been correctly configured with IP addresses 10.0.1.1/24 and 10.0.2.1/24 respectively, and IP forwarding is enabled. All task requirements and validation checks are complete.
