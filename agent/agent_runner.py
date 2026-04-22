@@ -16,6 +16,7 @@ from .model_registry import get_model
 from .planner_executor import PlannerExecutorAgent
 from .react import ReActAgent
 from .single_turn import SingleTurnAgent
+from .usage_utils import estimate_cost_usd
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 LOGS_DIR = PROJECT_ROOT / "logs"
@@ -23,7 +24,6 @@ LOGS_DIR = PROJECT_ROOT / "logs"
 load_dotenv(PROJECT_ROOT / ".env")
 
 
-# Estrae il contenuto testuale della risposta MCP in un formato semplice e serializzabile
 def _extract_mcp_text(result: Any) -> Any:
     if not hasattr(result, "content"):
         return str(result)
@@ -40,7 +40,6 @@ def _extract_mcp_text(result: Any) -> Any:
     return extracted
 
 
-# Legge il task JSON e ne costruisce una versione compatta da passare all'agente
 def _load_task_text(task_path: str) -> str:
     with open(task_path) as f:
         task = json.load(f)
@@ -55,7 +54,6 @@ def _load_task_text(task_path: str) -> str:
     return json.dumps(compact_task, indent=2)
 
 
-# Esporta la configurazione finale di tutti i device usando get_running_config
 async def _export_final_configs(session: ClientSession, devices: list[str]) -> dict[str, str]:
     final_configs: dict[str, str] = {}
 
@@ -74,7 +72,6 @@ async def _export_final_configs(session: ClientSession, devices: list[str]) -> d
     return final_configs
 
 
-# Costruisce l'istanza agente corretta in base alla modalità richiesta da CLI
 def get_agent(mode: str, llm):
     if mode == "react":
         return ReActAgent(llm)
@@ -86,7 +83,6 @@ def get_agent(mode: str, llm):
     raise ValueError(f"Unsupported agent mode: {mode}")
 
 
-# Coordina un singolo run: crea la sessione MCP, esegue l'agente e salva gli artefatti
 def run(
     lab: str,
     task_path: str,
@@ -114,7 +110,6 @@ def run(
     llm = get_model(provider, model)
     task_text = _load_task_text(task_path)
 
-    # Esegue la logica asincrona del run aprendo il subprocess MCP su stdio
     async def _run_async():
         mcp_server_path = PROJECT_ROOT / "ani" / "mcp_server.py"
         agent = get_agent(agent_mode, llm)
@@ -156,12 +151,21 @@ def run(
                 final_configs_file = LOGS_DIR / "final_configs.json"
                 final_configs_file.write_text(json.dumps(final_configs, indent=2))
 
+                usage = run_result.usage
+                estimated_cost_usd = estimate_cost_usd(provider, model, usage)
+
                 run_result_file.write_text(
                     json.dumps(
                         {
                             "mode": run_result.mode,
                             "final_reasoning": run_result.final_reasoning,
                             "history_length": len(run_result.history),
+                            "prompt_tokens": usage["prompt_tokens"],
+                            "completion_tokens": usage["completion_tokens"],
+                            "total_tokens": usage["total_tokens"],
+                            "estimated_cost_usd": estimated_cost_usd,
+                            "provider": provider,
+                            "model": model,
                         },
                         indent=2,
                     )
@@ -174,6 +178,10 @@ def run(
                     "final_configs_file": str(final_configs_file),
                     "run_result_file": str(run_result_file),
                     "agent_mode": run_result.mode,
+                    "prompt_tokens": usage["prompt_tokens"],
+                    "completion_tokens": usage["completion_tokens"],
+                    "total_tokens": usage["total_tokens"],
+                    "estimated_cost_usd": estimated_cost_usd,
                 }
 
     return asyncio.run(_run_async())

@@ -6,6 +6,7 @@ from typing import Any
 from mcp.client.session import ClientSession
 
 from .base import Agent, RunResult
+from .usage_utils import add_usage, extract_usage_from_response
 
 
 SYSTEM_PROMPT = """
@@ -50,7 +51,6 @@ Rules:
 """.strip()
 
 
-# Pulisce l'output del modello rimuovendo eventuali code fences markdown
 def _clean_model_output(text: str) -> str:
     text = text.strip()
 
@@ -67,7 +67,6 @@ def _clean_model_output(text: str) -> str:
     return text
 
 
-# Estrae il contenuto testuale della risposta MCP in un formato semplice e serializzabile
 def _extract_mcp_text(result: Any) -> Any:
     if not hasattr(result, "content"):
         return str(result)
@@ -84,7 +83,6 @@ def _extract_mcp_text(result: Any) -> Any:
     return extracted
 
 
-# Costruisce una guida sintetica sulla piattaforma a partire dal task
 def _build_platform_guidance(task_text: str) -> str:
     lower = task_text.lower()
 
@@ -110,7 +108,6 @@ PLATFORM GUIDANCE:
 """.strip()
 
 
-# Fa il parse del JSON prodotto dall'LLM in modalità single-turn
 def _parse_single_turn_output(text: str) -> dict[str, Any]:
     text = _clean_model_output(text)
 
@@ -134,12 +131,10 @@ def _parse_single_turn_output(text: str) -> dict[str, Any]:
     return data
 
 
-# Converte il testo JSON del task in dizionario Python
 def _load_task_dict(task_text: str) -> dict[str, Any]:
     return json.loads(task_text)
 
 
-# Recupera la topologia completa usando il tool MCP get_topology
 async def _get_topology(session: ClientSession) -> dict[str, Any]:
     result = await session.call_tool("get_topology", {})
     topo_text = _extract_mcp_text(result)
@@ -149,7 +144,6 @@ async def _get_topology(session: ClientSession) -> dict[str, Any]:
     return topo_text
 
 
-# Recupera la running configuration di tutti i device della topologia
 async def _get_running_configs(session: ClientSession, devices: list[str]) -> dict[str, str]:
     configs: dict[str, str] = {}
 
@@ -165,7 +159,6 @@ async def _get_running_configs(session: ClientSession, devices: list[str]) -> di
     return configs
 
 
-# Esegue tutti i testcases finali del task usando execute_validation
 async def _run_testcases(
     session: ClientSession,
     testcases: list[dict[str, Any]],
@@ -213,18 +206,21 @@ async def _run_testcases(
     return results
 
 
-# Agente che raccoglie tutto il contesto una sola volta, genera i comandi in un'unica chiamata LLM e valida alla fine
 class SingleTurnAgent(Agent):
-    # Inizializza l'agente single-turn con il modello LLM da usare
     def __init__(self, llm):
         self.llm = llm
 
-    # Esegue l'intero task in una sola decisione del modello, poi applica i comandi e valida i testcases
     async def run(self, session: ClientSession, task_text: str, max_steps: int) -> RunResult:
         del max_steps
 
         history: list[dict[str, Any]] = []
         task = _load_task_dict(task_text)
+
+        usage_totals = {
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "total_tokens": 0,
+        }
 
         topology = await _get_topology(session)
         devices = topology["topology"]["nodes"]
@@ -248,6 +244,8 @@ Return exactly one JSON object following the required schema.
 """.strip()
 
         response = await self.llm.ainvoke(prompt)
+        usage_totals = add_usage(usage_totals, extract_usage_from_response(response))
+
         raw_output = response.content if hasattr(response, "content") else str(response)
 
         if isinstance(raw_output, list):
@@ -269,6 +267,7 @@ Return exactly one JSON object following the required schema.
                 history=history,
                 final_reasoning="Single-turn agent failed due to invalid JSON output.",
                 mode="single_turn",
+                usage=usage_totals,
             )
 
         final_reasoning = decision["final_reasoning"]
@@ -347,4 +346,5 @@ Return exactly one JSON object following the required schema.
             history=history,
             final_reasoning=final_reasoning,
             mode="single_turn",
+            usage=usage_totals,
         )

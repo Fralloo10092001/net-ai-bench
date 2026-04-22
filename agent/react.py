@@ -6,6 +6,7 @@ from typing import Any
 from mcp.client.session import ClientSession
 
 from .base import Agent, RunResult
+from .usage_utils import add_usage, extract_usage_from_response
 
 
 SYSTEM_PROMPT = """
@@ -48,7 +49,6 @@ Expected behavior:
 - If a recent configuration change appears to have broken a device state, management reachability, or task progress, you may use rollback(device) to restore the most recent saved snapshot for that device.
 - Prefer rollback over piling on additional speculative fixes when a recent change likely caused the problem.
 - Before using rollback, use the execution history and current observations to identify which device was most likely affected by the failed or harmful change.
-- A rollback snapshot is automatically saved before each update_config call, so rollback(device) restores the most recent pre-change state for that device.
 
 Topology and addressing rules:
 - Each link corresponds to exactly one subnet.
@@ -70,13 +70,6 @@ Configuration rules:
 - Avoid modifying eth0 or management-facing interfaces unless the task explicitly requires it.
 - If a recent configuration change caused new errors or clearly degraded the device state, consider using rollback(device) before attempting a different plan.
 - Avoid stacking multiple risky fixes on top of a suspected bad change when rollback can restore the previous state more safely.
-
-SAFETY PRIORITY:
-- Existing management connectivity is more important than literal replacement of a pre-existing default route.
-- If the task can be solved by adding more specific routes instead of replacing an existing default route, prefer the more specific routes.
-- Never delete a working default route on eth0 unless the task explicitly requires breaking management connectivity.
-- On end hosts, prefer adding destination-specific routes over replacing the management default route.
-- If a task statement appears to require a new default gateway but management connectivity already exists on eth0, interpret this as a data-plane routing requirement unless the task explicitly says to replace management routing.
 
 Validation rules:
 - Always use bounded validation commands, for example: ping -c 3 -W 2 <destination>
@@ -109,7 +102,6 @@ Output rules:
 """.strip()
 
 
-# Pulisce l'output del modello rimuovendo eventuali code fences markdown
 def _clean_model_output(text: str) -> str:
     text = text.strip()
 
@@ -126,7 +118,6 @@ def _clean_model_output(text: str) -> str:
     return text
 
 
-# Fa il parse e la validazione della decisione JSON prodotta dal modello
 def _parse_agent_decision(text: str) -> dict[str, Any]:
     text = _clean_model_output(text)
 
@@ -157,7 +148,6 @@ def _parse_agent_decision(text: str) -> dict[str, Any]:
     return data
 
 
-# Estrae il contenuto testuale della risposta MCP in un formato semplice e serializzabile
 def _extract_mcp_text(result: Any) -> Any:
     if not hasattr(result, "content"):
         return str(result)
@@ -174,7 +164,6 @@ def _extract_mcp_text(result: Any) -> Any:
     return extracted
 
 
-# Costruisce una guida specifica per piattaforma a partire dal contenuto del task
 def _build_platform_guidance(task_text: str) -> str:
     lower = task_text.lower()
 
@@ -203,7 +192,6 @@ PLATFORM GUIDANCE:
 """.strip()
 
 
-# Costruisce il prompt di un singolo step includendo task, tool validi e history recente
 def _build_step_prompt(
     task_text: str,
     valid_tool_names: list[str],
@@ -248,7 +236,6 @@ INSTRUCTIONS FOR THIS STEP:
 - Avoid removing existing default routes or management paths unless clearly necessary.
 - If a recent configuration action seems to have caused the current problem, consider using rollback(device) on the affected device.
 - Use get_rollback_status when useful to check whether rollback snapshots are available.
-- Rollback is most useful after a recent update_config call on the same device.
 
 Return exactly one JSON object matching the required schema.
 """.strip()
@@ -257,22 +244,24 @@ Return exactly one JSON object matching the required schema.
     return "\n\n".join(parts)
 
 
-# Chiede al server MCP la lista dei tool disponibili per l'agente
 async def _list_tool_names(session: ClientSession) -> list[str]:
     tools = await session.list_tools()
     return [t.name for t in tools.tools]
 
 
-# Implementa l'agente ReAct-like con ciclo thought -> tool call -> observation
 class ReActAgent(Agent):
-    # Inizializza l'agente ReAct con il modello LLM da usare
     def __init__(self, llm):
         self.llm = llm
 
-    # Esegue il loop ReAct fino a finish o fino al raggiungimento del budget di step
     async def run(self, session: ClientSession, task_text: str, max_steps: int) -> RunResult:
         history: list[dict[str, Any]] = []
         valid_tool_names = await _list_tool_names(session)
+
+        usage_totals = {
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "total_tokens": 0,
+        }
 
         for step in range(1, max_steps + 1):
             recent_history = history[-4:]
@@ -295,6 +284,8 @@ tool_args must be {} or another JSON object, never null.
             )
 
             response = await self.llm.ainvoke(prompt)
+            usage_totals = add_usage(usage_totals, extract_usage_from_response(response))
+
             raw_output = response.content if hasattr(response, "content") else str(response)
 
             if isinstance(raw_output, list):
@@ -327,6 +318,7 @@ tool_args must be {} or another JSON object, never null.
                     history=history,
                     final_reasoning=entry["final_reasoning"],
                     mode="react",
+                    usage=usage_totals,
                 )
 
             tool_name = decision["tool_name"]
@@ -355,4 +347,5 @@ tool_args must be {} or another JSON object, never null.
             history=history,
             final_reasoning="Agent reached maximum number of steps before finishing.",
             mode="react",
+            usage=usage_totals,
         )
