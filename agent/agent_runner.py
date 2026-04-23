@@ -24,7 +24,7 @@ LOGS_DIR = PROJECT_ROOT / "logs"
 load_dotenv(PROJECT_ROOT / ".env")
 
 
-# Extract plain text from an MCP tool result.
+# Estrae testo semplice da un risultato MCP
 def _extract_mcp_text(result: Any) -> Any:
     if not hasattr(result, "content"):
         return str(result)
@@ -41,7 +41,7 @@ def _extract_mcp_text(result: Any) -> Any:
     return extracted
 
 
-# Load a compact task representation used by the agent prompts.
+# Carica una rappresentazione compatta del task per i prompt degli agenti
 def _load_task_text(task_path: str) -> str:
     with open(task_path) as f:
         task = json.load(f)
@@ -56,7 +56,7 @@ def _load_task_text(task_path: str) -> str:
     return json.dumps(compact_task, indent=2)
 
 
-# Export final running configurations for all topology devices.
+# Esporta le configurazioni finali di tutti i nodi della topologia
 async def _export_final_configs(session: ClientSession, devices: list[str]) -> dict[str, str]:
     final_configs: dict[str, str] = {}
 
@@ -75,7 +75,7 @@ async def _export_final_configs(session: ClientSession, devices: list[str]) -> d
     return final_configs
 
 
-# Build the correct agent instance for the selected mode.
+# Costruisce l'istanza corretta dell'agente in base alla modalità selezionata
 def get_agent(
     mode: str,
     llm,
@@ -86,11 +86,14 @@ def get_agent(
     planner_model: str | None = None,
     executor_provider: str | None = None,
     executor_model: str | None = None,
+    enable_rollback: bool = False,
 ):
     if mode == "react":
-        return ReActAgent(llm)
+        return ReActAgent(llm, enable_rollback=enable_rollback)
+
     if mode == "single_turn":
         return SingleTurnAgent(llm)
+
     if mode == "planner_executor":
         return PlannerExecutorAgent(
             llm=llm,
@@ -101,12 +104,13 @@ def get_agent(
             planner_model=planner_model,
             executor_provider=executor_provider,
             executor_model=executor_model,
+            enable_rollback=enable_rollback,
         )
 
     raise ValueError(f"Unsupported agent mode: {mode}")
 
 
-# Run a single agent execution against one lab/task pair.
+# Esegue un singolo run agente su una coppia lab/task
 def run(
     lab: str,
     task_path: str,
@@ -118,6 +122,7 @@ def run(
     planner_model: str | None = None,
     executor_provider: str | None = None,
     executor_model: str | None = None,
+    enable_rollback: bool = False,
 ):
     LOGS_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -188,6 +193,7 @@ def run(
             planner_model=planner_model,
             executor_provider=executor_provider,
             executor_model=executor_model,
+            enable_rollback=enable_rollback,
         )
 
         server_params = StdioServerParameters(
@@ -295,6 +301,11 @@ if __name__ == "__main__":
         choices=["openai", "anthropic", "google", "openrouter"],
     )
     parser.add_argument("--executor-model")
+    parser.add_argument(
+        "--enable-rollback",
+        action="store_true",
+        help="Enable rollback-related MCP tools for supported agent modes",
+    )
     args = parser.parse_args()
 
     result = run(
@@ -308,6 +319,7 @@ if __name__ == "__main__":
         planner_model=args.planner_model,
         executor_provider=args.executor_provider,
         executor_model=args.executor_model,
+        enable_rollback=args.enable_rollback,
     )
 
     print("\n" + "=" * 55)

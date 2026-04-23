@@ -1,0 +1,3 @@
+The task is to establish a routed point-to-point link between srl1 and srl2. The running configurations show that interface ethernet-1/1 on both devices is administratively disabled and has no IP configuration. To meet the requirements, I will enable ethernet-1/1 on both srl1 and srl2. Then, I will create subinterface 0 on each of these interfaces, assign the specified IPv4 addresses (10.0.12.1/30 for srl1 and 10.0.12.2/30 for srl2), and associate these subinterfaces with the 'default' network-instance to enable L3 connectivity between them.
+
+Final validation result: passed 4/6 testcases.

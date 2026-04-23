@@ -1,0 +1,1 @@
+PC1 and PC2 can successfully ping each other, indicating that all required IP addresses, default gateways, static routes, and IP forwarding configurations are correctly in place and functional. The task objective has been met.

@@ -1,0 +1,35 @@
+{
+  "mode": "planner_executor",
+  "final_reasoning": "Planner-executor agent failed because planner output was invalid.",
+  "history_length": 1,
+  "total_tokens": 2669,
+  "estimated_cost_usd": 0.0018019,
+  "provider": "google/google",
+  "model": "gemini-2.5-flash | gemini-2.5-flash",
+  "usage_breakdown": {
+    "planner": {
+      "prompt_tokens": 1473,
+      "completion_tokens": 544,
+      "total_tokens": 2669
+    },
+    "executor": {
+      "prompt_tokens": 0,
+      "completion_tokens": 0,
+      "total_tokens": 0
+    },
+    "validator": {
+      "prompt_tokens": 0,
+      "completion_tokens": 0,
+      "total_tokens": 0
+    }
+  },
+  "metadata": {
+    "planner_provider": "google",
+    "planner_model": "gemini-2.5-flash",
+    "executor_provider": "google",
+    "executor_model": "gemini-2.5-flash",
+    "rollback_enabled": false,
+    "rollback_calls": 0,
+    "rollback_status_calls": 0
+  }
+}

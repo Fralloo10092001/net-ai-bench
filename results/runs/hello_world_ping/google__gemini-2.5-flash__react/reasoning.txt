@@ -1,0 +1,1 @@
+PC1 and PC2 can successfully ping each other, which was the primary goal of the task. The router interfaces have been configured with the correct IP addresses, and IP forwarding is enabled. All required connectivity has been validated.

@@ -27,14 +27,6 @@ IMPORTANT:
 - Prefer additive and minimal changes over destructive replacements.
 - If a working route or interface is unrelated to the task goal, leave it unchanged.
 
-Available tools:
-- get_topology(devices: list[str] | None = None)
-- get_running_config(device: str)
-- update_config(device: str, commands: list[str])
-- execute_validation(device: str, command: str)
-- rollback(device: str)
-- get_rollback_status(device: str | None = None)
-
 You must use the exact argument names shown above.
 Do not use names like device_name, config_commands, validation_commands, or null tool_args.
 If you output invalid JSON, the system will fail. Ensure all required fields are present.
@@ -46,9 +38,6 @@ Expected behavior:
 - Apply only missing or incorrect configuration.
 - Validate the final task goal using bounded commands.
 - Finish as soon as the task has been successfully validated.
-- If a recent configuration change appears to have broken a device state, management reachability, or task progress, you may use rollback(device) to restore the most recent saved snapshot for that device.
-- Prefer rollback over piling on additional speculative fixes when a recent change likely caused the problem.
-- Before using rollback, use the execution history and current observations to identify which device was most likely affected by the failed or harmful change.
 
 Topology and addressing rules:
 - Each link corresponds to exactly one subnet.
@@ -66,10 +55,12 @@ Configuration rules:
 - Apply minimal changes needed to satisfy the task.
 - Do NOT perform unrelated diagnostics unless necessary.
 - Before deleting or replacing an existing route, address, or setting, verify that the change is explicitly required by the task.
-- If task connectivity can be achieved without removing an existing default route or management path, prefer that safer solution.
+- If task connectivity can be achieved without removing an existing default route or management path, you must prefer that safer solution.
+- Existing management default routes on eth0 are considered protected state unless the task explicitly requires changing them.
+- Do not remove or replace the default route via the management network just because the task also specifies a data-plane gateway.
+- Prefer host-specific or subnet-specific routing changes over replacing management default routes whenever possible.
 - Avoid modifying eth0 or management-facing interfaces unless the task explicitly requires it.
-- If a recent configuration change caused new errors or clearly degraded the device state, consider using rollback(device) before attempting a different plan.
-- Avoid stacking multiple risky fixes on top of a suspected bad change when rollback can restore the previous state more safely.
+- If you remove a management default route and then observe errors, loss of expected behavior, or a need to recover, prefer rollback(device) over continuing with speculative fixes.
 
 Validation rules:
 - Always use bounded validation commands, for example: ping -c 3 -W 2 <destination>
@@ -102,6 +93,7 @@ Output rules:
 """.strip()
 
 
+# Clean model output by removing optional markdown fences.
 def _clean_model_output(text: str) -> str:
     text = text.strip()
 
@@ -118,6 +110,8 @@ def _clean_model_output(text: str) -> str:
     return text
 
 
+# Parse the model JSON decision.
+# Converte l'output del modello in una decisione JSON validata
 def _parse_agent_decision(text: str) -> dict[str, Any]:
     text = _clean_model_output(text)
 
@@ -126,10 +120,11 @@ def _parse_agent_decision(text: str) -> dict[str, Any]:
     except Exception:
         raise ValueError(f"Model output is not valid JSON:\n{text}")
 
-    required = {"thought", "action"}
-    missing = required - set(data.keys())
-    if missing:
-        raise ValueError(f"Missing keys in model output: {sorted(missing)}")
+    if "action" not in data:
+        raise ValueError("Missing key in model output: ['action']")
+
+    if "thought" not in data or not isinstance(data.get("thought"), str):
+        data["thought"] = ""
 
     if data["action"] == "tool_call":
         for key in ["tool_name", "tool_args"]:
@@ -148,6 +143,7 @@ def _parse_agent_decision(text: str) -> dict[str, Any]:
     return data
 
 
+# Extract plain text from an MCP tool result.
 def _extract_mcp_text(result: Any) -> Any:
     if not hasattr(result, "content"):
         return str(result)
@@ -164,6 +160,7 @@ def _extract_mcp_text(result: Any) -> Any:
     return extracted
 
 
+# Build platform-specific guidance from the task text.
 def _build_platform_guidance(task_text: str) -> str:
     lower = task_text.lower()
 
@@ -192,10 +189,31 @@ PLATFORM GUIDANCE:
 """.strip()
 
 
+# Build the available-tools section dynamically, depending on whether rollback is enabled.
+def _build_available_tools_text(enable_rollback: bool) -> str:
+    lines = [
+        "Available tools:",
+        "- get_topology(devices: list[str] | None = None)",
+        "- get_running_config(device: str)",
+        "- update_config(device: str, commands: list[str])",
+        "- execute_validation(device: str, command: str)",
+    ]
+
+    if enable_rollback:
+        lines.extend([
+            "- rollback(device: str)",
+            "- get_rollback_status(device: str | None = None)",
+        ])
+
+    return "\n".join(lines)
+
+
+# Build the step prompt for a single ReAct turn.
 def _build_step_prompt(
     task_text: str,
     valid_tool_names: list[str],
     history: list[dict[str, Any]],
+    enable_rollback: bool,
     parse_warning: str = "",
 ) -> str:
     parts = []
@@ -204,6 +222,17 @@ def _build_step_prompt(
         parts.append(parse_warning)
 
     platform_guidance = _build_platform_guidance(task_text)
+    available_tools_text = _build_available_tools_text(enable_rollback)
+
+    rollback_guidance = ""
+    if enable_rollback:
+        rollback_guidance = """
+ROLLBACK GUIDANCE:
+- If a recent configuration change appears to have broken a device state, management reachability, or task progress, you may use rollback(device) to restore the most recent saved snapshot for that device.
+- Prefer rollback over piling on additional speculative fixes when a recent change likely caused the problem.
+- Before using rollback, use the execution history and current observations to identify which device was most likely affected by the failed or harmful change.
+- Use get_rollback_status when useful to check whether rollback snapshots are available.
+""".strip()
 
     parts.append(
         f"""
@@ -212,11 +241,15 @@ CURRENT TASK:
 
 {platform_guidance}
 
+{available_tools_text}
+
 VALID TOOL NAMES:
 {json.dumps(valid_tool_names, indent=2)}
 
 EXECUTION HISTORY:
 {json.dumps(history, indent=2)}
+
+{rollback_guidance}
 
 INSTRUCTIONS FOR THIS STEP:
 - Read the CURRENT TASK carefully.
@@ -233,29 +266,62 @@ INSTRUCTIONS FOR THIS STEP:
 - Do not use ```json fences.
 - tool_args must always be a JSON object, never null.
 - Preserve healthy pre-existing system state unless the task explicitly requires changing it.
-- Avoid removing existing default routes or management paths unless clearly necessary.
-- If a recent configuration action seems to have caused the current problem, consider using rollback(device) on the affected device.
-- Use get_rollback_status when useful to check whether rollback snapshots are available.
-
-Return exactly one JSON object matching the required schema.
+- Avoid removing existing default routes or management paths unless clearly and explicitly required by the task.
+- Treat management default routes on eth0 as protected unless the task explicitly instructs you to replace them.
+- If connectivity can be achieved with specific routes instead of replacing a management default route, prefer the safer specific-route solution.- Return exactly one JSON object matching the required schema.
 """.strip()
     )
 
-    return "\n\n".join(parts)
+    return "\n\n".join(part for part in parts if part.strip())
 
 
+# List all available MCP tools from the session.
 async def _list_tool_names(session: ClientSession) -> list[str]:
     tools = await session.list_tools()
     return [t.name for t in tools.tools]
 
 
-class ReActAgent(Agent):
-    def __init__(self, llm):
-        self.llm = llm
+# Remove rollback tools from the valid tool list when rollback is disabled.
+def _filter_tool_names(valid_tool_names: list[str], enable_rollback: bool) -> list[str]:
+    if enable_rollback:
+        return valid_tool_names
 
+    blocked = {"rollback", "get_rollback_status"}
+    return [name for name in valid_tool_names if name not in blocked]
+
+
+# Count rollback-related tool usage in the agent history.
+def _collect_rollback_metrics(history: list[dict[str, Any]]) -> dict[str, int]:
+    rollback_calls = 0
+    rollback_status_calls = 0
+
+    for step in history:
+        if step.get("action") != "tool_call":
+            continue
+
+        tool_name = step.get("tool_name")
+        if tool_name == "rollback":
+            rollback_calls += 1
+        elif tool_name == "get_rollback_status":
+            rollback_status_calls += 1
+
+    return {
+        "rollback_calls": rollback_calls,
+        "rollback_status_calls": rollback_status_calls,
+    }
+
+
+class ReActAgent(Agent):
+    # Initialize the ReAct agent, optionally enabling rollback tools.
+    def __init__(self, llm, enable_rollback: bool = False):
+        self.llm = llm
+        self.enable_rollback = enable_rollback
+
+    # Run the full ReAct loop against the MCP session.
     async def run(self, session: ClientSession, task_text: str, max_steps: int) -> RunResult:
         history: list[dict[str, Any]] = []
         valid_tool_names = await _list_tool_names(session)
+        valid_tool_names = _filter_tool_names(valid_tool_names, self.enable_rollback)
 
         usage_totals = {
             "prompt_tokens": 0,
@@ -280,6 +346,7 @@ tool_args must be {} or another JSON object, never null.
                 task_text=task_text,
                 valid_tool_names=valid_tool_names,
                 history=recent_history,
+                enable_rollback=self.enable_rollback,
                 parse_warning=parse_warning,
             )
 
@@ -314,11 +381,18 @@ tool_args must be {} or another JSON object, never null.
             if decision["action"] == "finish":
                 entry["final_reasoning"] = decision.get("final_reasoning", "") or decision["thought"]
                 history.append(entry)
+
+                rollback_metrics = _collect_rollback_metrics(history)
+
                 return RunResult(
                     history=history,
                     final_reasoning=entry["final_reasoning"],
                     mode="react",
                     usage=usage_totals,
+                    metadata={
+                        "rollback_enabled": self.enable_rollback,
+                        **rollback_metrics,
+                    },
                 )
 
             tool_name = decision["tool_name"]
@@ -343,9 +417,15 @@ tool_args must be {} or another JSON object, never null.
 
             history.append(entry)
 
+        rollback_metrics = _collect_rollback_metrics(history)
+
         return RunResult(
             history=history,
             final_reasoning="Agent reached maximum number of steps before finishing.",
             mode="react",
             usage=usage_totals,
+            metadata={
+                "rollback_enabled": self.enable_rollback,
+                **rollback_metrics,
+            },
         )

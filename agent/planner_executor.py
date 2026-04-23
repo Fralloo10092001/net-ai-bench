@@ -43,7 +43,7 @@ EXECUTOR_SYSTEM_PROMPT = """
 You are the EXECUTOR for a network automation agent.
 
 You are executing one step of a previously generated plan.
-You may use tools to inspect state, apply configuration, and validate progress.
+You may use tools to inspect state, apply configuration, validate progress, and optionally recover from a recent harmful change.
 
 IMPORTANT:
 - Devices may use different CLIs and operating systems.
@@ -56,12 +56,6 @@ IMPORTANT:
 - Prefer additive and minimal changes over destructive replacements.
 - Before deleting or replacing an existing route, address, or setting, verify that it is necessary for the current plan step.
 - Avoid modifying management interfaces, management routes, or unrelated control-plane state if the step can be completed without touching them.
-
-Available tools:
-- get_topology(devices: list[str] | None = None)
-- get_running_config(device: str)
-- update_config(device: str, commands: list[str])
-- execute_validation(device: str, command: str)
 
 You must ALWAYS respond in valid JSON only.
 
@@ -102,7 +96,7 @@ Do not use markdown.
 """.strip()
 
 
-# Clean eventual code fences or markdown wrappers from model output.
+# Pulisce l'output del modello rimuovendo eventuali fence markdown
 def _clean_model_output(text: str) -> str:
     text = text.strip()
 
@@ -119,7 +113,7 @@ def _clean_model_output(text: str) -> str:
     return text
 
 
-# Extract plain text from an MCP tool result.
+# Estrae testo semplice da un risultato MCP
 def _extract_mcp_text(result: Any) -> Any:
     if not hasattr(result, "content"):
         return str(result)
@@ -136,12 +130,12 @@ def _extract_mcp_text(result: Any) -> Any:
     return extracted
 
 
-# Load task JSON text into a dictionary.
+# Converte il task JSON serializzato in un dizionario
 def _load_task_dict(task_text: str) -> dict[str, Any]:
     return json.loads(task_text)
 
 
-# Parse the planner JSON array.
+# Valida e converte l'output del planner in un piano JSON
 def _parse_plan(text: str) -> list[dict[str, Any]]:
     text = _clean_model_output(text)
 
@@ -163,7 +157,7 @@ def _parse_plan(text: str) -> list[dict[str, Any]]:
     return data
 
 
-# Parse the executor JSON decision.
+# Valida e converte l'output dell'executor in una decisione JSON
 def _parse_executor_decision(text: str) -> dict[str, Any]:
     text = _clean_model_output(text)
 
@@ -172,10 +166,11 @@ def _parse_executor_decision(text: str) -> dict[str, Any]:
     except Exception:
         raise ValueError(f"Executor output is not valid JSON:\n{text}")
 
-    required = {"thought", "action"}
-    missing = required - set(data.keys())
-    if missing:
-        raise ValueError(f"Missing keys in executor output: {sorted(missing)}")
+    if "action" not in data:
+        raise ValueError("Missing key in executor output: ['action']")
+
+    if "thought" not in data or not isinstance(data.get("thought"), str):
+        data["thought"] = ""
 
     if data["action"] == "tool_call":
         for key in ["tool_name", "tool_args"]:
@@ -194,7 +189,7 @@ def _parse_executor_decision(text: str) -> dict[str, Any]:
     return data
 
 
-# Parse the validator JSON output.
+# Valida e converte l'output del validator finale
 def _parse_validator_output(text: str) -> str:
     text = _clean_model_output(text)
 
@@ -209,25 +204,88 @@ def _parse_validator_output(text: str) -> str:
     return "Final validation completed."
 
 
-# List all valid MCP tool names.
+# Elenca tutti i tool MCP disponibili
 async def _list_tool_names(session: ClientSession) -> list[str]:
     tools = await session.list_tools()
     return [t.name for t in tools.tools]
 
 
-# Build the executor prompt for a single current plan step.
+# Costruisce dinamicamente la sezione dei tool disponibili per l'executor
+def _build_executor_available_tools_text(enable_rollback: bool) -> str:
+    lines = [
+        "Available tools:",
+        "- get_topology(devices: list[str] | None = None)",
+        "- get_running_config(device: str)",
+        "- update_config(device: str, commands: list[str])",
+        "- execute_validation(device: str, command: str)",
+    ]
+
+    if enable_rollback:
+        lines.extend([
+            "- rollback(device: str)",
+            "- get_rollback_status(device: str | None = None)",
+        ])
+
+    return "\n".join(lines)
+
+
+# Filtra i tool di rollback quando il rollback è disabilitato
+def _filter_tool_names(valid_tool_names: list[str], enable_rollback: bool) -> list[str]:
+    if enable_rollback:
+        return valid_tool_names
+
+    blocked = {"rollback", "get_rollback_status"}
+    return [name for name in valid_tool_names if name not in blocked]
+
+
+# Conta l'uso dei tool di rollback all'interno della history
+def _collect_rollback_metrics(history: list[dict[str, Any]]) -> dict[str, int]:
+    rollback_calls = 0
+    rollback_status_calls = 0
+
+    for step in history:
+        if step.get("action") != "tool_call":
+            continue
+
+        tool_name = step.get("tool_name")
+        if tool_name == "rollback":
+            rollback_calls += 1
+        elif tool_name == "get_rollback_status":
+            rollback_status_calls += 1
+
+    return {
+        "rollback_calls": rollback_calls,
+        "rollback_status_calls": rollback_status_calls,
+    }
+
+
+# Costruisce il prompt di un singolo step dell'executor
 def _build_executor_prompt(
     task_text: str,
     full_plan: list[dict[str, Any]],
     current_step: dict[str, Any],
     valid_tool_names: list[str],
     history: list[dict[str, Any]],
+    enable_rollback: bool,
     parse_warning: str = "",
 ) -> str:
     parts = []
 
     if parse_warning:
         parts.append(parse_warning)
+
+    available_tools_text = _build_executor_available_tools_text(enable_rollback)
+
+    rollback_guidance = ""
+    if enable_rollback:
+        rollback_guidance = """
+ROLLBACK GUIDANCE:
+- If a recent configuration change appears to have broken a device state, management reachability, or task progress, you may use rollback(device) to restore the most recent saved snapshot for that device.
+- Prefer rollback over piling on additional speculative fixes when a recent change likely caused the problem.
+- Before using rollback, use the execution history and current observations to identify which device was most likely affected by the failed or harmful change.
+- Use get_rollback_status when useful to check whether rollback snapshots are available.
+- Use rollback only from the executor. The planner does not perform recovery actions directly.
+""".strip()
 
     parts.append(
         f"""
@@ -240,11 +298,15 @@ FULL PLAN:
 CURRENT PLAN STEP:
 {json.dumps(current_step, indent=2)}
 
+{available_tools_text}
+
 VALID TOOL NAMES:
 {json.dumps(valid_tool_names, indent=2)}
 
 EXECUTION HISTORY FOR THIS PLAN STEP:
 {json.dumps(history, indent=2)}
+
+{rollback_guidance}
 
 INSTRUCTIONS:
 - Focus on completing only the CURRENT PLAN STEP.
@@ -257,10 +319,10 @@ INSTRUCTIONS:
 """.strip()
     )
 
-    return "\n\n".join(parts)
+    return "\n\n".join(part for part in parts if part.strip())
 
 
-# Execute task testcases through the validation tool.
+# Esegue i testcase finali usando il tool di validazione
 async def _run_testcases(
     session: ClientSession,
     testcases: list[dict[str, Any]],
@@ -309,7 +371,7 @@ async def _run_testcases(
 
 
 class PlannerExecutorAgent(Agent):
-    # Initialize the planner-executor agent with optional separate planner, executor, and validator models.
+    # Inizializza l'agente planner-executor con planner, executor e validator opzionali
     def __init__(
         self,
         llm,
@@ -321,6 +383,7 @@ class PlannerExecutorAgent(Agent):
         planner_model: str | None = None,
         executor_provider: str | None = None,
         executor_model: str | None = None,
+        enable_rollback: bool = False,
     ):
         self.llm = llm
         self.planner_llm = planner_llm or llm
@@ -331,13 +394,15 @@ class PlannerExecutorAgent(Agent):
         self.planner_model = planner_model
         self.executor_provider = executor_provider
         self.executor_model = executor_model
+        self.enable_rollback = enable_rollback
 
-    # Run the full planner-executor workflow against the MCP session.
+    # Esegue l'intero workflow planner-executor sulla sessione MCP
     async def run(self, session: ClientSession, task_text: str, max_steps: int) -> RunResult:
         del max_steps
 
         history: list[dict[str, Any]] = []
         valid_tool_names = await _list_tool_names(session)
+        valid_tool_names = _filter_tool_names(valid_tool_names, self.enable_rollback)
         task = _load_task_dict(task_text)
 
         usage_totals = {
@@ -405,6 +470,8 @@ Return only the JSON plan array.
                     "planner_model": self.planner_model,
                     "executor_provider": self.executor_provider,
                     "executor_model": self.executor_model,
+                    "rollback_enabled": self.enable_rollback,
+                    **_collect_rollback_metrics(history),
                 },
             )
 
@@ -438,6 +505,7 @@ tool_args must be a JSON object, never null.
                     current_step=plan_step,
                     valid_tool_names=valid_tool_names,
                     history=local_history[-4:],
+                    enable_rollback=self.enable_rollback,
                     parse_warning=parse_warning,
                 )
 
@@ -580,5 +648,7 @@ Return the final JSON object now.
                 "planner_model": self.planner_model,
                 "executor_provider": self.executor_provider,
                 "executor_model": self.executor_model,
+                "rollback_enabled": self.enable_rollback,
+                **_collect_rollback_metrics(history),
             },
         )

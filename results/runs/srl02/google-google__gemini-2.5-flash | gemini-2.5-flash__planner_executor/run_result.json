@@ -1,0 +1,35 @@
+{
+  "mode": "planner_executor",
+  "final_reasoning": "Final validation completed.\n\nFinal validation result: passed 4/6 testcases.",
+  "history_length": 9,
+  "total_tokens": 92223,
+  "estimated_cost_usd": 0.0300206,
+  "provider": "google/google",
+  "model": "gemini-2.5-flash | gemini-2.5-flash",
+  "usage_breakdown": {
+    "planner": {
+      "prompt_tokens": 860,
+      "completion_tokens": 145,
+      "total_tokens": 1381
+    },
+    "executor": {
+      "prompt_tokens": 61319,
+      "completion_tokens": 1124,
+      "total_tokens": 63448
+    },
+    "validator": {
+      "prompt_tokens": 26598,
+      "completion_tokens": 86,
+      "total_tokens": 27394
+    }
+  },
+  "metadata": {
+    "planner_provider": "google",
+    "planner_model": "gemini-2.5-flash",
+    "executor_provider": "google",
+    "executor_model": "gemini-2.5-flash",
+    "rollback_enabled": false,
+    "rollback_calls": 0,
+    "rollback_status_calls": 0
+  }
+}

@@ -1,12 +1,5 @@
-{"device": "pc1", "command": "ip addr add 10.0.1.2/24 dev eth1"}
-{"device": "pc1", "command": "ip route del default via 172.20.20.1 dev eth0"}
-{"device": "pc1", "command": "ip route add default via 10.0.1.1"}
-{"device": "r1", "command": "ip addr add 10.0.1.1/24 dev eth1"}
-{"device": "r1", "command": "ip addr add 10.0.12.1/24 dev eth2"}
-{"device": "r1", "command": "ip route add 10.0.2.0/24 via 10.0.12.2"}
-{"device": "r2", "command": "ip addr add 10.0.12.2/24 dev eth1"}
-{"device": "r2", "command": "ip addr add 10.0.2.1/24 dev eth2"}
-{"device": "r2", "command": "ip route add 10.0.1.0/24 via 10.0.12.1"}
-{"device": "pc2", "command": "ip addr add 10.0.2.2/24 dev eth1"}
-{"device": "pc2", "command": "ip route del default via 172.20.20.1 dev eth0"}
-{"device": "pc2", "command": "ip route add default via 10.0.2.1"}
+{"device": "srl1", "command": "set / interface ethernet-1/1 admin-state enable"}
+{"device": "srl1", "command": "set / interface ethernet-1/1 subinterface 0 admin-state enable"}
+{"device": "srl1", "command": "set / interface ethernet-1/1 subinterface 0 ipv4 address 10.0.12.1/30"}
+{"device": "srl2", "command": "set / interface ethernet-1/1 admin-state enable"}
+{"device": "srl2", "command": "set / interface ethernet-1/1 subinterface 0 ipv4 address 10.0.12.2/30"}

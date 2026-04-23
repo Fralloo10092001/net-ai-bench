@@ -1,0 +1,8 @@
+{"device": "srl1", "command": "set /interface ethernet-1/1 admin-state enable"}
+{"device": "srl1", "command": "set /interface ethernet-1/1 subinterface 0 admin-state enable"}
+{"device": "srl1", "command": "set /interface ethernet-1/1 subinterface 0 type routed"}
+{"device": "srl1", "command": "set /interface ethernet-1/1 subinterface 0 ipv4 address 10.0.12.1/30"}
+{"device": "srl2", "command": "set /interface ethernet-1/1 admin-state enable"}
+{"device": "srl2", "command": "set /interface ethernet-1/1 subinterface 0 admin-state enable"}
+{"device": "srl2", "command": "set /interface ethernet-1/1 subinterface 0 type routed"}
+{"device": "srl2", "command": "set /interface ethernet-1/1 subinterface 0 ipv4 address 10.0.12.2/30"}

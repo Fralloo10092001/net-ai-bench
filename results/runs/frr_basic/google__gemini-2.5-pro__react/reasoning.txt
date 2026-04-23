@@ -1,0 +1,1 @@
+The configuration of IP addresses and static routes on all devices (pc1, r1, r2, pc2) is complete. The primary validation test, pinging from pc1 to pc2, was successful, confirming end-to-end connectivity as required by the task.
