@@ -24,6 +24,7 @@ LOGS_DIR = PROJECT_ROOT / "logs"
 load_dotenv(PROJECT_ROOT / ".env")
 
 
+# Extract plain text from an MCP tool result.
 def _extract_mcp_text(result: Any) -> Any:
     if not hasattr(result, "content"):
         return str(result)
@@ -40,6 +41,7 @@ def _extract_mcp_text(result: Any) -> Any:
     return extracted
 
 
+# Load a compact task representation used by the agent prompts.
 def _load_task_text(task_path: str) -> str:
     with open(task_path) as f:
         task = json.load(f)
@@ -54,6 +56,7 @@ def _load_task_text(task_path: str) -> str:
     return json.dumps(compact_task, indent=2)
 
 
+# Export final running configurations for all topology devices.
 async def _export_final_configs(session: ClientSession, devices: list[str]) -> dict[str, str]:
     final_configs: dict[str, str] = {}
 
@@ -72,17 +75,38 @@ async def _export_final_configs(session: ClientSession, devices: list[str]) -> d
     return final_configs
 
 
-def get_agent(mode: str, llm):
+# Build the correct agent instance for the selected mode.
+def get_agent(
+    mode: str,
+    llm,
+    planner_llm=None,
+    executor_llm=None,
+    validator_llm=None,
+    planner_provider: str | None = None,
+    planner_model: str | None = None,
+    executor_provider: str | None = None,
+    executor_model: str | None = None,
+):
     if mode == "react":
         return ReActAgent(llm)
     if mode == "single_turn":
         return SingleTurnAgent(llm)
     if mode == "planner_executor":
-        return PlannerExecutorAgent(llm)
+        return PlannerExecutorAgent(
+            llm=llm,
+            planner_llm=planner_llm,
+            executor_llm=executor_llm,
+            validator_llm=validator_llm,
+            planner_provider=planner_provider,
+            planner_model=planner_model,
+            executor_provider=executor_provider,
+            executor_model=executor_model,
+        )
 
     raise ValueError(f"Unsupported agent mode: {mode}")
 
 
+# Run a single agent execution against one lab/task pair.
 def run(
     lab: str,
     task_path: str,
@@ -90,6 +114,10 @@ def run(
     model: str,
     max_steps: int = 25,
     agent_mode: str = "react",
+    planner_provider: str | None = None,
+    planner_model: str | None = None,
+    executor_provider: str | None = None,
+    executor_model: str | None = None,
 ):
     LOGS_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -110,9 +138,57 @@ def run(
     llm = get_model(provider, model)
     task_text = _load_task_text(task_path)
 
+    effective_provider = provider
+    effective_model = model
+
+    planner_llm = None
+    executor_llm = None
+    validator_llm = None
+
+    if agent_mode == "planner_executor":
+        planner_max_tokens = 1200
+        executor_max_tokens = 1200
+        validator_max_tokens = 800
+
+        planner_provider = planner_provider or provider
+        planner_model = planner_model or model
+        executor_provider = executor_provider or provider
+        executor_model = executor_model or model
+
+        planner_llm = get_model(
+            planner_provider,
+            planner_model,
+            max_tokens=planner_max_tokens,
+        )
+
+        executor_llm = get_model(
+            executor_provider,
+            executor_model,
+            max_tokens=executor_max_tokens,
+        )
+
+        validator_llm = get_model(
+            executor_provider,
+            executor_model,
+            max_tokens=validator_max_tokens,
+        )
+
+        effective_provider = f"{planner_provider}/{executor_provider}"
+        effective_model = f"{planner_model} | {executor_model}"
+
     async def _run_async():
         mcp_server_path = PROJECT_ROOT / "ani" / "mcp_server.py"
-        agent = get_agent(agent_mode, llm)
+        agent = get_agent(
+            mode=agent_mode,
+            llm=llm,
+            planner_llm=planner_llm,
+            executor_llm=executor_llm,
+            validator_llm=validator_llm,
+            planner_provider=planner_provider,
+            planner_model=planner_model,
+            executor_provider=executor_provider,
+            executor_model=executor_model,
+        )
 
         server_params = StdioServerParameters(
             command=sys.executable,
@@ -152,7 +228,13 @@ def run(
                 final_configs_file.write_text(json.dumps(final_configs, indent=2))
 
                 usage = run_result.usage
-                estimated_cost_usd = estimate_cost_usd(provider, model, usage)
+                usage_breakdown = run_result.usage_breakdown or {}
+                estimated_cost_usd = estimate_cost_usd(
+                    effective_provider,
+                    effective_model,
+                    usage,
+                    usage_breakdown=usage_breakdown,
+                )
 
                 run_result_file.write_text(
                     json.dumps(
@@ -162,8 +244,10 @@ def run(
                             "history_length": len(run_result.history),
                             "total_tokens": usage["total_tokens"],
                             "estimated_cost_usd": estimated_cost_usd,
-                            "provider": provider,
-                            "model": model,
+                            "provider": effective_provider,
+                            "model": effective_model,
+                            "usage_breakdown": usage_breakdown,
+                            "metadata": run_result.metadata,
                         },
                         indent=2,
                     )
@@ -176,6 +260,8 @@ def run(
                     "final_configs_file": str(final_configs_file),
                     "run_result_file": str(run_result_file),
                     "agent_mode": run_result.mode,
+                    "provider": effective_provider,
+                    "model": effective_model,
                     "total_tokens": usage["total_tokens"],
                     "estimated_cost_usd": estimated_cost_usd,
                 }
@@ -199,6 +285,16 @@ if __name__ == "__main__":
         default="react",
         choices=["single_turn", "react", "planner_executor"],
     )
+    parser.add_argument(
+        "--planner-provider",
+        choices=["openai", "anthropic", "google", "openrouter"],
+    )
+    parser.add_argument("--planner-model")
+    parser.add_argument(
+        "--executor-provider",
+        choices=["openai", "anthropic", "google", "openrouter"],
+    )
+    parser.add_argument("--executor-model")
     args = parser.parse_args()
 
     result = run(
@@ -208,13 +304,17 @@ if __name__ == "__main__":
         model=args.model,
         max_steps=args.max_steps,
         agent_mode=args.agent_mode,
+        planner_provider=args.planner_provider,
+        planner_model=args.planner_model,
+        executor_provider=args.executor_provider,
+        executor_model=args.executor_model,
     )
 
     print("\n" + "=" * 55)
     print("  AGENT COMPLETED")
     print("=" * 55)
-    print(f"  Provider   : {args.provider}")
-    print(f"  Model      : {args.model}")
+    print(f"  Provider   : {result['provider']}")
+    print(f"  Model      : {result['model']}")
     print(f"  Agent mode : {result['agent_mode']}")
     print(f"  Lab        : {args.lab}")
     print(f"  Task       : {args.task}")

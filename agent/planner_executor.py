@@ -102,6 +102,7 @@ Do not use markdown.
 """.strip()
 
 
+# Clean eventual code fences or markdown wrappers from model output.
 def _clean_model_output(text: str) -> str:
     text = text.strip()
 
@@ -118,6 +119,7 @@ def _clean_model_output(text: str) -> str:
     return text
 
 
+# Extract plain text from an MCP tool result.
 def _extract_mcp_text(result: Any) -> Any:
     if not hasattr(result, "content"):
         return str(result)
@@ -134,10 +136,12 @@ def _extract_mcp_text(result: Any) -> Any:
     return extracted
 
 
+# Load task JSON text into a dictionary.
 def _load_task_dict(task_text: str) -> dict[str, Any]:
     return json.loads(task_text)
 
 
+# Parse the planner JSON array.
 def _parse_plan(text: str) -> list[dict[str, Any]]:
     text = _clean_model_output(text)
 
@@ -159,6 +163,7 @@ def _parse_plan(text: str) -> list[dict[str, Any]]:
     return data
 
 
+# Parse the executor JSON decision.
 def _parse_executor_decision(text: str) -> dict[str, Any]:
     text = _clean_model_output(text)
 
@@ -189,6 +194,7 @@ def _parse_executor_decision(text: str) -> dict[str, Any]:
     return data
 
 
+# Parse the validator JSON output.
 def _parse_validator_output(text: str) -> str:
     text = _clean_model_output(text)
 
@@ -203,11 +209,13 @@ def _parse_validator_output(text: str) -> str:
     return "Final validation completed."
 
 
+# List all valid MCP tool names.
 async def _list_tool_names(session: ClientSession) -> list[str]:
     tools = await session.list_tools()
     return [t.name for t in tools.tools]
 
 
+# Build the executor prompt for a single current plan step.
 def _build_executor_prompt(
     task_text: str,
     full_plan: list[dict[str, Any]],
@@ -252,6 +260,7 @@ INSTRUCTIONS:
     return "\n\n".join(parts)
 
 
+# Execute task testcases through the validation tool.
 async def _run_testcases(
     session: ClientSession,
     testcases: list[dict[str, Any]],
@@ -300,10 +309,30 @@ async def _run_testcases(
 
 
 class PlannerExecutorAgent(Agent):
-    def __init__(self, llm, executor_step_budget: int = 3):
+    # Initialize the planner-executor agent with optional separate planner, executor, and validator models.
+    def __init__(
+        self,
+        llm,
+        executor_step_budget: int = 3,
+        planner_llm=None,
+        executor_llm=None,
+        validator_llm=None,
+        planner_provider: str | None = None,
+        planner_model: str | None = None,
+        executor_provider: str | None = None,
+        executor_model: str | None = None,
+    ):
         self.llm = llm
+        self.planner_llm = planner_llm or llm
+        self.executor_llm = executor_llm or llm
+        self.validator_llm = validator_llm or self.executor_llm
         self.executor_step_budget = executor_step_budget
+        self.planner_provider = planner_provider
+        self.planner_model = planner_model
+        self.executor_provider = executor_provider
+        self.executor_model = executor_model
 
+    # Run the full planner-executor workflow against the MCP session.
     async def run(self, session: ClientSession, task_text: str, max_steps: int) -> RunResult:
         del max_steps
 
@@ -316,6 +345,23 @@ class PlannerExecutorAgent(Agent):
             "completion_tokens": 0,
             "total_tokens": 0,
         }
+        usage_breakdown = {
+            "planner": {
+                "prompt_tokens": 0,
+                "completion_tokens": 0,
+                "total_tokens": 0,
+            },
+            "executor": {
+                "prompt_tokens": 0,
+                "completion_tokens": 0,
+                "total_tokens": 0,
+            },
+            "validator": {
+                "prompt_tokens": 0,
+                "completion_tokens": 0,
+                "total_tokens": 0,
+            },
+        }
 
         planner_prompt = f"""
 {PLANNER_SYSTEM_PROMPT}
@@ -326,8 +372,10 @@ CURRENT TASK:
 Return only the JSON plan array.
 """.strip()
 
-        planner_response = await self.llm.ainvoke(planner_prompt)
-        usage_totals = add_usage(usage_totals, extract_usage_from_response(planner_response))
+        planner_response = await self.planner_llm.ainvoke(planner_prompt)
+        planner_usage = extract_usage_from_response(planner_response)
+        usage_breakdown["planner"] = add_usage(usage_breakdown["planner"], planner_usage)
+        usage_totals = add_usage(usage_totals, planner_usage)
 
         planner_raw = planner_response.content if hasattr(planner_response, "content") else str(planner_response)
 
@@ -351,6 +399,13 @@ Return only the JSON plan array.
                 final_reasoning="Planner-executor agent failed because planner output was invalid.",
                 mode="planner_executor",
                 usage=usage_totals,
+                usage_breakdown=usage_breakdown,
+                metadata={
+                    "planner_provider": self.planner_provider,
+                    "planner_model": self.planner_model,
+                    "executor_provider": self.executor_provider,
+                    "executor_model": self.executor_model,
+                },
             )
 
         history.append(
@@ -386,8 +441,10 @@ tool_args must be a JSON object, never null.
                     parse_warning=parse_warning,
                 )
 
-                response = await self.llm.ainvoke(prompt)
-                usage_totals = add_usage(usage_totals, extract_usage_from_response(response))
+                response = await self.executor_llm.ainvoke(prompt)
+                executor_usage = extract_usage_from_response(response)
+                usage_breakdown["executor"] = add_usage(usage_breakdown["executor"], executor_usage)
+                usage_totals = add_usage(usage_totals, executor_usage)
 
                 raw_output = response.content if hasattr(response, "content") else str(response)
 
@@ -485,8 +542,10 @@ TESTCASE RESULTS:
 Return the final JSON object now.
 """.strip()
 
-        validator_response = await self.llm.ainvoke(validator_prompt)
-        usage_totals = add_usage(usage_totals, extract_usage_from_response(validator_response))
+        validator_response = await self.validator_llm.ainvoke(validator_prompt)
+        validator_usage = extract_usage_from_response(validator_response)
+        usage_breakdown["validator"] = add_usage(usage_breakdown["validator"], validator_usage)
+        usage_totals = add_usage(usage_totals, validator_usage)
 
         validator_raw = validator_response.content if hasattr(validator_response, "content") else str(validator_response)
 
@@ -515,4 +574,11 @@ Return the final JSON object now.
             final_reasoning=final_reasoning,
             mode="planner_executor",
             usage=usage_totals,
+            usage_breakdown=usage_breakdown,
+            metadata={
+                "planner_provider": self.planner_provider,
+                "planner_model": self.planner_model,
+                "executor_provider": self.executor_provider,
+                "executor_model": self.executor_model,
+            },
         )

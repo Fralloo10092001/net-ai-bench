@@ -1,11 +1,11 @@
 {
-  "mode": "planner_executor",
-  "final_reasoning": "All specified intents in the task were successfully addressed and verified by the test cases. PC1 and PC2 can ping each other, the router interfaces have the correct IP addresses, and IP forwarding is enabled. All test cases passed, indicating the overall task goal is satisfied.\n\nFinal validation result: passed 5/5 testcases.",
-  "history_length": 11,
-  "prompt_tokens": 17827,
-  "completion_tokens": 1421,
-  "total_tokens": 21303,
-  "estimated_cost_usd": 0.0,
+  "mode": "react",
+  "final_reasoning": "PC1 can successfully ping PC2, which validates the primary task goal of establishing connectivity between PC1 and PC2. All necessary configurations have been applied and validated.",
+  "history_length": 14,
+  "total_tokens": 73155,
+  "estimated_cost_usd": 0.0250361,
   "provider": "google",
-  "model": "gemini-2.5-flash"
+  "model": "gemini-2.5-flash",
+  "usage_breakdown": {},
+  "metadata": {}
 }

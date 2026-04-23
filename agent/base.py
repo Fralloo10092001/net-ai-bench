@@ -17,6 +17,8 @@ class RunResult:
             "total_tokens": 0,
         }
     )
+    usage_breakdown: dict[str, dict[str, int]] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 class Agent(ABC):

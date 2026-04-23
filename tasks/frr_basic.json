@@ -36,7 +36,7 @@
       "ip route add default via 10.0.2.1"
     ]
   },
-  "ground_truth_reasoning": "",
+  "ground_truth_reasoning": "First configure the endpoint and router interface IPv4 addresses according to the required addressing plan: pc1 on 10.0.1.0/24, r1 with interfaces on 10.0.1.0/24 and 10.0.12.0/24, r2 with interfaces on 10.0.12.0/24 and 10.0.2.0/24, and pc2 on 10.0.2.0/24. Then configure the end hosts to use their directly connected router interface as the default gateway. After addressing is in place, enable IPv4 forwarding on both routers so they can route packets between subnets. Finally, install static routes on r1 toward the 10.0.2.0/24 network via r2 and on r2 toward the 10.0.1.0/24 network via r1, so that pc1 and pc2 can reach each other end to end through the two-router path without breaking the existing management connectivity.",
   "baseline_invariants": [
           {
       "name": "PC1 management interface is still up",
