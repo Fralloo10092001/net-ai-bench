@@ -2,7 +2,32 @@ from __future__ import annotations
 
 from typing import Any
 
-
+pricing = {
+    ("openai", "gpt-4o"): {
+        "input_per_million": 1.25,
+        "output_per_million": 5.00,
+    },
+    ("openrouter", "openai/gpt-4o-mini"): {
+        "input_per_million": 0.60,
+        "output_per_million": 2.40,
+    },
+    ("anthropic", "claude-opus-4-5"): {
+        "input_per_million": 5.00,
+        "output_per_million": 25.00,
+    },
+    ("anthropic", "claude-sonnet-4-5"): {
+        "input_per_million": 3.00,
+        "output_per_million": 15.00,
+    },
+    ("google", "gemini-2.5-pro"): {
+        "input_per_million": 1.25,
+        "output_per_million": 10.00,
+    },
+    ("google", "gemini-2.5-flash"): {
+        "input_per_million": 0.30,
+        "output_per_million": 2.50,
+    },
+}
 def extract_usage_from_response(response: Any) -> dict[str, int]:
     prompt_tokens = 0
     completion_tokens = 0
@@ -65,11 +90,30 @@ def add_usage(acc: dict[str, int], delta: dict[str, int]) -> dict[str, int]:
 
 def estimate_cost_usd(provider: str, model: str, usage: dict[str, int]) -> float:
     pricing = {
-        ("google", "gemini-2.5-flash"): {"input_per_million": 0.0, "output_per_million": 0.0},
-        ("google", "gemini-2.5-pro"): {"input_per_million": 0.0, "output_per_million": 0.0},
-        ("openrouter", "openai/gpt-4o-mini"): {"input_per_million": 0.0, "output_per_million": 0.0},
-        ("openai", "gpt-4o"): {"input_per_million": 0.0, "output_per_million": 0.0},
-        ("anthropic", "claude-opus-4-5"): {"input_per_million": 0.0, "output_per_million": 0.0},
+        ("openai", "gpt-4o"): {
+            "input_per_million": 1.25,
+            "output_per_million": 5.00,
+        },
+        ("openrouter", "openai/gpt-4o-mini"): {
+            "input_per_million": 0.60,
+            "output_per_million": 2.40,
+        },
+        ("anthropic", "claude-opus-4-5"): {
+            "input_per_million": 5.00,
+            "output_per_million": 25.00,
+        },
+        ("anthropic", "claude-sonnet-4-5"): {
+            "input_per_million": 3.00,
+            "output_per_million": 15.00,
+        },
+        ("google", "gemini-2.5-pro"): {
+            "input_per_million": 1.25,
+            "output_per_million": 10.00,
+        },
+        ("google", "gemini-2.5-flash"): {
+            "input_per_million": 0.30,
+            "output_per_million": 2.50,
+        },
     }
 
     key = (provider.lower(), model)
@@ -77,6 +121,6 @@ def estimate_cost_usd(provider: str, model: str, usage: dict[str, int]) -> float
         return 0.0
 
     p = pricing[key]
-    input_cost = usage["prompt_tokens"] * p["input_per_million"] / 1_000_000
-    output_cost = usage["completion_tokens"] * p["output_per_million"] / 1_000_000
+    input_cost = usage.get("prompt_tokens", 0) * p["input_per_million"] / 1_000_000
+    output_cost = usage.get("completion_tokens", 0) * p["output_per_million"] / 1_000_000
     return round(input_cost + output_cost, 8)

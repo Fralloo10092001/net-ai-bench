@@ -141,8 +141,6 @@ def write_csv(results: list[dict]) -> None:
         "command_precision",
         "command_recall",
         "steps",
-        "prompt_tokens",
-        "completion_tokens",
         "total_tokens",
         "estimated_cost_usd",
     ]
@@ -232,8 +230,6 @@ def build_failed_entry(task: str, lab: str, provider: str, model: str, mode: str
         "command_precision": None,
         "command_recall": None,
         "steps": 0,
-        "prompt_tokens": run_result.get("prompt_tokens", 0),
-        "completion_tokens": run_result.get("completion_tokens", 0),
         "total_tokens": run_result.get("total_tokens", 0),
         "estimated_cost_usd": run_result.get("estimated_cost_usd", 0.0),
     }
@@ -269,7 +265,6 @@ def main():
 
         for mode in modes:
             for provider, model in models:
-                # RESET PER OGNI SINGOLA RUN
                 reset_lab(lab)
 
                 ok = run_agent(lab, task, provider, model, mode)
@@ -325,8 +320,6 @@ def main():
                     "command_precision": command_details["precision"],
                     "command_recall": command_details["recall"],
                     "steps": reasoning_details["total_steps"],
-                    "prompt_tokens": run_result.get("prompt_tokens", 0),
-                    "completion_tokens": run_result.get("completion_tokens", 0),
                     "total_tokens": run_result.get("total_tokens", 0),
                     "estimated_cost_usd": run_result.get("estimated_cost_usd", 0.0),
                 }

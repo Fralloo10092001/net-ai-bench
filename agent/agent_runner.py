@@ -160,8 +160,6 @@ def run(
                             "mode": run_result.mode,
                             "final_reasoning": run_result.final_reasoning,
                             "history_length": len(run_result.history),
-                            "prompt_tokens": usage["prompt_tokens"],
-                            "completion_tokens": usage["completion_tokens"],
                             "total_tokens": usage["total_tokens"],
                             "estimated_cost_usd": estimated_cost_usd,
                             "provider": provider,
@@ -178,8 +176,6 @@ def run(
                     "final_configs_file": str(final_configs_file),
                     "run_result_file": str(run_result_file),
                     "agent_mode": run_result.mode,
-                    "prompt_tokens": usage["prompt_tokens"],
-                    "completion_tokens": usage["completion_tokens"],
                     "total_tokens": usage["total_tokens"],
                     "estimated_cost_usd": estimated_cost_usd,
                 }
