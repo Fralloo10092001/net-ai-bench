@@ -30,6 +30,7 @@ def _extract_mcp_text(result: Any) -> Any:
         return str(result)
 
     extracted = []
+
     for item in result.content:
         if hasattr(item, "text"):
             extracted.append(item.text)
@@ -38,6 +39,7 @@ def _extract_mcp_text(result: Any) -> Any:
 
     if len(extracted) == 1:
         return extracted[0]
+
     return extracted
 
 
@@ -53,22 +55,79 @@ def _load_task_text(task_path: str) -> str:
         "ground_truth_configs": task.get("ground_truth_configs"),
         "testcases": task.get("testcases"),
     }
+
     return json.dumps(compact_task, indent=2)
 
 
+# Restituisce token budget consigliati per provider/modello/modalità
+def _get_token_budgets(
+    provider: str,
+    model: str,
+    mode: str,
+) -> tuple[int, int, int]:
+    provider = provider.lower()
+    model = model.lower()
+
+    # default generici
+    planner = 2200
+    executor = 1600
+    validator = 700
+
+    if provider == "google":
+        planner = 4096
+        executor = 2200
+        validator = 900
+
+        if "pro" in model:
+            executor = 3000
+
+    elif provider == "openai":
+        planner = 2400
+        executor = 1800
+        validator = 700
+
+        if "gpt-4o" in model:
+            planner = 2600
+            executor = 2000
+
+    elif provider == "openrouter":
+        planner = 1600
+        executor = 1200
+        validator = 600
+
+    elif provider == "anthropic":
+        planner = 3000
+        executor = 2200
+        validator = 800
+
+    # per modalità semplici serve solo executor-like budget
+    if mode in {"react", "single_turn"}:
+        planner = executor
+
+    return planner, executor, validator
+
+
 # Esporta le configurazioni finali di tutti i nodi della topologia
-async def _export_final_configs(session: ClientSession, devices: list[str]) -> dict[str, str]:
+async def _export_final_configs(
+    session: ClientSession,
+    devices: list[str],
+) -> dict[str, str]:
     final_configs: dict[str, str] = {}
 
     for device in devices:
         try:
-            result = await session.call_tool("get_running_config", {"device": device})
+            result = await session.call_tool(
+                "get_running_config",
+                {"device": device},
+            )
+
             text = _extract_mcp_text(result)
 
             if isinstance(text, list):
                 text = "\n".join(str(x) for x in text)
 
             final_configs[device] = str(text)
+
         except Exception as e:
             final_configs[device] = f"ERROR: {e}"
 
@@ -89,7 +148,10 @@ def get_agent(
     enable_rollback: bool = False,
 ):
     if mode == "react":
-        return ReActAgent(llm, enable_rollback=enable_rollback)
+        return ReActAgent(
+            llm,
+            enable_rollback=enable_rollback,
+        )
 
     if mode == "single_turn":
         return SingleTurnAgent(llm)
@@ -140,7 +202,19 @@ def run(
     print(f"DEBUG reasoning_file={reasoning_file}")
     print(f"DEBUG run_result_file={run_result_file}")
 
-    llm = get_model(provider, model)
+    planner_budget, executor_budget, validator_budget = _get_token_budgets(
+        provider=provider,
+        model=model,
+        mode=agent_mode,
+    )
+
+    # modello unico per modalità non planner/executor
+    llm = get_model(
+        provider,
+        model,
+        max_tokens=executor_budget,
+    )
+
     task_text = _load_task_text(task_path)
 
     effective_provider = provider
@@ -151,31 +225,40 @@ def run(
     validator_llm = None
 
     if agent_mode == "planner_executor":
-        planner_max_tokens = 1200
-        executor_max_tokens = 1200
-        validator_max_tokens = 800
-
         planner_provider = planner_provider or provider
         planner_model = planner_model or model
+
         executor_provider = executor_provider or provider
         executor_model = executor_model or model
+
+        planner_budget, _, _ = _get_token_budgets(
+            planner_provider,
+            planner_model,
+            "planner_executor",
+        )
+
+        _, executor_budget, validator_budget = _get_token_budgets(
+            executor_provider,
+            executor_model,
+            "planner_executor",
+        )
 
         planner_llm = get_model(
             planner_provider,
             planner_model,
-            max_tokens=planner_max_tokens,
+            max_tokens=planner_budget,
         )
 
         executor_llm = get_model(
             executor_provider,
             executor_model,
-            max_tokens=executor_max_tokens,
+            max_tokens=executor_budget,
         )
 
         validator_llm = get_model(
             executor_provider,
             executor_model,
-            max_tokens=validator_max_tokens,
+            max_tokens=validator_budget,
         )
 
         effective_provider = f"{planner_provider}/{executor_provider}"
@@ -183,6 +266,7 @@ def run(
 
     async def _run_async():
         mcp_server_path = PROJECT_ROOT / "ani" / "mcp_server.py"
+
         agent = get_agent(
             mode=agent_mode,
             llm=llm,
@@ -200,9 +284,12 @@ def run(
             command=sys.executable,
             args=[
                 str(mcp_server_path),
-                "--lab", lab,
-                "--task", str(Path(task_path).resolve()),
-                "--log", str(log_path),
+                "--lab",
+                lab,
+                "--task",
+                str(Path(task_path).resolve()),
+                "--log",
+                str(log_path),
             ],
         )
 
@@ -216,7 +303,11 @@ def run(
                     max_steps=max_steps,
                 )
 
-                topo_result = await session.call_tool("get_topology", {})
+                topo_result = await session.call_tool(
+                    "get_topology",
+                    {},
+                )
+
                 topo_text = _extract_mcp_text(topo_result)
 
                 if isinstance(topo_text, str):
@@ -225,16 +316,29 @@ def run(
                     topo_data = topo_text
 
                 devices = topo_data["topology"]["nodes"]
-                final_configs = await _export_final_configs(session, devices)
 
-                history_file.write_text(json.dumps(run_result.history, indent=2))
-                reasoning_file.write_text(run_result.final_reasoning)
+                final_configs = await _export_final_configs(
+                    session,
+                    devices,
+                )
+
+                history_file.write_text(
+                    json.dumps(run_result.history, indent=2)
+                )
+
+                reasoning_file.write_text(
+                    run_result.final_reasoning
+                )
 
                 final_configs_file = LOGS_DIR / "final_configs.json"
-                final_configs_file.write_text(json.dumps(final_configs, indent=2))
+
+                final_configs_file.write_text(
+                    json.dumps(final_configs, indent=2)
+                )
 
                 usage = run_result.usage
                 usage_breakdown = run_result.usage_breakdown or {}
+
                 estimated_cost_usd = estimate_cost_usd(
                     effective_provider,
                     effective_model,
@@ -277,35 +381,69 @@ def run(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+
     parser.add_argument("--lab", required=True)
     parser.add_argument("--task", required=True)
+
     parser.add_argument(
         "--provider",
         required=True,
-        choices=["openai", "anthropic", "google", "openrouter"],
+        choices=[
+            "openai",
+            "anthropic",
+            "google",
+            "openrouter",
+        ],
     )
+
     parser.add_argument("--model", required=True)
-    parser.add_argument("--max-steps", type=int, default=25)
+
+    parser.add_argument(
+        "--max-steps",
+        type=int,
+        default=25,
+    )
+
     parser.add_argument(
         "--agent-mode",
         default="react",
-        choices=["single_turn", "react", "planner_executor"],
+        choices=[
+            "single_turn",
+            "react",
+            "planner_executor",
+        ],
     )
+
     parser.add_argument(
         "--planner-provider",
-        choices=["openai", "anthropic", "google", "openrouter"],
+        choices=[
+            "openai",
+            "anthropic",
+            "google",
+            "openrouter",
+        ],
     )
+
     parser.add_argument("--planner-model")
+
     parser.add_argument(
         "--executor-provider",
-        choices=["openai", "anthropic", "google", "openrouter"],
+        choices=[
+            "openai",
+            "anthropic",
+            "google",
+            "openrouter",
+        ],
     )
+
     parser.add_argument("--executor-model")
+
     parser.add_argument(
         "--enable-rollback",
         action="store_true",
         help="Enable rollback-related MCP tools for supported agent modes",
     )
+
     args = parser.parse_args()
 
     result = run(
