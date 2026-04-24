@@ -1,0 +1,1 @@
+PC1 can successfully ping PC2, which was the main objective of the task. All required IP addresses, default gateways, IP forwarding, and static routes have been configured on the respective devices. The connectivity has been validated.

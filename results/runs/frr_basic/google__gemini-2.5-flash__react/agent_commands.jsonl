@@ -10,5 +10,5 @@
 {"device": "r2", "command": "ip route add 10.0.1.0/24 via 10.0.12.1"}
 {"device": "pc2", "command": "ip addr add 10.0.2.2/24 dev eth1"}
 {"device": "pc2", "command": "ip route add default via 10.0.2.1"}
-{"device": "pc2", "command": "ip route del default"}
+{"device": "pc2", "command": "ip route del default via 172.20.20.1 dev eth0"}
 {"device": "pc2", "command": "ip route add default via 10.0.2.1"}

@@ -6,6 +6,7 @@ import subprocess
 import time
 from collections import defaultdict
 from pathlib import Path
+from typing import Any
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
@@ -20,7 +21,7 @@ MODELS_FILE = PROJECT_ROOT / "benchmark" / "models.json"
 TASKS_FILE = PROJECT_ROOT / "benchmark" / "tasks.json"
 
 
-# Load provider/model pairs from benchmark/models.json.
+# Carica le coppie provider/model da benchmark/models.json
 def load_models() -> list[tuple[str, str]]:
     if not MODELS_FILE.exists():
         raise FileNotFoundError(f"Models config not found: {MODELS_FILE}")
@@ -39,7 +40,7 @@ def load_models() -> list[tuple[str, str]]:
     return models
 
 
-# Load task paths from benchmark/tasks.json.
+# Carica la lista dei task da benchmark/tasks.json
 def load_tasks() -> list[str]:
     if not TASKS_FILE.exists():
         raise FileNotFoundError(f"Tasks config not found: {TASKS_FILE}")
@@ -53,7 +54,15 @@ def load_tasks() -> list[str]:
     return tasks
 
 
-# Run the agent subprocess for one benchmark entry.
+# Converte la modalità benchmark nella modalità agente reale e nel flag rollback
+def resolve_agent_mode(mode: str) -> tuple[str, bool]:
+    if mode == "react_rollback":
+        return "react", True
+
+    return mode, False
+
+
+# Esegue il subprocess dell'agente per una singola entry del benchmark
 def run_agent(
     lab: str,
     task: str,
@@ -65,6 +74,8 @@ def run_agent(
     executor_provider: str | None = None,
     executor_model: str | None = None,
 ) -> bool:
+    agent_mode, enable_rollback = resolve_agent_mode(mode)
+
     cmd = [
         "python", "-m", "agent.agent_runner",
         "--lab", lab,
@@ -72,8 +83,11 @@ def run_agent(
         "--provider", provider,
         "--model", model,
         "--max-steps", "25",
-        "--agent-mode", mode,
+        "--agent-mode", agent_mode,
     ]
+
+    if enable_rollback:
+        cmd.append("--enable-rollback")
 
     if planner_provider:
         cmd.extend(["--planner-provider", planner_provider])
@@ -96,8 +110,8 @@ def run_agent(
     return True
 
 
-# Run the evaluator subprocess.
-def run_evaluator(task: str, lab: str):
+# Esegue il subprocess dell'evaluator
+def run_evaluator(task: str, lab: str) -> dict[str, Any] | None:
     cmd = [
         "python", "benchmark/evaluator.py",
         "--task", task,
@@ -119,7 +133,7 @@ def run_evaluator(task: str, lab: str):
         return None
 
 
-# Extract the lab name from a task definition.
+# Estrae il nome del lab dal task JSON
 def extract_lab_from_task(task_path: str) -> str:
     with open(task_path) as f:
         task = json.load(f)
@@ -131,8 +145,8 @@ def extract_lab_from_task(task_path: str) -> str:
     return Path(lab_file).stem
 
 
-# Load the latest agent run_result.json from logs.
-def load_run_result() -> dict:
+# Carica l'ultimo run_result.json prodotto dall'agente
+def load_run_result() -> dict[str, Any]:
     run_result_path = LOGS_DIR / "run_result.json"
     if not run_result_path.exists():
         return {}
@@ -141,8 +155,8 @@ def load_run_result() -> dict:
         return json.load(f)
 
 
-# Write the aggregated results.csv file.
-def write_csv(results: list[dict]) -> None:
+# Scrive il file aggregato results.csv
+def write_csv(results: list[dict[str, Any]]) -> None:
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
     fieldnames = [
@@ -178,8 +192,8 @@ def write_csv(results: list[dict]) -> None:
             writer.writerow(row)
 
 
-# Print the average ranking by summary_score.
-def print_ranking(results: list[dict]) -> None:
+# Stampa il ranking medio per summary_score
+def print_ranking(results: list[dict[str, Any]]) -> None:
     grouped = defaultdict(list)
 
     for row in results:
@@ -200,7 +214,7 @@ def print_ranking(results: list[dict]) -> None:
         print(f"{idx}. {model_name} | avg={avg_score:.3f} | runs={n}")
 
 
-# Destroy and redeploy the lab before each run.
+# Distrugge e ridistribuisce il lab prima di ogni run
 def reset_lab(lab: str) -> None:
     lab_file = f"labs/{lab}.yml"
 
@@ -209,12 +223,19 @@ def reset_lab(lab: str) -> None:
     subprocess.run(["containerlab", "deploy", "-t", lab_file], check=False)
 
 
-# Save logs and evaluator artifacts for a single run.
-def save_run_artifacts(task: str, provider: str, model: str, mode: str, eval_result: dict | None = None) -> None:
+# Salva log e artefatti evaluator per una singola run
+def save_run_artifacts(
+    task: str,
+    provider: str,
+    model: str,
+    mode: str,
+    eval_result: dict[str, Any] | None = None,
+) -> None:
     task_name = Path(task).stem
     safe_provider = provider.replace("/", "-")
     safe_model = model.replace("/", "-")
-    run_dir = RUNS_DIR / task_name / f"{safe_provider}__{safe_model}__{mode}"
+    safe_mode = mode.replace("/", "-").replace(" ", "_")
+    run_dir = RUNS_DIR / task_name / f"{safe_provider}__{safe_model}__{safe_mode}"
     run_dir.mkdir(parents=True, exist_ok=True)
 
     files_to_copy = [
@@ -235,8 +256,15 @@ def save_run_artifacts(task: str, provider: str, model: str, mode: str, eval_res
         (run_dir / "evaluation.json").write_text(json.dumps(eval_result, indent=2))
 
 
-# Build the fallback result entry for agent/evaluator failures.
-def build_failed_entry(task: str, lab: str, provider: str, model: str, mode: str, run_result: dict | None = None) -> dict:
+# Costruisce la riga fallback per fallimenti agente/evaluator
+def build_failed_entry(
+    task: str,
+    lab: str,
+    provider: str,
+    model: str,
+    mode: str,
+    run_result: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     run_result = run_result or {}
 
     return {
@@ -246,7 +274,7 @@ def build_failed_entry(task: str, lab: str, provider: str, model: str, mode: str
         "difficulty": "",
         "provider": run_result.get("provider", provider),
         "model": run_result.get("model", model),
-        "mode": run_result.get("mode", mode),
+        "mode": mode,
         "summary_score": None,
         "composite_score": None,
         "S_testcase": None,
@@ -266,13 +294,68 @@ def build_failed_entry(task: str, lab: str, provider: str, model: str, mode: str
     }
 
 
-# Run the full benchmark matrix and aggregate results.
-def main():
+# Costruisce la riga risultato aggregata a partire da evaluator e run_result
+def build_success_entry(
+    task: str,
+    lab: str,
+    provider: str,
+    model: str,
+    mode: str,
+    eval_result: dict[str, Any],
+    run_result: dict[str, Any],
+) -> dict[str, Any]:
+    testcases = eval_result["details"]["testcases"]
+    passed_testcases = sum(1 for tc in testcases if tc["passed"])
+    total_testcases = len(testcases)
+
+    invariants = eval_result["details"].get("baseline_invariants", [])
+    passed_invariants = sum(1 for inv in invariants if inv["passed"])
+    total_invariants = len(invariants)
+
+    command_details = eval_result["details"]["command"]
+    reasoning_details = eval_result["details"]["reasoning"]
+
+    return {
+        "task": Path(task).name,
+        "lab": lab,
+        "domain": eval_result.get("domain", ""),
+        "difficulty": eval_result.get("difficulty", ""),
+        "provider": run_result.get("provider", provider),
+        "model": run_result.get("model", model),
+        "mode": mode,
+        "summary_score": eval_result["summary_score"],
+        "composite_score": eval_result.get("composite_score"),
+        "S_testcase": eval_result["S_testcase"],
+        "S_command": eval_result["S_command"],
+        "S_reasoning": eval_result["S_reasoning"],
+        "S_safety": eval_result.get("S_safety"),
+        "outcome_class": eval_result.get("outcome_class", ""),
+        "passed_testcases": passed_testcases,
+        "total_testcases": total_testcases,
+        "passed_invariants": passed_invariants,
+        "total_invariants": total_invariants,
+        "command_precision": command_details["precision"],
+        "command_recall": command_details["recall"],
+        "steps": reasoning_details["total_steps"],
+        "total_tokens": run_result.get("total_tokens", 0),
+        "estimated_cost_usd": run_result.get("estimated_cost_usd", 0.0),
+    }
+
+
+# Esegue tutta la matrice benchmark e aggrega i risultati
+def main() -> None:
     parser = argparse.ArgumentParser(description="Run NetConfBench benchmark")
     parser.add_argument("--task", help="Run only one task")
     parser.add_argument(
         "--mode",
-        choices=["react", "single_turn", "planner_executor", "all"],
+        choices=[
+            "react",
+            "react_rollback",
+            "single_turn",
+            "planner_executor",
+            "all",
+            "all_with_rollback",
+        ],
         default="all",
         help="Agent mode to run",
     )
@@ -291,46 +374,50 @@ def main():
 
     if args.mode == "all":
         modes = ["react", "single_turn", "planner_executor"]
+    elif args.mode == "all_with_rollback":
+        modes = [
+            "react",
+            "react_rollback",
+            "single_turn",
+            "planner_executor",
+        ]
     else:
         modes = [args.mode]
 
-    results = []
+    results: list[dict[str, Any]] = []
 
     for task in tasks:
         lab = extract_lab_from_task(task)
 
         for mode in modes:
+            agent_mode, _enable_rollback = resolve_agent_mode(mode)
+
             for provider, model in models:
                 reset_lab(lab)
 
-                planner_provider = args.planner_provider if mode == "planner_executor" else None
-                planner_model = args.planner_model if mode == "planner_executor" else None
-                executor_provider = args.executor_provider if mode == "planner_executor" else None
-                executor_model = args.executor_model if mode == "planner_executor" else None
+                planner_provider = args.planner_provider if agent_mode == "planner_executor" else None
+                planner_model = args.planner_model if agent_mode == "planner_executor" else None
+                executor_provider = args.executor_provider if agent_mode == "planner_executor" else None
+                executor_model = args.executor_model if agent_mode == "planner_executor" else None
 
                 ok = run_agent(
-                    lab,
-                    task,
-                    provider,
-                    model,
-                    mode,
+                    lab=lab,
+                    task=task,
+                    provider=provider,
+                    model=model,
+                    mode=mode,
                     planner_provider=planner_provider,
                     planner_model=planner_model,
                     executor_provider=executor_provider,
                     executor_model=executor_model,
                 )
+
                 run_result = load_run_result()
 
                 if not ok:
                     entry = build_failed_entry(task, lab, provider, model, mode, run_result)
                     results.append(entry)
-                    save_run_artifacts(
-                        task,
-                        entry["provider"],
-                        entry["model"],
-                        entry["mode"],
-                        None,
-                    )
+                    save_run_artifacts(task, entry["provider"], entry["model"], entry["mode"], None)
                     time.sleep(3)
                     continue
 
@@ -340,61 +427,22 @@ def main():
                     entry = build_failed_entry(task, lab, provider, model, mode, run_result)
                     entry["outcome_class"] = "evaluator_failed"
                     results.append(entry)
-                    save_run_artifacts(
-                        task,
-                        entry["provider"],
-                        entry["model"],
-                        entry["mode"],
-                        None,
-                    )
+                    save_run_artifacts(task, entry["provider"], entry["model"], entry["mode"], None)
                     time.sleep(3)
                     continue
 
-                testcases = eval_result["details"]["testcases"]
-                passed_testcases = sum(1 for tc in testcases if tc["passed"])
-                total_testcases = len(testcases)
-
-                invariants = eval_result["details"].get("baseline_invariants", [])
-                passed_invariants = sum(1 for inv in invariants if inv["passed"])
-                total_invariants = len(invariants)
-
-                command_details = eval_result["details"]["command"]
-                reasoning_details = eval_result["details"]["reasoning"]
-
-                entry = {
-                    "task": Path(task).name,
-                    "lab": lab,
-                    "domain": eval_result.get("domain", ""),
-                    "difficulty": eval_result.get("difficulty", ""),
-                    "provider": run_result.get("provider", provider),
-                    "model": run_result.get("model", model),
-                    "mode": run_result.get("mode", mode),
-                    "summary_score": eval_result["summary_score"],
-                    "composite_score": eval_result.get("composite_score"),
-                    "S_testcase": eval_result["S_testcase"],
-                    "S_command": eval_result["S_command"],
-                    "S_reasoning": eval_result["S_reasoning"],
-                    "S_safety": eval_result.get("S_safety"),
-                    "outcome_class": eval_result.get("outcome_class", ""),
-                    "passed_testcases": passed_testcases,
-                    "total_testcases": total_testcases,
-                    "passed_invariants": passed_invariants,
-                    "total_invariants": total_invariants,
-                    "command_precision": command_details["precision"],
-                    "command_recall": command_details["recall"],
-                    "steps": reasoning_details["total_steps"],
-                    "total_tokens": run_result.get("total_tokens", 0),
-                    "estimated_cost_usd": run_result.get("estimated_cost_usd", 0.0),
-                }
+                entry = build_success_entry(
+                    task=task,
+                    lab=lab,
+                    provider=provider,
+                    model=model,
+                    mode=mode,
+                    eval_result=eval_result,
+                    run_result=run_result,
+                )
 
                 results.append(entry)
-                save_run_artifacts(
-                    task,
-                    entry["provider"],
-                    entry["model"],
-                    entry["mode"],
-                    eval_result,
-                )
+                save_run_artifacts(task, entry["provider"], entry["model"], entry["mode"], eval_result)
                 time.sleep(3)
 
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)

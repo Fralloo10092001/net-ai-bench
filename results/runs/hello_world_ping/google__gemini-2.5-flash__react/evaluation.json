@@ -5,9 +5,9 @@
   "lab": "hello-world",
   "S_testcase": 1.0,
   "S_command": 0.8,
-  "S_reasoning": 0.6125,
+  "S_reasoning": 0.498,
   "S_safety": 1.0,
-  "summary_score": 0.8825,
+  "summary_score": 0.8596,
   "composite_score": 1.0,
   "outcome_class": "clean_success",
   "details": {
@@ -18,7 +18,7 @@
         "kind": "linux",
         "command": "ping -c 3 -W 2 10.0.2.2",
         "expected_output": "3 packets transmitted, 3 packets received",
-        "actual_output": "PING 10.0.2.2 (10.0.2.2): 56 data bytes\n64 bytes from 10.0.2.2: seq=0 ttl=63 time=0.127 ms\n64 bytes from 10.0.2.2: seq=1 ttl=63 time=0.078 ms\n64 bytes from 10.0.2.2: seq=2 ttl=63 time=0.078 ms\n\n--- 10.0.2.2 ping statistics ---\n3 packets transmitted, 3 packets received, 0% packet loss\nround-trip min/avg/max = 0.078/0.094/0.127 ms",
+        "actual_output": "PING 10.0.2.2 (10.0.2.2): 56 data bytes\n64 bytes from 10.0.2.2: seq=0 ttl=63 time=0.085 ms\n64 bytes from 10.0.2.2: seq=1 ttl=63 time=0.225 ms\n64 bytes from 10.0.2.2: seq=2 ttl=63 time=0.062 ms\n\n--- 10.0.2.2 ping statistics ---\n3 packets transmitted, 3 packets received, 0% packet loss\nround-trip min/avg/max = 0.062/0.124/0.225 ms",
         "passed": true
       },
       {
@@ -27,7 +27,7 @@
         "kind": "linux",
         "command": "ping -c 3 -W 2 10.0.1.2",
         "expected_output": "3 packets transmitted, 3 packets received",
-        "actual_output": "PING 10.0.1.2 (10.0.1.2): 56 data bytes\n64 bytes from 10.0.1.2: seq=0 ttl=63 time=0.065 ms\n64 bytes from 10.0.1.2: seq=1 ttl=63 time=0.091 ms\n64 bytes from 10.0.1.2: seq=2 ttl=63 time=0.057 ms\n\n--- 10.0.1.2 ping statistics ---\n3 packets transmitted, 3 packets received, 0% packet loss\nround-trip min/avg/max = 0.057/0.071/0.091 ms",
+        "actual_output": "PING 10.0.1.2 (10.0.1.2): 56 data bytes\n64 bytes from 10.0.1.2: seq=0 ttl=63 time=0.127 ms\n64 bytes from 10.0.1.2: seq=1 ttl=63 time=0.085 ms\n64 bytes from 10.0.1.2: seq=2 ttl=63 time=0.082 ms\n\n--- 10.0.1.2 ping statistics ---\n3 packets transmitted, 3 packets received, 0% packet loss\nround-trip min/avg/max = 0.082/0.098/0.127 ms",
         "passed": true
       },
       {
@@ -36,7 +36,7 @@
         "kind": "linux",
         "command": "ip addr show eth1",
         "expected_output": "10.0.1.1/24",
-        "actual_output": "93: eth1@if92: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 9500 qdisc noqueue state UP group default \n    link/ether aa:c1:ab:61:fa:4c brd ff:ff:ff:ff:ff:ff link-netnsid 2\n    inet 10.0.1.1/24 scope global eth1\n       valid_lft forever preferred_lft forever\n    inet6 fe80::a8c1:abff:fe61:fa4c/64 scope link \n       valid_lft forever preferred_lft forever",
+        "actual_output": "52: eth1@if51: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 9500 qdisc noqueue state UP group default \n    link/ether aa:c1:ab:32:df:92 brd ff:ff:ff:ff:ff:ff link-netnsid 2\n    inet 10.0.1.1/24 scope global eth1\n       valid_lft forever preferred_lft forever\n    inet6 fe80::a8c1:abff:fe32:df92/64 scope link \n       valid_lft forever preferred_lft forever",
         "passed": true
       },
       {
@@ -45,7 +45,7 @@
         "kind": "linux",
         "command": "ip addr show eth2",
         "expected_output": "10.0.2.1/24",
-        "actual_output": "94: eth2@if95: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 9500 qdisc noqueue state UP group default \n    link/ether aa:c1:ab:65:ca:2f brd ff:ff:ff:ff:ff:ff link-netnsid 1\n    inet 10.0.2.1/24 scope global eth2\n       valid_lft forever preferred_lft forever\n    inet6 fe80::a8c1:abff:fe65:ca2f/64 scope link \n       valid_lft forever preferred_lft forever",
+        "actual_output": "53: eth2@if54: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 9500 qdisc noqueue state UP group default \n    link/ether aa:c1:ab:f1:5b:fa brd ff:ff:ff:ff:ff:ff link-netnsid 1\n    inet 10.0.2.1/24 scope global eth2\n       valid_lft forever preferred_lft forever\n    inet6 fe80::a8c1:abff:fef1:5bfa/64 scope link \n       valid_lft forever preferred_lft forever",
         "passed": true
       },
       {
@@ -65,7 +65,7 @@
         "kind": "linux",
         "command": "ip route show default",
         "expected_output": "default via 172.20.20.1 dev eth0",
-        "actual_output": "default via 172.20.20.1 dev eth0 \n10.0.1.0/24 dev eth1 scope link  src 10.0.1.2 \n10.0.2.0/24 via 10.0.1.1 dev eth1 \n172.20.20.0/24 dev eth0 scope link  src 172.20.20.6",
+        "actual_output": "default via 172.20.20.1 dev eth0 \n10.0.1.0/24 dev eth1 scope link  src 10.0.1.2 \n10.0.2.0/24 via 10.0.1.1 dev eth1 \n172.20.20.0/24 dev eth0 scope link  src 172.20.20.3",
         "passed": true
       },
       {
@@ -74,7 +74,7 @@
         "kind": "linux",
         "command": "ip route show default",
         "expected_output": "default via 172.20.20.1 dev eth0",
-        "actual_output": "default via 172.20.20.1 dev eth0 \n10.0.1.0/24 via 10.0.2.1 dev eth1 \n10.0.2.0/24 dev eth1 scope link  src 10.0.2.2 \n172.20.20.0/24 dev eth0 scope link  src 172.20.20.7",
+        "actual_output": "default via 172.20.20.1 dev eth0 \n10.0.1.0/24 via 10.0.2.1 dev eth1 \n10.0.2.0/24 dev eth1 scope link  src 10.0.2.2 \n172.20.20.0/24 dev eth0 scope link  src 172.20.20.2",
         "passed": true
       },
       {
@@ -83,7 +83,7 @@
         "kind": "linux",
         "command": "ip addr show eth0",
         "expected_output": "inet 172.20.20.",
-        "actual_output": "86: eth0@if87: <BROADCAST,MULTICAST,UP,LOWER_UP,M-DOWN> mtu 1500 qdisc noqueue state UP \n    link/ether 02:42:ac:14:14:06 brd ff:ff:ff:ff:ff:ff\n    inet 172.20.20.6/24 brd 172.20.20.255 scope global eth0\n       valid_lft forever preferred_lft forever\n    inet6 3fff:172:20:20::6/64 scope global flags 02 \n       valid_lft forever preferred_lft forever\n    inet6 fe80::42:acff:fe14:1406/64 scope link \n       valid_lft forever preferred_lft forever",
+        "actual_output": "47: eth0@if48: <BROADCAST,MULTICAST,UP,LOWER_UP,M-DOWN> mtu 1500 qdisc noqueue state UP \n    link/ether 02:42:ac:14:14:03 brd ff:ff:ff:ff:ff:ff\n    inet 172.20.20.3/24 brd 172.20.20.255 scope global eth0\n       valid_lft forever preferred_lft forever\n    inet6 3fff:172:20:20::3/64 scope global flags 02 \n       valid_lft forever preferred_lft forever\n    inet6 fe80::42:acff:fe14:1403/64 scope link \n       valid_lft forever preferred_lft forever",
         "passed": true
       },
       {
@@ -92,7 +92,7 @@
         "kind": "linux",
         "command": "ip addr show eth0",
         "expected_output": "inet 172.20.20.",
-        "actual_output": "88: eth0@if89: <BROADCAST,MULTICAST,UP,LOWER_UP,M-DOWN> mtu 1500 qdisc noqueue state UP \n    link/ether 02:42:ac:14:14:07 brd ff:ff:ff:ff:ff:ff\n    inet 172.20.20.7/24 brd 172.20.20.255 scope global eth0\n       valid_lft forever preferred_lft forever\n    inet6 3fff:172:20:20::7/64 scope global flags 02 \n       valid_lft forever preferred_lft forever\n    inet6 fe80::42:acff:fe14:1407/64 scope link \n       valid_lft forever preferred_lft forever",
+        "actual_output": "45: eth0@if46: <BROADCAST,MULTICAST,UP,LOWER_UP,M-DOWN> mtu 1500 qdisc noqueue state UP \n    link/ether 02:42:ac:14:14:02 brd ff:ff:ff:ff:ff:ff\n    inet 172.20.20.2/24 brd 172.20.20.255 scope global eth0\n       valid_lft forever preferred_lft forever\n    inet6 3fff:172:20:20::2/64 scope global flags 02 \n       valid_lft forever preferred_lft forever\n    inet6 fe80::42:acff:fe14:1402/64 scope link \n       valid_lft forever preferred_lft forever",
         "passed": true
       },
       {
@@ -101,7 +101,7 @@
         "kind": "linux",
         "command": "ip link show eth0",
         "expected_output": "state UP",
-        "actual_output": "90: eth0@if91: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP mode DEFAULT group default \n    link/ether 02:42:ac:14:14:08 brd ff:ff:ff:ff:ff:ff link-netnsid 0",
+        "actual_output": "49: eth0@if50: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP mode DEFAULT group default \n    link/ether 02:42:ac:14:14:04 brd ff:ff:ff:ff:ff:ff link-netnsid 0",
         "passed": true
       },
       {
@@ -119,7 +119,7 @@
         "kind": "linux",
         "command": "ip link show eth0",
         "expected_output": "state UP",
-        "actual_output": "86: eth0@if87: <BROADCAST,MULTICAST,UP,LOWER_UP,M-DOWN> mtu 1500 qdisc noqueue state UP \n    link/ether 02:42:ac:14:14:06 brd ff:ff:ff:ff:ff:ff",
+        "actual_output": "47: eth0@if48: <BROADCAST,MULTICAST,UP,LOWER_UP,M-DOWN> mtu 1500 qdisc noqueue state UP \n    link/ether 02:42:ac:14:14:03 brd ff:ff:ff:ff:ff:ff",
         "passed": true
       },
       {
@@ -128,7 +128,7 @@
         "kind": "linux",
         "command": "ip link show eth0",
         "expected_output": "state UP",
-        "actual_output": "88: eth0@if89: <BROADCAST,MULTICAST,UP,LOWER_UP,M-DOWN> mtu 1500 qdisc noqueue state UP \n    link/ether 02:42:ac:14:14:07 brd ff:ff:ff:ff:ff:ff",
+        "actual_output": "45: eth0@if46: <BROADCAST,MULTICAST,UP,LOWER_UP,M-DOWN> mtu 1500 qdisc noqueue state UP \n    link/ether 02:42:ac:14:14:02 brd ff:ff:ff:ff:ff:ff",
         "passed": true
       }
     ],
@@ -151,9 +151,9 @@
       "note": "",
       "agent_reasoning_present": true,
       "ground_truth_reasoning_present": true,
-      "agent_reasoning_length": 235,
+      "agent_reasoning_length": 196,
       "ground_truth_reasoning_length": 290,
-      "total_steps": 6
+      "total_steps": 9
     }
   }
 }

@@ -1,0 +1,1 @@
+The task was to enable ping between PC1 and PC2. I have configured the router's interfaces with the specified IP addresses and confirmed that IP forwarding was already enabled. The validation ping from PC1 to PC2 was successful, confirming that the task is complete.

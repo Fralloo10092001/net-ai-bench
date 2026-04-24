@@ -1,0 +1,1 @@
+The main task objective, which is to enable PC1 (10.0.1.2) and PC2 (10.0.2.2) to ping each other, has been successfully validated in steps 4 and 5. The router was configured with the necessary IP addresses on eth1 (10.0.1.1/24) and eth2 (10.0.2.1/24), and IP forwarding was already enabled. All requirements of the task have been met and validated.

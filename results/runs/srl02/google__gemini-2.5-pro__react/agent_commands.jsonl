@@ -1,17 +1,60 @@
 {"device": "srl1", "command": "enter candidate"}
+{"device": "srl1", "command": "set interface ethernet-1/1 admin-state enable"}
+{"device": "srl1", "command": "set interface ethernet-1/1 subinterface 0 admin-state enable"}
+{"device": "srl1", "command": "set interface ethernet-1/1 subinterface 0 ipv4 address 10.0.12.1/30"}
+{"device": "srl1", "command": "set network-instance default interface ethernet-1/1.0"}
+{"device": "srl1", "command": "commit now"}
+{"device": "srl1", "command": "enter candidate"}
+{"device": "srl1", "command": "set interface ethernet-1/1 admin-state enable"}
+{"device": "srl1", "command": "set interface ethernet-1/1 subinterface 0 admin-state enable"}
+{"device": "srl1", "command": "set interface ethernet-1/1 subinterface 0 ipv4 address 10.0.12.1/30"}
+{"device": "srl1", "command": "set network-instance default interface ethernet-1/1.0"}
+{"device": "srl1", "command": "commit"}
+{"device": "srl1", "command": "enter candidate"}
+{"device": "srl1", "command": "set interface ethernet-1/1 admin-state enable"}
+{"device": "srl1", "command": "set interface ethernet-1/1 subinterface 0 admin-state enable"}
+{"device": "srl1", "command": "set interface ethernet-1/1 subinterface 0 ipv4 address 10.0.12.1/30"}
+{"device": "srl1", "command": "set network-instance default interface ethernet-1/1.0"}
+{"device": "srl1", "command": "commit now"}
+{"device": "srl1", "command": "enter candidate"}
 {"device": "srl1", "command": "set / interface ethernet-1/1 admin-state enable"}
 {"device": "srl1", "command": "set / interface ethernet-1/1 subinterface 0 admin-state enable"}
-{"device": "srl1", "command": "set / interface ethernet-1/1 subinterface 0 ipv4 admin-state enable"}
 {"device": "srl1", "command": "set / interface ethernet-1/1 subinterface 0 ipv4 address 10.0.12.1/30"}
 {"device": "srl1", "command": "set / network-instance default interface ethernet-1/1.0"}
 {"device": "srl1", "command": "commit now"}
-{"device": "srl1", "command": "set / interface ethernet-1/1 admin-state enable"}
-{"device": "srl1", "command": "set / interface ethernet-1/1 subinterface 0 admin-state enable"}
-{"device": "srl1", "command": "set / interface ethernet-1/1 subinterface 0 ipv4 admin-state enable"}
-{"device": "srl1", "command": "set / interface ethernet-1/1 subinterface 0 ipv4 address 10.0.12.1/30"}
-{"device": "srl1", "command": "set / network-instance default interface ethernet-1/1.0"}
+{"device": "srl1", "command": "enter candidate"}
+{"device": "srl1", "command": "set interface ethernet-1/1 admin-state enable"}
+{"device": "srl1", "command": "set interface ethernet-1/1 subinterface 0 admin-state enable"}
+{"device": "srl1", "command": "set interface ethernet-1/1 subinterface 0 ipv4 address 10.0.12.1/30"}
+{"device": "srl1", "command": "set network-instance default interface ethernet-1/1.0"}
+{"device": "srl1", "command": "commit save"}
 {"device": "srl2", "command": "set / interface ethernet-1/1 admin-state enable"}
 {"device": "srl2", "command": "set / interface ethernet-1/1 subinterface 0 admin-state enable"}
-{"device": "srl2", "command": "set / interface ethernet-1/1 subinterface 0 ipv4 admin-state enable"}
 {"device": "srl2", "command": "set / interface ethernet-1/1 subinterface 0 ipv4 address 10.0.12.2/30"}
 {"device": "srl2", "command": "set / network-instance default interface ethernet-1/1.0"}
+{"device": "srl1", "command": "delete / network-instance default interface ethernet-1/1.0"}
+{"device": "srl1", "command": "delete / interface ethernet-1/1 subinterface 0 ipv4 address 10.0.12.1/30"}
+{"device": "srl1", "command": "set / interface ethernet-1/1 subinterface 0 ipv4 address 10.0.12.1/30"}
+{"device": "srl1", "command": "set / network-instance default interface ethernet-1/1.0"}
+{"device": "srl2", "command": "delete / network-instance default interface ethernet-1/1.0"}
+{"device": "srl2", "command": "delete / interface ethernet-1/1 subinterface 0 ipv4 address 10.0.12.2/30"}
+{"device": "srl2", "command": "set / interface ethernet-1/1 subinterface 0 ipv4 address 10.0.12.2/30"}
+{"device": "srl2", "command": "set / network-instance default interface ethernet-1/1.0"}
+{"device": "srl1", "command": "delete network-instance default interface ethernet-1/1.0"}
+{"device": "srl1", "command": "delete interface ethernet-1/1 subinterface 0"}
+{"device": "srl1", "command": "set interface ethernet-1/1 subinterface 0"}
+{"device": "srl1", "command": "set interface ethernet-1/1 subinterface 0 ipv4 address 10.0.12.1/30"}
+{"device": "srl1", "command": "set network-instance default interface ethernet-1/1.0"}
+{"device": "srl2", "command": "delete network-instance default interface ethernet-1/1.0"}
+{"device": "srl2", "command": "delete interface ethernet-1/1 subinterface 0"}
+{"device": "srl2", "command": "set interface ethernet-1/1 subinterface 0"}
+{"device": "srl2", "command": "set interface ethernet-1/1 subinterface 0 ipv4 address 10.0.12.2/30"}
+{"device": "srl2", "command": "set network-instance default interface ethernet-1/1.0"}
+{"device": "srl1", "command": "set interface ethernet-1/1 admin-state enable"}
+{"device": "srl1", "command": "set interface ethernet-1/1 subinterface 0"}
+{"device": "srl1", "command": "set interface ethernet-1/1 subinterface 0 ipv4 address 10.0.12.1/30"}
+{"device": "srl1", "command": "set network-instance default interface ethernet-1/1.0"}
+{"device": "srl2", "command": "set interface ethernet-1/1 admin-state enable"}
+{"device": "srl2", "command": "set interface ethernet-1/1 subinterface 0"}
+{"device": "srl2", "command": "set interface ethernet-1/1 subinterface 0 ipv4 address 10.0.12.2/30"}
+{"device": "srl2", "command": "set network-instance default interface ethernet-1/1.0"}
