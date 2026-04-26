@@ -14,14 +14,16 @@ You are the PLANNER for a network automation agent.
 
 You must produce a concise execution plan for the task.
 You do NOT call tools.
-You do NOT output commands.
+You do NOT output shell commands.
 You only output a JSON array of plan steps.
 
 Each step must have this schema:
 {
   "step_id": 1,
   "description": "What should be achieved in this step",
-  "target_device": "device-name"
+  "target_device": "device-name",
+  "operation": "inspect_state | configure_address | configure_route | enable_forwarding | validate_connectivity | other",
+  "parameters": {}
 }
 
 Rules:
@@ -30,12 +32,16 @@ Rules:
 - step_id must be an integer.
 - description must be a string.
 - target_device must be a string.
+- operation must be a string.
+- parameters must be an object.
 - Keep the plan concise and actionable.
 - Prefer device-scoped steps.
 - Do not use markdown.
-- The plan should preserve healthy pre-existing system state unless the task explicitly requires changing it.
-- Do not plan destructive changes to management interfaces, management routes, or unrelated control-plane state unless explicitly required by the task.
-- Prefer additive and minimal plans over replacement-oriented plans.
+- Preserve healthy pre-existing system state unless the task explicitly requires changing it.
+- Do not plan destructive changes to management interfaces, management routes, or unrelated control-plane state.
+- Never delete, replace, or override the existing management default route through eth0.
+- For end hosts, if the task requires reaching remote subnets and no specific host route is provided, it is allowed to add a data-plane default route via the local router on eth1.
+- Prefer specific subnet routes on routers, but allow default routes on end hosts when needed for connectivity.
 """.strip()
 
 
@@ -46,16 +52,37 @@ You are executing one step of a previously generated plan.
 You may use tools to inspect state, apply configuration, validate progress, and optionally recover from a recent harmful change.
 
 IMPORTANT:
-- Devices may use different CLIs and operating systems.
 - Use only the exact tool names provided.
 - Do NOT invent tool names.
 - Apply only the changes needed for the current plan step.
 - If the current plan step is complete, return action="finish".
 - Preserve healthy pre-existing system state unless the current plan step explicitly requires changing it.
-- Do not remove or replace existing management connectivity unless explicitly required by the task.
+- Do not remove or replace existing management connectivity.
+- Never modify eth0.
+- Never delete, replace, or override an existing management default route.
+- Do not add a new default route unless the current task explicitly asks for a default route.
+- Prefer specific subnet routes over default routes.
 - Prefer additive and minimal changes over destructive replacements.
 - Before deleting or replacing an existing route, address, or setting, verify that it is necessary for the current plan step.
-- Avoid modifying management interfaces, management routes, or unrelated control-plane state if the step can be completed without touching them.
+
+LINUX COMMAND DIALECT:
+Use only these forms for Linux-like devices:
+- Add address: ip addr add CIDR dev IFACE
+- Add static route: ip route add PREFIX via NEXT_HOP
+- Add static route with interface only when needed: ip route add PREFIX dev IFACE
+- Enable IPv4 forwarding: sysctl -w net.ipv4.ip_forward=1
+- Inspect addresses: ip addr show dev IFACE
+- Inspect routes: ip route show
+- Inspect forwarding: sysctl net.ipv4.ip_forward
+
+Do NOT use:
+- ip route PREFIX NEXT_HOP
+- configure terminal
+- conf t
+- router config mode
+- ip route replace default ...
+- ip route del default ...
+- ip route add default ... on routers unless explicitly required by the task
 
 You must ALWAYS respond in valid JSON only.
 
@@ -85,12 +112,14 @@ You will receive:
 - the finished execution plan
 - the agent execution history
 
-Your job is to summarize what the agent attempted and why the final state should satisfy the public task.
+Your job is to summarize what the planner intended, what the executor actually attempted, and which parts appear completed or uncertain.
 
 IMPORTANT:
 - You must not claim that hidden benchmark testcases passed.
 - Hidden ground truth, baseline invariants, and evaluator testcases are not available to the agent.
 - The benchmark evaluator will independently score the final network state.
+- Mention failed or blocked configuration attempts if present.
+- Mention safety-relevant actions if the agent modified routes, addresses, or forwarding.
 
 Return valid JSON only with schema:
 {
@@ -150,9 +179,16 @@ def _parse_plan(text: str) -> list[dict[str, Any]]:
     for item in data:
         if not isinstance(item, dict):
             raise ValueError("Each plan step must be an object")
+
         for key in ["step_id", "description", "target_device"]:
             if key not in item:
                 raise ValueError(f"Missing key in plan step: {key}")
+
+        if "operation" not in item:
+            item["operation"] = "other"
+
+        if "parameters" not in item or not isinstance(item.get("parameters"), dict):
+            item["parameters"] = {}
 
     return data
 
@@ -190,18 +226,20 @@ def _parse_executor_decision(text: str) -> dict[str, Any]:
 
 
 # Valida e converte l'output del riepilogo finale
-def _parse_validator_output(text: str) -> str:
+def _parse_validator_output(text: str, fallback_reasoning: str) -> str:
     text = _clean_model_output(text)
 
     try:
         data = json.loads(text)
     except Exception:
-        return "Planner-executor run completed. Final benchmark scoring is reserved for the evaluator."
+        return fallback_reasoning
 
     if isinstance(data, dict) and isinstance(data.get("final_reasoning"), str):
-        return data["final_reasoning"]
+        final_reasoning = data["final_reasoning"].strip()
+        if final_reasoning:
+            return final_reasoning
 
-    return "Planner-executor run completed. Final benchmark scoring is reserved for the evaluator."
+    return fallback_reasoning
 
 
 # Elenca tutti i tool MCP disponibili
@@ -259,13 +297,88 @@ def _collect_rollback_metrics(history: list[dict[str, Any]]) -> dict[str, int]:
     }
 
 
+# Costruisce una sintesi compatta della history globale da usare come memoria dell'executor
+def _build_global_history_summary(history: list[dict[str, Any]], limit: int = 8) -> list[dict[str, Any]]:
+    compact = []
+
+    for item in history[-limit:]:
+        compact_item = {
+            "step": item.get("step"),
+            "action": item.get("action"),
+            "thought": item.get("thought"),
+            "tool_name": item.get("tool_name"),
+            "tool_args": item.get("tool_args"),
+            "observation": item.get("observation"),
+        }
+        compact.append({k: v for k, v in compact_item.items() if v is not None})
+
+    return compact
+
+
+# Costruisce un reasoning finale deterministico quando il validator non produce output utile
+def _build_fallback_final_reasoning(
+    plan: list[dict[str, Any]],
+    history: list[dict[str, Any]],
+) -> str:
+    completed_steps = []
+    failed_or_blocked = []
+    tool_calls = []
+
+    for item in history:
+        action = item.get("action")
+
+        if action == "finish" and item.get("plan_step"):
+            plan_step = item["plan_step"]
+            completed_steps.append(
+                f"Step {plan_step.get('step_id')} on {plan_step.get('target_device')}: {item.get('final_reasoning') or item.get('thought')}"
+            )
+
+        if action == "tool_call":
+            tool_name = item.get("tool_name")
+            tool_args = item.get("tool_args")
+            observation = str(item.get("observation", ""))
+
+            tool_calls.append(f"{tool_name}({json.dumps(tool_args, default=str)})")
+
+            if "blocked" in observation.lower() or "error" in observation.lower() or "not allowed" in observation.lower():
+                failed_or_blocked.append(
+                    f"{tool_name}({json.dumps(tool_args, default=str)}) -> {observation[:500]}"
+                )
+
+    plan_summary = [
+        f"Step {step.get('step_id')} on {step.get('target_device')}: {step.get('description')}"
+        for step in plan
+    ]
+
+    parts = [
+        "Planner generated the following intended plan:",
+        "\n".join(plan_summary),
+        "",
+        "Executor attempted the following tool-level actions:",
+        "\n".join(tool_calls[-20:]) if tool_calls else "No tool calls were recorded.",
+        "",
+        "Completed step summaries:",
+        "\n".join(completed_steps) if completed_steps else "No explicit completed-step summaries were recorded.",
+    ]
+
+    if failed_or_blocked:
+        parts.extend([
+            "",
+            "Failed or blocked attempts observed:",
+            "\n".join(failed_or_blocked[-10:]),
+        ])
+
+    return "\n".join(parts).strip()
+
+
 # Costruisce il prompt di un singolo step dell'executor
 def _build_executor_prompt(
     task_text: str,
     full_plan: list[dict[str, Any]],
     current_step: dict[str, Any],
     valid_tool_names: list[str],
-    history: list[dict[str, Any]],
+    local_history: list[dict[str, Any]],
+    global_history: list[dict[str, Any]],
     enable_rollback: bool,
     parse_warning: str = "",
 ) -> str:
@@ -287,6 +400,16 @@ ROLLBACK GUIDANCE:
 - Use rollback only from the executor. The planner does not perform recovery actions directly.
 """.strip()
 
+    command_guidance = """
+COMMAND GUIDANCE:
+- For Linux static routes, use exactly: ip route add PREFIX via NEXT_HOP
+- Example: ip route add 10.0.2.0/24 via 10.0.12.2
+- Do not use: ip route 10.0.2.0/24 10.0.12.2
+- Do not use configure terminal or FRR configuration mode in the Linux driver.
+- For host reachability, prefer specific routes over changing default routes.
+- Never alter eth0 or the default route through eth0.
+""".strip()
+
     parts.append(
         f"""
 CURRENT TASK:
@@ -303,8 +426,13 @@ CURRENT PLAN STEP:
 VALID TOOL NAMES:
 {json.dumps(valid_tool_names, indent=2)}
 
+RECENT GLOBAL EXECUTION HISTORY:
+{json.dumps(_build_global_history_summary(global_history), indent=2)}
+
 EXECUTION HISTORY FOR THIS PLAN STEP:
-{json.dumps(history, indent=2)}
+{json.dumps(local_history, indent=2)}
+
+{command_guidance}
 
 {rollback_guidance}
 
@@ -314,6 +442,7 @@ INSTRUCTIONS:
 - Inspect state before changing configuration when needed.
 - Apply only missing or incorrect configuration.
 - Validate enough to know whether the step is complete.
+- If a command is blocked, do not retry the same command or the same invalid dialect.
 - Return finish as soon as the current plan step is completed.
 - Return raw JSON only.
 """.strip()
@@ -455,7 +584,8 @@ tool_args must be a JSON object, never null.
                     full_plan=plan,
                     current_step=plan_step,
                     valid_tool_names=valid_tool_names,
-                    history=local_history[-4:],
+                    local_history=local_history[-4:],
+                    global_history=history,
                     enable_rollback=self.enable_rollback,
                     parse_warning=parse_warning,
                 )
@@ -539,6 +669,8 @@ tool_args must be a JSON object, never null.
         )
         global_step += 1
 
+        fallback_reasoning = _build_fallback_final_reasoning(plan, history)
+
         validator_prompt = f"""
 {VALIDATOR_SYSTEM_PROMPT}
 
@@ -549,7 +681,7 @@ FINISHED PLAN:
 {json.dumps(plan, indent=2)}
 
 AGENT EXECUTION HISTORY:
-{json.dumps(history[-12:], indent=2)}
+{json.dumps(history, indent=2)}
 
 Return the final JSON object now.
 """.strip()
@@ -564,7 +696,7 @@ Return the final JSON object now.
         if isinstance(validator_raw, list):
             validator_raw = "".join(str(x) for x in validator_raw)
 
-        final_reasoning = _parse_validator_output(str(validator_raw))
+        final_reasoning = _parse_validator_output(str(validator_raw), fallback_reasoning)
 
         history.append(
             {

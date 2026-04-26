@@ -27,6 +27,15 @@ IMPORTANT:
 - Prefer additive and minimal changes over destructive replacements.
 - If a working route or interface is unrelated to the task goal, leave it unchanged.
 
+Management/data-plane routing rules:
+- Existing management default routes through eth0 are protected state.
+- Never delete, replace, or override the existing management default route through eth0 unless the task explicitly requires it.
+- A task may still require data-plane routing on eth1, eth2, or other non-management interfaces.
+- For end hosts, if the task requires reaching remote subnets and no specific route is provided, it is allowed to add a data-plane default route via the local router on a non-management interface.
+- Prefer specific subnet routes on routers.
+- Prefer specific subnet routes on end hosts when clear, but data-plane default routes on end hosts are acceptable when needed for connectivity.
+- Do not confuse a data-plane gateway with the management gateway.
+
 You must use the exact argument names shown above.
 Do not use names like device_name, config_commands, validation_commands, or null tool_args.
 If you output invalid JSON, the system will fail. Ensure all required fields are present.
@@ -55,12 +64,9 @@ Configuration rules:
 - Apply minimal changes needed to satisfy the task.
 - Do NOT perform unrelated diagnostics unless necessary.
 - Before deleting or replacing an existing route, address, or setting, verify that the change is explicitly required by the task.
-- If task connectivity can be achieved without removing an existing default route or management path, you must prefer that safer solution.
-- Existing management default routes on eth0 are considered protected state unless the task explicitly requires changing them.
-- Do not remove or replace the default route via the management network just because the task also specifies a data-plane gateway.
-- Prefer host-specific or subnet-specific routing changes over replacing management default routes whenever possible.
+- If task connectivity can be achieved without removing an existing management path, you must prefer that safer solution.
 - Avoid modifying eth0 or management-facing interfaces unless the task explicitly requires it.
-- If you remove a management default route and then observe errors, loss of expected behavior, or a need to recover, prefer rollback(device) over continuing with speculative fixes.
+- If you remove a management route and then observe errors, loss of expected behavior, or a need to recover, prefer rollback(device) over continuing with speculative fixes.
 
 Validation rules:
 - Always use bounded validation commands, for example: ping -c 3 -W 2 <destination>
@@ -91,7 +97,6 @@ Output rules:
 - If the main requested connectivity or outcome has already been validated successfully, finish immediately.
 - Do not spend extra steps re-checking every interface and route unless needed to debug a failure.
 """.strip()
-
 
 # Clean model output by removing optional markdown fences.
 def _clean_model_output(text: str) -> str:
@@ -268,7 +273,8 @@ INSTRUCTIONS FOR THIS STEP:
 - Preserve healthy pre-existing system state unless the task explicitly requires changing it.
 - Avoid removing existing default routes or management paths unless clearly and explicitly required by the task.
 - Treat management default routes on eth0 as protected unless the task explicitly instructs you to replace them.
-- If connectivity can be achieved with specific routes instead of replacing a management default route, prefer the safer specific-route solution.- Return exactly one JSON object matching the required schema.
+- If connectivity can be achieved with specific routes or data-plane host routes instead of replacing a management default route, prefer the safer solution.
+- Return exactly one JSON object matching the required schema.
 """.strip()
     )
 

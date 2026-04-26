@@ -33,7 +33,15 @@ IMPORTANT:
 - Do not remove or replace existing management connectivity unless the task explicitly requires it.
 - Prefer additive and minimal configuration changes over destructive replacements.
 - Do not modify management interfaces, management routes, or unrelated control-plane state if the task can be solved without touching them.
-- Before replacing an existing default route, consider whether it belongs to management connectivity and should remain unchanged.
+
+Management/data-plane routing rules:
+- Existing management default routes through eth0 are protected state.
+- Never delete, replace, or override the existing management default route through eth0 unless explicitly required by the task.
+- A task may still require data-plane routing on eth1, eth2, or other non-management interfaces.
+- For end hosts, if the task requires reaching remote subnets and no specific route is provided, it is allowed to add a data-plane default route via the local router on a non-management interface.
+- Prefer specific subnet routes on routers.
+- Prefer specific subnet routes on end hosts when clear, but data-plane default routes on end hosts are acceptable when needed for connectivity.
+- Do not confuse a data-plane gateway with the management gateway.
 
 Expected schema:
 {
