@@ -316,12 +316,11 @@ Return exactly one JSON object following the required schema.
         history.append(
             {
                 "step": step,
-                "thought": "Executed final testcase validation for single-turn mode.",
-                "action": "validation_summary",
+                "thought": "Single-turn execution completed. Final testcase validation is reserved for the benchmark evaluator.",
+                "action": "agent_execution_complete",
                 "observation": {
-                    "passed": passed,
-                    "total": total,
-                    "results": testcase_results,
+                    "agent_ran_private_testcases": False,
+                    "reason": "Ground-truth testcases must remain hidden from the agent.",
                 },
             }
         )

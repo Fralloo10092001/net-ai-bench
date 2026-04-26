@@ -43,7 +43,7 @@ def _extract_mcp_text(result: Any) -> Any:
     return extracted
 
 
-# Carica una rappresentazione compatta del task per i prompt degli agenti
+# Carica una rappresentazione pubblica del task per i prompt degli agenti
 def _load_task_text(task_path: str) -> str:
     with open(task_path) as f:
         task = json.load(f)
@@ -52,9 +52,14 @@ def _load_task_text(task_path: str) -> str:
         "task_name": task.get("task_name") or task.get("name"),
         "intent": task.get("intent") or task.get("intents"),
         "lab_file": task.get("lab_file"),
-        "ground_truth_configs": task.get("ground_truth_configs"),
-        "testcases": task.get("testcases"),
+        "difficulty": task.get("difficulty"),
     }
+
+    if task.get("description"):
+        compact_task["description"] = task.get("description")
+
+    if task.get("constraints"):
+        compact_task["constraints"] = task.get("constraints")
 
     return json.dumps(compact_task, indent=2)
 

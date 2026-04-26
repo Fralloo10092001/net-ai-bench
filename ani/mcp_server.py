@@ -103,6 +103,26 @@ def _driver_for(device: str):
     return get_driver(kind=kind, lab_name=_lab_name, log_file=_log_file)
 
 
+# Restituisce il kind Containerlab associato a un device
+def _kind_for(device: str) -> str:
+    return _node_kinds.get(device, "linux")
+
+
+# Indica se il rollback reale è supportato per il kind del device
+def _rollback_supported_for_kind(kind: str) -> bool:
+    return kind == "linux"
+
+
+# Costruisce un blocco informativo uniforme sul supporto rollback di un device
+def _rollback_support_info(device: str) -> dict[str, Any]:
+    kind = _kind_for(device)
+    return {
+        "device": device,
+        "driver_kind": kind,
+        "rollback_supported": _rollback_supported_for_kind(kind),
+    }
+
+
 # Usa docker ps per elencare container attivi
 def _list_running_containers() -> list[str]:
     result = subprocess.run(
@@ -143,20 +163,28 @@ def _init_rollback_stacks() -> None:
 # Cattura e salva uno snapshot per un device nello stack di rollback
 def _push_snapshot(device: str) -> dict[str, Any]:
     driver = _driver_for(device)
+    support_info = _rollback_support_info(device)
     snapshot = driver.capture_rollback_state(device)
+
+    snapshot["driver_kind"] = support_info["driver_kind"]
+    snapshot["rollback_supported"] = support_info["rollback_supported"]
+
     _rollback_stacks.setdefault(device, []).append(snapshot)
     return snapshot
 
 
 # Ripristina l'ultimo snapshot disponibile per un device
 def _pop_and_restore_snapshot(device: str) -> dict[str, Any]:
+    support_info = _rollback_support_info(device)
     stack = _rollback_stacks.get(device, [])
+
     if not stack:
         return {
             "status": "error",
             "device": device,
             "message": "no rollback snapshot available",
             "remaining_snapshots": 0,
+            **support_info,
         }
 
     snapshot = stack.pop()
@@ -164,9 +192,11 @@ def _pop_and_restore_snapshot(device: str) -> dict[str, Any]:
     restore_result = driver.restore_rollback_state(device, snapshot)
 
     return {
+        "status": restore_result.get("status", "unknown"),
         "device": device,
         "restore_result": restore_result,
         "remaining_snapshots": len(stack),
+        **support_info,
     }
 
 
@@ -207,6 +237,7 @@ def update_config(device: str, commands: list[str]) -> dict:
     A rollback snapshot is automatically captured before mutation.
     """
     driver = _driver_for(device)
+    support_info = _rollback_support_info(device)
 
     snapshot_info: dict[str, Any]
     try:
@@ -215,7 +246,8 @@ def update_config(device: str, commands: list[str]) -> dict:
             "captured": True,
             "device": device,
             "stack_depth": len(_rollback_stacks.get(device, [])),
-            "snapshot_kind": snapshot.get("kind", "generic"),
+            "snapshot_kind": snapshot.get("kind", support_info["driver_kind"]),
+            **support_info,
         }
     except Exception as e:
         snapshot_info = {
@@ -223,6 +255,7 @@ def update_config(device: str, commands: list[str]) -> dict:
             "device": device,
             "error": str(e),
             "stack_depth": len(_rollback_stacks.get(device, [])),
+            **support_info,
         }
 
     result = driver.update_config(device, commands)
@@ -249,21 +282,25 @@ def rollback(device: str) -> dict:
     return _pop_and_restore_snapshot(device)
 
 
-# Restituisce informazioni sul numero di snapshot disponibili per device
+# Restituisce informazioni sul numero di snapshot disponibili e sul supporto rollback
 @mcp.tool()
 def get_rollback_status(device: str | None = None) -> dict:
     """
     Return rollback stack information for one device or for the whole lab.
     """
     if device:
+        support_info = _rollback_support_info(device)
         return {
-            "device": device,
+            **support_info,
             "available_snapshots": len(_rollback_stacks.get(device, [])),
         }
 
     return {
         "devices": {
-            dev: len(stack)
+            dev: {
+                **_rollback_support_info(dev),
+                "available_snapshots": len(stack),
+            }
             for dev, stack in _rollback_stacks.items()
         }
     }

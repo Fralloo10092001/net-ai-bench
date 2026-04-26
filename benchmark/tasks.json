@@ -1,5 +1,4 @@
 [
   "tasks/hello_world_ping.json",
-  "tasks/frr_basic.json",
-  "tasks/srl02.json"
+  "tasks/frr_basic.json"
 ]

@@ -1,6 +1,7 @@
 import argparse
 import csv
 import json
+import re
 import shutil
 import subprocess
 import time
@@ -21,7 +22,7 @@ MODELS_FILE = PROJECT_ROOT / "benchmark" / "models.json"
 TASKS_FILE = PROJECT_ROOT / "benchmark" / "tasks.json"
 
 
-# Carica le coppie provider/model da benchmark/models.json
+# Carica la lista dei modelli da benchmark/models.json
 def load_models() -> list[tuple[str, str]]:
     if not MODELS_FILE.exists():
         raise FileNotFoundError(f"Models config not found: {MODELS_FILE}")
@@ -54,7 +55,21 @@ def load_tasks() -> list[str]:
     return tasks
 
 
-# Converte la modalità benchmark nella modalità agente reale e nel flag rollback
+# Converte una stringa in un nome sicuro per directory e file
+def safe_name(value: str) -> str:
+    value = str(value).strip()
+    value = value.replace("/", "-")
+    value = value.replace("\\", "-")
+    value = value.replace("|", "-")
+    value = value.replace(":", "-")
+    value = value.replace(" ", "_")
+    value = re.sub(r"[^A-Za-z0-9_.=-]+", "-", value)
+    value = re.sub(r"-+", "-", value)
+    value = re.sub(r"_+", "_", value)
+    return value.strip("-_")
+
+
+# Risolve la modalità agente effettiva e se il rollback deve essere abilitato
 def resolve_agent_mode(mode: str) -> tuple[str, bool]:
     if mode == "react_rollback":
         return "react", True
@@ -62,7 +77,15 @@ def resolve_agent_mode(mode: str) -> tuple[str, bool]:
     return mode, False
 
 
-# Esegue il subprocess dell'agente per una singola entry del benchmark
+# Restituisce il nome leggibile della modalità agente
+def display_mode(mode: str) -> str:
+    if mode == "react_rollback":
+        return "react con rollback"
+
+    return mode
+
+
+# Esegue un agente su un task specifico
 def run_agent(
     lab: str,
     task: str,
@@ -77,13 +100,21 @@ def run_agent(
     agent_mode, enable_rollback = resolve_agent_mode(mode)
 
     cmd = [
-        "python", "-m", "agent.agent_runner",
-        "--lab", lab,
-        "--task", task,
-        "--provider", provider,
-        "--model", model,
-        "--max-steps", "25",
-        "--agent-mode", agent_mode,
+        "python",
+        "-m",
+        "agent.agent_runner",
+        "--lab",
+        lab,
+        "--task",
+        task,
+        "--provider",
+        provider,
+        "--model",
+        model,
+        "--max-steps",
+        "25",
+        "--agent-mode",
+        agent_mode,
     ]
 
     if enable_rollback:
@@ -98,24 +129,30 @@ def run_agent(
     if executor_model:
         cmd.extend(["--executor-model", executor_model])
 
-    print(f"\n=== Running {provider}:{model} [{mode}] on {task} ===")
+    print(f"\n=== Running {provider}:{model} [{display_mode(mode)}] on {task} ===")
 
     result = subprocess.run(cmd, capture_output=True, text=True)
 
     if result.returncode != 0:
         print("ERROR running agent:")
         print(result.stderr)
+        if result.stdout:
+            print("STDOUT:")
+            print(result.stdout)
         return False
 
     return True
 
 
-# Esegue il subprocess dell'evaluator
+# Esegue l'evaluator sul run appena completato
 def run_evaluator(task: str, lab: str) -> dict[str, Any] | None:
     cmd = [
-        "python", "benchmark/evaluator.py",
-        "--task", task,
-        "--lab", lab,
+        "python",
+        "benchmark/evaluator.py",
+        "--task",
+        task,
+        "--lab",
+        lab,
     ]
 
     result = subprocess.run(cmd, capture_output=True, text=True)
@@ -145,7 +182,7 @@ def extract_lab_from_task(task_path: str) -> str:
     return Path(lab_file).stem
 
 
-# Carica l'ultimo run_result.json prodotto dall'agente
+# Carica il risultato runtime del run agente se disponibile
 def load_run_result() -> dict[str, Any]:
     run_result_path = LOGS_DIR / "run_result.json"
     if not run_result_path.exists():
@@ -155,7 +192,7 @@ def load_run_result() -> dict[str, Any]:
         return json.load(f)
 
 
-# Scrive il file aggregato results.csv
+# Scrive il CSV aggregato dei risultati
 def write_csv(results: list[dict[str, Any]]) -> None:
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -192,7 +229,7 @@ def write_csv(results: list[dict[str, Any]]) -> None:
             writer.writerow(row)
 
 
-# Stampa il ranking medio per summary_score
+# Stampa un ranking aggregato per modello e modalità
 def print_ranking(results: list[dict[str, Any]]) -> None:
     grouped = defaultdict(list)
 
@@ -214,7 +251,7 @@ def print_ranking(results: list[dict[str, Any]]) -> None:
         print(f"{idx}. {model_name} | avg={avg_score:.3f} | runs={n}")
 
 
-# Distrugge e ridistribuisce il lab prima di ogni run
+# Distrugge e ricrea il lab per partire da uno stato pulito
 def reset_lab(lab: str) -> None:
     lab_file = f"labs/{lab}.yml"
 
@@ -223,7 +260,7 @@ def reset_lab(lab: str) -> None:
     subprocess.run(["containerlab", "deploy", "-t", lab_file], check=False)
 
 
-# Salva log e artefatti evaluator per una singola run
+# Salva gli artefatti del run in una directory dedicata
 def save_run_artifacts(
     task: str,
     provider: str,
@@ -232,9 +269,11 @@ def save_run_artifacts(
     eval_result: dict[str, Any] | None = None,
 ) -> None:
     task_name = Path(task).stem
-    safe_provider = provider.replace("/", "-")
-    safe_model = model.replace("/", "-")
-    safe_mode = mode.replace("/", "-").replace(" ", "_")
+
+    safe_provider = safe_name(provider)
+    safe_model = safe_name(model)
+    safe_mode = safe_name(mode)
+
     run_dir = RUNS_DIR / task_name / f"{safe_provider}__{safe_model}__{safe_mode}"
     run_dir.mkdir(parents=True, exist_ok=True)
 
@@ -256,7 +295,7 @@ def save_run_artifacts(
         (run_dir / "evaluation.json").write_text(json.dumps(eval_result, indent=2))
 
 
-# Costruisce la riga fallback per fallimenti agente/evaluator
+# Costruisce una riga risultati per un run agente fallito
 def build_failed_entry(
     task: str,
     lab: str,
@@ -274,7 +313,7 @@ def build_failed_entry(
         "difficulty": "",
         "provider": run_result.get("provider", provider),
         "model": run_result.get("model", model),
-        "mode": mode,
+        "mode": display_mode(mode),
         "summary_score": None,
         "composite_score": None,
         "S_testcase": None,
@@ -294,7 +333,7 @@ def build_failed_entry(
     }
 
 
-# Costruisce la riga risultato aggregata a partire da evaluator e run_result
+# Costruisce una riga risultati per un run valutato correttamente
 def build_success_entry(
     task: str,
     lab: str,
@@ -322,7 +361,7 @@ def build_success_entry(
         "difficulty": eval_result.get("difficulty", ""),
         "provider": run_result.get("provider", provider),
         "model": run_result.get("model", model),
-        "mode": mode,
+        "mode": display_mode(mode),
         "summary_score": eval_result["summary_score"],
         "composite_score": eval_result.get("composite_score"),
         "S_testcase": eval_result["S_testcase"],
@@ -342,7 +381,7 @@ def build_success_entry(
     }
 
 
-# Esegue tutta la matrice benchmark e aggrega i risultati
+# Esegue il benchmark su task, modelli e modalità richieste
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run NetConfBench benchmark")
     parser.add_argument("--task", help="Run only one task")

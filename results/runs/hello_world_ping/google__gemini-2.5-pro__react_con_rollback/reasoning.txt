@@ -1,0 +1,1 @@
+The router was configured with the specified IP addresses on its interfaces, and IP forwarding was verified to be enabled. PC1 and PC2 already had the correct IP addresses and routes to each other's subnets. The final validation step, pinging PC2 from PC1, was successful, confirming end-to-end connectivity as required by the task.

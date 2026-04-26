@@ -107,6 +107,16 @@ def clab_name(lab: str, node: str) -> str:
     return f"clab-{lab}-{node}"
 
 
+# Ripulisce l'output SR Linux rimuovendo linee spurie note
+def sanitize_srl_output(text: str) -> str:
+    lines = text.splitlines()
+    filtered = [
+        line for line in lines
+        if "Parsing error: Unknown token 'commit'" not in line
+    ]
+    return "\n".join(filtered).strip()
+
+
 # Esegue un comando dentro un container del lab e restituisce stdout/stderr normalizzato
 def exec_in_container(
     lab: str,
@@ -185,16 +195,6 @@ def load_node_kinds(task: dict) -> dict[str, str]:
         result[node_name] = node_data.get("kind", "linux")
 
     return result
-
-
-# Ripulisce l'output SR Linux rimuovendo linee spurie note
-def sanitize_srl_output(text: str) -> str:
-    lines = text.splitlines()
-    filtered = [
-        line for line in lines
-        if "Parsing error: Unknown token 'commit'" not in line
-    ]
-    return "\n".join(filtered).strip()
 
 
 # Esegue tutti i testcases funzionali del task e restituisce score e dettagli
@@ -282,12 +282,13 @@ def normalize_whitespace(cmd: str) -> str:
 def canonicalize_ip_route_add_command(cmd: str) -> str:
     tokens = normalize_whitespace(cmd).split()
 
-    if len(tokens) < 6:
+    if len(tokens) < 4:
         return normalize_whitespace(cmd)
 
     prefix = tokens[3]
     via = None
     dev = None
+    metric = None
 
     idx = 4
     while idx < len(tokens):
@@ -300,6 +301,10 @@ def canonicalize_ip_route_add_command(cmd: str) -> str:
             dev = tokens[idx + 1]
             idx += 2
             continue
+        if token == "metric" and idx + 1 < len(tokens):
+            metric = tokens[idx + 1]
+            idx += 2
+            continue
         idx += 1
 
     parts = ["ip", "route", "add", prefix]
@@ -307,6 +312,8 @@ def canonicalize_ip_route_add_command(cmd: str) -> str:
         parts.extend(["via", via])
     if dev:
         parts.extend(["dev", dev])
+    if metric:
+        parts.extend(["metric", metric])
 
     return " ".join(parts)
 
@@ -380,14 +387,19 @@ def normalize_command(cmd: str) -> str:
     return normalized
 
 
-# Estrae e normalizza tutti i comandi di ground truth dal task JSON
+# Aggiunge il nome del device alla chiave canonica del comando
+def command_key(device: str, cmd: str) -> str:
+    return f"{device}::{normalize_command(cmd)}"
+
+
+# Estrae e normalizza tutti i comandi di ground truth dal task JSON mantenendo il device
 def extract_ground_truth_commands(task: dict[str, Any]) -> list[str]:
     gt = task.get("ground_truth_configs", {})
     commands = []
 
-    for _device, cmd_list in gt.items():
+    for device, cmd_list in gt.items():
         for cmd in cmd_list:
-            commands.append(normalize_command(cmd))
+            commands.append(command_key(device, cmd))
 
     return commands
 
@@ -396,10 +408,245 @@ def extract_ground_truth_commands(task: dict[str, Any]) -> list[str]:
 def extract_applied_commands(command_log_rows: list[dict[str, Any]]) -> list[str]:
     commands = []
     for row in command_log_rows:
-        cmd = row.get("command", "")
-        if cmd:
+        device = str(row.get("device", "")).strip()
+        cmd = str(row.get("command", "")).strip()
+
+        if device and cmd:
+            commands.append(command_key(device, cmd))
+        elif cmd:
             commands.append(normalize_command(cmd))
+
     return commands
+
+
+# Restituisce la running_config normalizzata da un valore letto in final_configs.json
+def extract_running_config_text(value: Any) -> str:
+    if isinstance(value, dict):
+        return str(value.get("running_config", "") or "")
+
+    if isinstance(value, str):
+        raw = value.strip()
+        if raw.startswith("{"):
+            try:
+                decoded = json.loads(raw)
+                if isinstance(decoded, dict):
+                    return str(decoded.get("running_config", "") or "")
+            except Exception:
+                return raw
+
+        return raw
+
+    return str(value or "")
+
+
+# Estrae una sezione testuale delimitata da header nel formato === nome ===
+def extract_section(text: str, section_name: str) -> str:
+    pattern = rf"===\s*{re.escape(section_name)}\s*===\n(.*?)(?=\n===\s*[^=]+\s*===|\Z)"
+    match = re.search(pattern, text, flags=re.DOTALL)
+    if not match:
+        return ""
+
+    return match.group(1).strip()
+
+
+# Normalizza il nome interfaccia rimuovendo il suffisso @if usato da Linux
+def normalize_interface_name(ifname: str) -> str:
+    return ifname.split("@", 1)[0].strip()
+
+
+# Indica se una interfaccia è di management o loopback e non va contata nello score command
+def is_management_interface(ifname: str) -> bool:
+    return normalize_interface_name(ifname) in {"lo", "eth0", "mgmt0", "management0"}
+
+
+# Indica se un indirizzo IPv4 appartiene alla rete management Containerlab
+def is_management_ipv4(cidr: str) -> bool:
+    return cidr.startswith("127.") or cidr.startswith("172.20.20.")
+
+
+# Estrae comandi ip addr add effettivi dalla sezione ip addr
+def extract_ip_addr_commands_from_running_config(device: str, text: str) -> list[str]:
+    section = extract_section(text, "ip addr")
+    if not section:
+        return []
+
+    commands = []
+    current_ifname = ""
+
+    for line in section.splitlines():
+        interface_match = re.match(r"^\d+:\s+([^:]+):", line)
+        if interface_match:
+            current_ifname = normalize_interface_name(interface_match.group(1))
+            continue
+
+        inet_match = re.search(r"\binet\s+([0-9.]+/\d+)\b", line)
+        if not inet_match:
+            continue
+
+        cidr = inet_match.group(1)
+
+        if not current_ifname:
+            continue
+        if is_management_interface(current_ifname):
+            continue
+        if is_management_ipv4(cidr):
+            continue
+
+        commands.append(command_key(device, f"ip addr add {cidr} dev {current_ifname}"))
+
+    return commands
+
+
+# Indica se una route Linux deve essere ignorata perché generata dal kernel o di management
+def should_ignore_linux_route(line: str) -> bool:
+    normalized = normalize_whitespace(line)
+
+    if not normalized:
+        return True
+
+    if " proto kernel " in f" {normalized} ":
+        return True
+
+    if " dev eth0" in normalized:
+        return True
+
+    if normalized.startswith("172.20.20.0/24 "):
+        return True
+
+    if normalized.startswith("default via 172.20.20.1 dev eth0"):
+        return True
+
+    return False
+
+
+# Converte una riga di ip route show in comando ip route add canonico
+def route_line_to_add_command(line: str) -> str | None:
+    normalized = normalize_whitespace(line)
+    tokens = normalized.split()
+
+    if not tokens:
+        return None
+
+    dst = tokens[0]
+    via = None
+    dev = None
+    metric = None
+
+    idx = 1
+    while idx < len(tokens):
+        token = tokens[idx]
+        if token == "via" and idx + 1 < len(tokens):
+            via = tokens[idx + 1]
+            idx += 2
+            continue
+        if token == "dev" and idx + 1 < len(tokens):
+            dev = tokens[idx + 1]
+            idx += 2
+            continue
+        if token == "metric" and idx + 1 < len(tokens):
+            metric = tokens[idx + 1]
+            idx += 2
+            continue
+        idx += 1
+
+    parts = ["ip", "route", "add", dst]
+    if via:
+        parts.extend(["via", via])
+    if dev:
+        parts.extend(["dev", dev])
+    if metric:
+        parts.extend(["metric", metric])
+
+    return " ".join(parts)
+
+
+# Estrae comandi ip route add effettivi dalla sezione routes
+def extract_route_commands_from_running_config(device: str, text: str) -> list[str]:
+    section = extract_section(text, "routes")
+    if not section:
+        return []
+
+    commands = []
+
+    for line in section.splitlines():
+        if should_ignore_linux_route(line):
+            continue
+
+        cmd = route_line_to_add_command(line)
+        if cmd:
+            commands.append(command_key(device, cmd))
+
+    return commands
+
+
+# Estrae il comando canonico di forwarding dalla sezione ip_forward
+def extract_ip_forward_commands_from_running_config(device: str, text: str) -> list[str]:
+    section = extract_section(text, "ip_forward")
+    value = section.strip()
+
+    if value == "1":
+        return [command_key(device, "sysctl -w net.ipv4.ip_forward=1")]
+
+    return []
+
+
+# Estrae comandi effettivi Linux da una running_config testuale
+def extract_linux_state_commands(device: str, text: str) -> list[str]:
+    commands = []
+    commands.extend(extract_ip_addr_commands_from_running_config(device, text))
+    commands.extend(extract_route_commands_from_running_config(device, text))
+    commands.extend(extract_ip_forward_commands_from_running_config(device, text))
+
+    return sorted(set(commands))
+
+
+# Estrae i comandi equivalenti allo startup state dichiarato nel task
+def extract_startup_state_commands(task: dict[str, Any]) -> list[str]:
+    startup = task.get("startup_configs", {})
+    commands = []
+
+    if not isinstance(startup, dict):
+        return commands
+
+    for device, cmd_list in startup.items():
+        if not isinstance(cmd_list, list):
+            continue
+
+        for cmd in cmd_list:
+            commands.append(command_key(device, str(cmd)))
+
+    return sorted(set(commands))
+
+
+# Carica final_configs.json e restituisce i comandi effettivi rimasti nello stato finale
+def extract_final_state_commands(
+    task: dict[str, Any],
+    final_configs_path: Path,
+) -> tuple[list[str], str]:
+    if not final_configs_path.exists():
+        return [], f"final_configs.json not found at {final_configs_path}"
+
+    node_kinds = load_node_kinds(task)
+    contains_srl = any(kind == "nokia_srlinux" for kind in node_kinds.values())
+
+    if contains_srl:
+        return [], "SR Linux final-state command scoring temporarily skipped"
+
+    final_configs = load_json(final_configs_path)
+    commands = []
+
+    for device, value in final_configs.items():
+        kind = node_kinds.get(device, "linux")
+        if kind != "linux":
+            continue
+
+        text = extract_running_config_text(value)
+        commands.extend(extract_linux_state_commands(device, text))
+
+    startup_commands = set(extract_startup_state_commands(task))
+    effective_commands = sorted(set(commands) - startup_commands)
+
+    return effective_commands, "Command score uses final-state diff against startup_configs"
 
 
 # Effettua un matching greedy uno-a-uno tra comandi attesi e applicati
@@ -422,50 +669,69 @@ def match_commands(
     return correct_commands, missing_commands, extra_commands
 
 
-# Calcola il command score confrontando i comandi attesi con quelli realmente eseguiti
-def compute_command_score(
-    task: dict[str, Any],
-    command_log_rows: list[dict[str, Any]],
-) -> dict[str, Any]:
-    node_kinds = load_node_kinds(task)
-    contains_srl = any(kind == "nokia_srlinux" for kind in node_kinds.values())
+# Calcola precision, recall e F1 dato un insieme di comandi attesi e osservati
+def compute_precision_recall_f1(
+    ground_truth_commands: list[str],
+    observed_commands: list[str],
+) -> tuple[float, float, float, list[str], list[str], list[str]]:
+    correct, missing, extra = match_commands(ground_truth_commands, observed_commands)
 
-    if contains_srl:
-        return {
-            "score": 1.0,
-            "precision": 1.0,
-            "recall": 1.0,
-            "ground_truth_commands": [],
-            "applied_commands": extract_applied_commands(command_log_rows),
-            "correct_commands": [],
-            "missing_commands": [],
-            "extra_commands": [],
-            "note": "SR Linux command scoring temporarily skipped",
-        }
-
-    gt_commands = extract_ground_truth_commands(task)
-    applied_commands = extract_applied_commands(command_log_rows)
-
-    correct, missing, extra = match_commands(gt_commands, applied_commands)
-
-    precision = len(correct) / len(applied_commands) if applied_commands else 0.0
-    recall = len(correct) / len(gt_commands) if gt_commands else 0.0
+    precision = len(correct) / len(observed_commands) if observed_commands else 0.0
+    recall = len(correct) / len(ground_truth_commands) if ground_truth_commands else 0.0
 
     if precision + recall == 0:
         f1 = 0.0
     else:
         f1 = 2 * precision * recall / (precision + recall)
 
+    return precision, recall, f1, correct, missing, extra
+
+
+# Calcola il command score confrontando ground truth e diff effettivo final-startup
+def compute_command_score(
+    task: dict[str, Any],
+    command_log_rows: list[dict[str, Any]],
+    final_configs_path: Path,
+) -> dict[str, Any]:
+    node_kinds = load_node_kinds(task)
+    contains_srl = any(kind == "nokia_srlinux" for kind in node_kinds.values())
+
+    gt_commands = extract_ground_truth_commands(task)
+    log_commands = extract_applied_commands(command_log_rows)
+
+    if contains_srl:
+        return {
+            "score": 1.0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "ground_truth_commands": gt_commands,
+            "observed_commands": [],
+            "log_commands": log_commands,
+            "correct_commands": [],
+            "missing_commands": [],
+            "extra_commands": [],
+            "method": "skipped_srlinux",
+            "note": "SR Linux command scoring temporarily skipped because final-state parser is Linux-specific",
+        }
+
+    observed_commands, note = extract_final_state_commands(task, final_configs_path)
+    precision, recall, f1, correct, missing, extra = compute_precision_recall_f1(
+        gt_commands,
+        observed_commands,
+    )
+
     return {
         "score": f1,
         "precision": precision,
         "recall": recall,
         "ground_truth_commands": gt_commands,
-        "applied_commands": applied_commands,
+        "observed_commands": observed_commands,
+        "log_commands": log_commands,
         "correct_commands": correct,
         "missing_commands": missing,
         "extra_commands": extra,
-        "note": "Command score uses canonicalized command matching on applied command logs",
+        "method": "final_state_diff",
+        "note": note,
     }
 
 
@@ -587,6 +853,7 @@ def evaluate(
     history_path: Path | None = None,
     commands_path: Path | None = None,
     reasoning_path: Path | None = None,
+    final_configs_path: Path | None = None,
 ) -> dict[str, Any]:
     task = load_json(task_path)
 
@@ -596,6 +863,8 @@ def evaluate(
         commands_path = LOGS_DIR / "agent_commands.jsonl"
     if reasoning_path is None:
         reasoning_path = LOGS_DIR / "reasoning.txt"
+    if final_configs_path is None:
+        final_configs_path = LOGS_DIR / "final_configs.json"
 
     history = load_json(history_path)
     command_rows = load_jsonl(commands_path)
@@ -603,7 +872,7 @@ def evaluate(
 
     testcase_score, testcase_results = run_testcases(task, lab)
     safety_score, safety_results = evaluate_baseline_invariants(task, lab)
-    command_info = compute_command_score(task, command_rows)
+    command_info = compute_command_score(task, command_rows, final_configs_path)
     reasoning_info = compute_reasoning_score(task, history, reasoning_text)
 
     s_testcase = testcase_score
@@ -637,11 +906,18 @@ def evaluate(
             "testcases": testcase_results,
             "baseline_invariants": safety_results,
             "command": {
+                "method": command_info.get("method", ""),
                 "precision": round(command_info["precision"], 4),
                 "recall": round(command_info["recall"], 4),
+                "ground_truth_commands": command_info["ground_truth_commands"],
+                "observed_commands": command_info["observed_commands"],
+                "log_commands": command_info["log_commands"],
                 "correct_commands": command_info["correct_commands"],
                 "missing_commands": command_info["missing_commands"],
                 "extra_commands": command_info["extra_commands"],
+                "ground_truth_count": len(command_info["ground_truth_commands"]),
+                "observed_count": len(command_info["observed_commands"]),
+                "log_count": len(command_info["log_commands"]),
                 "note": command_info.get("note", ""),
             },
             "reasoning": reasoning_info["signals"],
@@ -657,6 +933,7 @@ if __name__ == "__main__":
     parser.add_argument("--history", default=str(LOGS_DIR / "agent_history.json"))
     parser.add_argument("--commands", default=str(LOGS_DIR / "agent_commands.jsonl"))
     parser.add_argument("--reasoning", default=str(LOGS_DIR / "reasoning.txt"))
+    parser.add_argument("--final-configs", default=str(LOGS_DIR / "final_configs.json"))
     args = parser.parse_args()
 
     result = evaluate(
@@ -665,6 +942,7 @@ if __name__ == "__main__":
         history_path=Path(args.history).resolve(),
         commands_path=Path(args.commands).resolve(),
         reasoning_path=Path(args.reasoning).resolve(),
+        final_configs_path=Path(args.final_configs).resolve(),
     )
 
     print(json.dumps(result, indent=2))

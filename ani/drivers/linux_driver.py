@@ -387,6 +387,127 @@ class LinuxDriver(BaseDriver):
             return None
         return " ".join(parts)
 
+
+    # Costruisce una chiave stabile per confrontare due elementi di stato
+    def _stable_state_key(self, item: dict[str, Any]) -> str:
+        return json.dumps(item, sort_keys=True, default=str)
+
+    # Costruisce una chiave stabile per confrontare indirizzi IP
+    def _address_key(self, item: dict[str, str]) -> str:
+        return f"{item.get('ifname')}|{item.get('cidr')}"
+
+    # Costruisce una chiave stabile per confrontare route IP
+    def _route_key(self, route: dict[str, Any]) -> str:
+        relevant = {
+            "dst": route.get("dst", "default"),
+            "gateway": route.get("gateway"),
+            "dev": route.get("dev"),
+            "metric": route.get("metric"),
+            "protocol": route.get("protocol"),
+            "table": route.get("table"),
+            "prefsrc": route.get("prefsrc"),
+        }
+        return self._stable_state_key(relevant)
+
+    # Costruisce una chiave stabile per confrontare rule IP
+    def _rule_key(self, rule: dict[str, Any]) -> str:
+        relevant = {
+            "priority": rule.get("priority"),
+            "src": rule.get("src"),
+            "dst": rule.get("dst"),
+            "table": rule.get("table"),
+            "action": rule.get("action"),
+        }
+        return self._stable_state_key(relevant)
+
+    # Indica se una interfaccia è protetta perché usata tipicamente per management
+    def _is_protected_interface(self, ifname: str | None) -> bool:
+        return ifname in {"eth0", "mgmt0", "management0"}
+
+    # Indica se una route è protetta e non deve essere rimossa dal rollback automatico
+    def _is_protected_route(self, route: dict[str, Any]) -> bool:
+        dst = route.get("dst", "default")
+        dev = route.get("dev")
+
+        if self._is_protected_interface(dev):
+            return True
+
+        if dst == "default":
+            return True
+
+        return False
+
+    # Converte una route IPv4 JSON in un comando ip route del
+    def _ipv4_route_to_delete_command(self, route: dict[str, Any]) -> str | None:
+        dst = route.get("dst", "default")
+        parts = ["ip", "route", "del", dst]
+
+        gateway = route.get("gateway")
+        dev = route.get("dev")
+        metric = route.get("metric")
+
+        if gateway:
+            parts += ["via", gateway]
+        if dev:
+            parts += ["dev", dev]
+        if metric is not None:
+            parts += ["metric", str(metric)]
+
+        return " ".join(parts)
+
+    # Converte una route IPv6 JSON in un comando ip -6 route del
+    def _ipv6_route_to_delete_command(self, route: dict[str, Any]) -> str | None:
+        dst = route.get("dst", "default")
+        parts = ["ip", "-6", "route", "del", dst]
+
+        gateway = route.get("gateway")
+        dev = route.get("dev")
+        metric = route.get("metric")
+
+        if gateway:
+            parts += ["via", gateway]
+        if dev:
+            parts += ["dev", dev]
+        if metric is not None:
+            parts += ["metric", str(metric)]
+
+        return " ".join(parts)
+
+    # Converte una rule IPv4 JSON in un comando ip rule del semplificato
+    def _ipv4_rule_to_delete_command(self, rule: dict[str, Any]) -> str | None:
+        priority = rule.get("priority")
+
+        if priority is not None:
+            return f"ip rule del priority {priority}"
+
+        add_cmd = self._ipv4_rule_to_command(rule)
+        if not add_cmd:
+            return None
+
+        return add_cmd.replace("ip rule add", "ip rule del", 1)
+
+    # Converte una rule IPv6 JSON in un comando ip -6 rule del semplificato
+    def _ipv6_rule_to_delete_command(self, rule: dict[str, Any]) -> str | None:
+        priority = rule.get("priority")
+
+        if priority is not None:
+            return f"ip -6 rule del priority {priority}"
+
+        add_cmd = self._ipv6_rule_to_command(rule)
+        if not add_cmd:
+            return None
+
+        return add_cmd.replace("ip -6 rule add", "ip -6 rule del", 1)
+
+    # Registra ed esegue un comando di rollback best-effort
+    def _run_rollback_command(self, device: str, cmd: str, steps: list[dict[str, str]]) -> None:
+        out = self._exec(device, cmd, check=False)
+        steps.append({
+            "step": cmd,
+            "status": "ok",
+            "output": out,
+        })
+
     # Ricava uno snapshot esteso e read-only dello stato del nodo Linux
     def get_running_config(self, device: str) -> dict:
         sections = [
@@ -428,7 +549,6 @@ class LinuxDriver(BaseDriver):
         return {"running_config": "\n".join(outputs)}
 
     # Cattura uno snapshot strutturato dello stato di rete utile per il rollback
-# Cattura uno snapshot strutturato dello stato di rete utile per il rollback
     def capture_rollback_state(self, device: str) -> dict[str, Any]:
         ipv4_addr_json = self._exec_json(device, "ip -j addr show", default=[])
         ipv6_addr_json = self._exec_json(device, "ip -j -6 addr show", default=[])
@@ -452,113 +572,210 @@ class LinuxDriver(BaseDriver):
             "sysctl": self._parse_sysctl_output(sysctl_text),
         }
 
-    # Ripristina uno snapshot Linux con strategia best-effort su address, route, rule e forwarding
+    # Ripristina uno snapshot Linux usando una strategia a delta non distruttiva
     def restore_rollback_state(self, device: str, snapshot: dict[str, Any]) -> dict:
         steps: list[dict[str, str]] = []
+        skipped: list[dict[str, str]] = []
 
         try:
-            # 1. Elimina rule custom attuali
-            current_v4_rules = self._extract_ipv4_rules(self._exec_json(device, "ip -j rule show"))
-            current_v6_rules = self._extract_ipv6_rules(self._exec_json(device, "ip -j -6 rule show"))
+            current_ipv4_addr_json = self._exec_json(device, "ip -j addr show", default=[])
+            current_ipv6_addr_json = self._exec_json(device, "ip -j -6 addr show", default=[])
+            current_ipv4_route_json = self._exec_json(device, "ip -j route show", default=[])
+            current_ipv6_route_json = self._exec_json(device, "ip -j -6 route show", default=[])
+            current_ipv4_rule_json = self._exec_json(device, "ip -j rule show", default=[])
+            current_ipv6_rule_json = self._exec_json(device, "ip -j -6 rule show", default=[])
 
-            for rule in current_v4_rules:
-                prio = rule.get("priority")
-                if prio is not None:
-                    cmd = f"ip rule del priority {prio}"
-                    self._exec(device, cmd, check=False)
-                    steps.append({"step": cmd, "status": "ok"})
+            current_addresses_v4 = self._extract_ipv4_addresses(current_ipv4_addr_json)
+            current_addresses_v6 = self._extract_ipv6_addresses(current_ipv6_addr_json)
+            current_routes_v4 = self._extract_ipv4_routes(current_ipv4_route_json)
+            current_routes_v6 = self._extract_ipv6_routes(current_ipv6_route_json)
+            current_rules_v4 = self._extract_ipv4_rules(current_ipv4_rule_json)
+            current_rules_v6 = self._extract_ipv6_rules(current_ipv6_rule_json)
 
-            for rule in current_v6_rules:
-                prio = rule.get("priority")
-                if prio is not None:
-                    cmd = f"ip -6 rule del priority {prio}"
-                    self._exec(device, cmd, check=False)
-                    steps.append({"step": cmd, "status": "ok"})
+            snapshot_addresses_v4 = snapshot.get("addresses_v4", [])
+            snapshot_addresses_v6 = snapshot.get("addresses_v6", [])
+            snapshot_routes_v4 = snapshot.get("routes_v4", [])
+            snapshot_routes_v6 = snapshot.get("routes_v6", [])
+            snapshot_rules_v4 = snapshot.get("rules_v4", [])
+            snapshot_rules_v6 = snapshot.get("rules_v6", [])
 
-            # 2. Flush delle route main table
-            for cmd in [
-                "ip route flush table main",
-                "ip -6 route flush table main",
-            ]:
-                self._exec(device, cmd, check=False)
-                steps.append({"step": cmd, "status": "ok"})
+            snapshot_addr_v4_keys = {self._address_key(item) for item in snapshot_addresses_v4}
+            snapshot_addr_v6_keys = {self._address_key(item) for item in snapshot_addresses_v6}
+            current_addr_v4_keys = {self._address_key(item) for item in current_addresses_v4}
+            current_addr_v6_keys = {self._address_key(item) for item in current_addresses_v6}
 
-            # 3. Flush degli indirizzi globali non-loopback
-            addr_state = self._exec_json(device, "ip -j addr show")
-            interfaces = [iface.get("ifname") for iface in addr_state or [] if iface.get("ifname") and iface.get("ifname") != "lo"]
+            snapshot_route_v4_by_key = {self._route_key(item): item for item in snapshot_routes_v4}
+            snapshot_route_v6_by_key = {self._route_key(item): item for item in snapshot_routes_v6}
+            current_route_v4_by_key = {self._route_key(item): item for item in current_routes_v4}
+            current_route_v6_by_key = {self._route_key(item): item for item in current_routes_v6}
 
-            for ifname in interfaces:
-                cmd = f"ip addr flush dev {ifname} scope global"
-                self._exec(device, cmd, check=False)
-                steps.append({"step": cmd, "status": "ok"})
+            snapshot_rule_v4_by_key = {self._rule_key(item): item for item in snapshot_rules_v4}
+            snapshot_rule_v6_by_key = {self._rule_key(item): item for item in snapshot_rules_v6}
+            current_rule_v4_by_key = {self._rule_key(item): item for item in current_rules_v4}
+            current_rule_v6_by_key = {self._rule_key(item): item for item in current_rules_v6}
 
-            for ifname in interfaces:
-                cmd = f"ip -6 addr flush dev {ifname} scope global"
-                self._exec(device, cmd, check=False)
-                steps.append({"step": cmd, "status": "ok"})
+            # 1. Rimuove indirizzi IPv4 aggiunti dopo lo snapshot, evitando interfacce protette
+            for item in current_addresses_v4:
+                key = self._address_key(item)
+                if key in snapshot_addr_v4_keys:
+                    continue
 
-            # 4. Ripristina indirizzi IPv4
-            for item in snapshot.get("addresses_v4", []):
+                if self._is_protected_interface(item.get("ifname")):
+                    skipped.append({
+                        "step": f"ip addr del {item['cidr']} dev {item['ifname']}",
+                        "reason": "protected interface",
+                    })
+                    continue
+
+                cmd = f"ip addr del {item['cidr']} dev {item['ifname']}"
+                self._run_rollback_command(device, cmd, steps)
+
+            # 2. Rimuove indirizzi IPv6 aggiunti dopo lo snapshot, evitando interfacce protette
+            for item in current_addresses_v6:
+                key = self._address_key(item)
+                if key in snapshot_addr_v6_keys:
+                    continue
+
+                if self._is_protected_interface(item.get("ifname")):
+                    skipped.append({
+                        "step": f"ip -6 addr del {item['cidr']} dev {item['ifname']}",
+                        "reason": "protected interface",
+                    })
+                    continue
+
+                cmd = f"ip -6 addr del {item['cidr']} dev {item['ifname']}"
+                self._run_rollback_command(device, cmd, steps)
+
+            # 3. Ripristina indirizzi IPv4 presenti nello snapshot ma mancanti ora
+            for item in snapshot_addresses_v4:
+                key = self._address_key(item)
+                if key in current_addr_v4_keys:
+                    continue
+
                 cmd = f"ip addr add {item['cidr']} dev {item['ifname']}"
-                self._exec(device, cmd, check=False)
-                steps.append({"step": cmd, "status": "ok"})
+                self._run_rollback_command(device, cmd, steps)
 
-            # 5. Ripristina indirizzi IPv6 globali
-            for item in snapshot.get("addresses_v6", []):
+            # 4. Ripristina indirizzi IPv6 presenti nello snapshot ma mancanti ora
+            for item in snapshot_addresses_v6:
+                key = self._address_key(item)
+                if key in current_addr_v6_keys:
+                    continue
+
                 cmd = f"ip -6 addr add {item['cidr']} dev {item['ifname']}"
-                self._exec(device, cmd, check=False)
-                steps.append({"step": cmd, "status": "ok"})
+                self._run_rollback_command(device, cmd, steps)
 
-            # 6. Ripristina route IPv4
-            for route in snapshot.get("routes_v4", []):
+            # 5. Rimuove route IPv4 aggiunte dopo lo snapshot, proteggendo management/default
+            for key, route in current_route_v4_by_key.items():
+                if key in snapshot_route_v4_by_key:
+                    continue
+
+                if self._is_protected_route(route):
+                    skipped.append({
+                        "step": self._ipv4_route_to_delete_command(route) or "ip route del",
+                        "reason": "protected route",
+                    })
+                    continue
+
+                cmd = self._ipv4_route_to_delete_command(route)
+                if cmd:
+                    self._run_rollback_command(device, cmd, steps)
+
+            # 6. Rimuove route IPv6 aggiunte dopo lo snapshot, proteggendo management/default
+            for key, route in current_route_v6_by_key.items():
+                if key in snapshot_route_v6_by_key:
+                    continue
+
+                if self._is_protected_route(route):
+                    skipped.append({
+                        "step": self._ipv6_route_to_delete_command(route) or "ip -6 route del",
+                        "reason": "protected route",
+                    })
+                    continue
+
+                cmd = self._ipv6_route_to_delete_command(route)
+                if cmd:
+                    self._run_rollback_command(device, cmd, steps)
+
+            # 7. Ripristina route IPv4 mancanti rispetto allo snapshot
+            for key, route in snapshot_route_v4_by_key.items():
+                if key in current_route_v4_by_key:
+                    continue
+
                 cmd = self._ipv4_route_to_command(route)
                 if cmd:
-                    self._exec(device, cmd, check=False)
-                    steps.append({"step": cmd, "status": "ok"})
+                    self._run_rollback_command(device, cmd, steps)
 
-            # 7. Ripristina route IPv6
-            for route in snapshot.get("routes_v6", []):
+            # 8. Ripristina route IPv6 mancanti rispetto allo snapshot
+            for key, route in snapshot_route_v6_by_key.items():
+                if key in current_route_v6_by_key:
+                    continue
+
                 cmd = self._ipv6_route_to_command(route)
                 if cmd:
-                    self._exec(device, cmd, check=False)
-                    steps.append({"step": cmd, "status": "ok"})
+                    self._run_rollback_command(device, cmd, steps)
 
-            # 8. Ripristina rule IPv4
-            for rule in snapshot.get("rules_v4", []):
+            # 9. Rimuove rule IPv4 aggiunte dopo lo snapshot
+            for key, rule in current_rule_v4_by_key.items():
+                if key in snapshot_rule_v4_by_key:
+                    continue
+
+                cmd = self._ipv4_rule_to_delete_command(rule)
+                if cmd:
+                    self._run_rollback_command(device, cmd, steps)
+
+            # 10. Rimuove rule IPv6 aggiunte dopo lo snapshot
+            for key, rule in current_rule_v6_by_key.items():
+                if key in snapshot_rule_v6_by_key:
+                    continue
+
+                cmd = self._ipv6_rule_to_delete_command(rule)
+                if cmd:
+                    self._run_rollback_command(device, cmd, steps)
+
+            # 11. Ripristina rule IPv4 mancanti rispetto allo snapshot
+            for key, rule in snapshot_rule_v4_by_key.items():
+                if key in current_rule_v4_by_key:
+                    continue
+
                 cmd = self._ipv4_rule_to_command(rule)
                 if cmd:
-                    self._exec(device, cmd, check=False)
-                    steps.append({"step": cmd, "status": "ok"})
+                    self._run_rollback_command(device, cmd, steps)
 
-            # 9. Ripristina rule IPv6
-            for rule in snapshot.get("rules_v6", []):
+            # 12. Ripristina rule IPv6 mancanti rispetto allo snapshot
+            for key, rule in snapshot_rule_v6_by_key.items():
+                if key in current_rule_v6_by_key:
+                    continue
+
                 cmd = self._ipv6_rule_to_command(rule)
                 if cmd:
-                    self._exec(device, cmd, check=False)
-                    steps.append({"step": cmd, "status": "ok"})
+                    self._run_rollback_command(device, cmd, steps)
 
-            # 10. Ripristina sysctl forwarding
+            # 13. Ripristina sysctl forwarding allo stato dello snapshot
             sysctl_state = snapshot.get("sysctl", {})
+
             if "net.ipv4.ip_forward" in sysctl_state:
                 val = sysctl_state["net.ipv4.ip_forward"]
                 cmd = f"sysctl -w net.ipv4.ip_forward={val}"
-                self._exec(device, cmd, check=False)
-                steps.append({"step": cmd, "status": "ok"})
+                self._run_rollback_command(device, cmd, steps)
 
             if "net.ipv6.conf.all.forwarding" in sysctl_state:
                 val = sysctl_state["net.ipv6.conf.all.forwarding"]
                 cmd = f"sysctl -w net.ipv6.conf.all.forwarding={val}"
-                self._exec(device, cmd, check=False)
-                steps.append({"step": cmd, "status": "ok"})
+                self._run_rollback_command(device, cmd, steps)
 
             return {
                 "status": "success",
+                "strategy": "delta_restore",
                 "steps": steps,
+                "skipped": skipped,
             }
+
         except Exception as e:
             return {
                 "status": "error",
+                "strategy": "delta_restore",
                 "steps": steps,
+                "skipped": skipped,
                 "error": str(e),
             }
 

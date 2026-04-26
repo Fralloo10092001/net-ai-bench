@@ -78,14 +78,19 @@ Output rules:
 
 
 VALIDATOR_SYSTEM_PROMPT = """
-You are the FINAL VALIDATOR for a network automation agent.
+You are the FINAL SUMMARIZER for a network automation agent.
 
 You will receive:
-- the task
+- the public task description
 - the finished execution plan
-- testcase results
+- the agent execution history
 
-Your job is to summarize whether the overall task goal appears satisfied.
+Your job is to summarize what the agent attempted and why the final state should satisfy the public task.
+
+IMPORTANT:
+- You must not claim that hidden benchmark testcases passed.
+- Hidden ground truth, baseline invariants, and evaluator testcases are not available to the agent.
+- The benchmark evaluator will independently score the final network state.
 
 Return valid JSON only with schema:
 {
@@ -128,11 +133,6 @@ def _extract_mcp_text(result: Any) -> Any:
     if len(extracted) == 1:
         return extracted[0]
     return extracted
-
-
-# Converte il task JSON serializzato in un dizionario
-def _load_task_dict(task_text: str) -> dict[str, Any]:
-    return json.loads(task_text)
 
 
 # Valida e converte l'output del planner in un piano JSON
@@ -189,19 +189,19 @@ def _parse_executor_decision(text: str) -> dict[str, Any]:
     return data
 
 
-# Valida e converte l'output del validator finale
+# Valida e converte l'output del riepilogo finale
 def _parse_validator_output(text: str) -> str:
     text = _clean_model_output(text)
 
     try:
         data = json.loads(text)
     except Exception:
-        return "Final validation completed."
+        return "Planner-executor run completed. Final benchmark scoring is reserved for the evaluator."
 
     if isinstance(data, dict) and isinstance(data.get("final_reasoning"), str):
         return data["final_reasoning"]
 
-    return "Final validation completed."
+    return "Planner-executor run completed. Final benchmark scoring is reserved for the evaluator."
 
 
 # Elenca tutti i tool MCP disponibili
@@ -322,54 +322,6 @@ INSTRUCTIONS:
     return "\n\n".join(part for part in parts if part.strip())
 
 
-# Esegue i testcase finali usando il tool di validazione
-async def _run_testcases(
-    session: ClientSession,
-    testcases: list[dict[str, Any]],
-) -> list[dict[str, Any]]:
-    results: list[dict[str, Any]] = []
-
-    for testcase in testcases:
-        device = testcase.get("device")
-        command = testcase.get("command")
-        expected_output = testcase.get("expected_output")
-        name = testcase.get("name", f"{device}:{command}")
-
-        entry: dict[str, Any] = {
-            "name": name,
-            "device": device,
-            "command": command,
-            "expected_output": expected_output,
-            "status": "error",
-        }
-
-        if not device or not command:
-            entry["status"] = "invalid_testcase"
-            results.append(entry)
-            continue
-
-        try:
-            tool_result = await session.call_tool(
-                "execute_validation",
-                {"device": device, "command": command},
-            )
-            output = _extract_mcp_text(tool_result)
-
-            if isinstance(output, list):
-                output = "\n".join(str(x) for x in output)
-
-            output_str = str(output)
-            entry["output"] = output_str
-            entry["status"] = "pass" if expected_output and expected_output in output_str else "fail"
-        except Exception as e:
-            entry["status"] = "error"
-            entry["output"] = f"ERROR: {e}"
-
-        results.append(entry)
-
-    return results
-
-
 class PlannerExecutorAgent(Agent):
     # Inizializza l'agente planner-executor con planner, executor e validator opzionali
     def __init__(
@@ -403,7 +355,6 @@ class PlannerExecutorAgent(Agent):
         history: list[dict[str, Any]] = []
         valid_tool_names = await _list_tool_names(session)
         valid_tool_names = _filter_tool_names(valid_tool_names, self.enable_rollback)
-        task = _load_task_dict(task_text)
 
         usage_totals = {
             "prompt_tokens": 0,
@@ -575,21 +526,14 @@ tool_args must be a JSON object, never null.
                 history.append(entry)
                 global_step += 1
 
-        testcases = task.get("testcases") or []
-        testcase_results = await _run_testcases(session, testcases)
-
-        passed = sum(1 for x in testcase_results if x["status"] == "pass")
-        total = len(testcase_results)
-
         history.append(
             {
                 "step": global_step,
-                "thought": "Executed final testcase validation after completing all planned steps.",
-                "action": "validation_summary",
+                "thought": "Planner-executor run completed. Final testcase validation is reserved for the benchmark evaluator.",
+                "action": "agent_execution_complete",
                 "observation": {
-                    "passed": passed,
-                    "total": total,
-                    "results": testcase_results,
+                    "agent_ran_private_testcases": False,
+                    "reason": "Ground-truth testcases must remain hidden from the agent.",
                 },
             }
         )
@@ -604,8 +548,8 @@ CURRENT TASK:
 FINISHED PLAN:
 {json.dumps(plan, indent=2)}
 
-TESTCASE RESULTS:
-{json.dumps(testcase_results, indent=2)}
+AGENT EXECUTION HISTORY:
+{json.dumps(history[-12:], indent=2)}
 
 Return the final JSON object now.
 """.strip()
@@ -621,12 +565,6 @@ Return the final JSON object now.
             validator_raw = "".join(str(x) for x in validator_raw)
 
         final_reasoning = _parse_validator_output(str(validator_raw))
-
-        if total > 0:
-            final_reasoning = (
-                f"{final_reasoning}\n\n"
-                f"Final validation result: passed {passed}/{total} testcases."
-            )
 
         history.append(
             {

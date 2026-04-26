@@ -1,0 +1,35 @@
+{
+  "mode": "planner_executor",
+  "final_reasoning": "Planner-executor run completed. Final benchmark scoring is reserved for the evaluator.",
+  "history_length": 11,
+  "total_tokens": 26140,
+  "estimated_cost_usd": 0.03829,
+  "provider": "google/google",
+  "model": "gemini-2.5-pro | gemini-2.5-pro",
+  "usage_breakdown": {
+    "planner": {
+      "prompt_tokens": 386,
+      "completion_tokens": 157,
+      "total_tokens": 1215
+    },
+    "executor": {
+      "prompt_tokens": 13048,
+      "completion_tokens": 1024,
+      "total_tokens": 16983
+    },
+    "validator": {
+      "prompt_tokens": 7046,
+      "completion_tokens": 88,
+      "total_tokens": 7942
+    }
+  },
+  "metadata": {
+    "planner_provider": "google",
+    "planner_model": "gemini-2.5-pro",
+    "executor_provider": "google",
+    "executor_model": "gemini-2.5-pro",
+    "rollback_enabled": false,
+    "rollback_calls": 0,
+    "rollback_status_calls": 0
+  }
+}

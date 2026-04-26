@@ -1,0 +1,1 @@
+Connectivity between PC1 (10.0.1.2) and PC2 (10.0.2.2) has been successfully validated by pinging from pc1 to pc2 and from pc2 to pc1. All required configurations, including IP addresses, default gateways, IP forwarding, and static routes, have been applied and verified.

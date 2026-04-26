@@ -25,63 +25,21 @@
         "ip addr add 10.0.2.1/24 dev eth2"
       ]
     },
-    "observation": "{\n  \"results\": [\n    {\n      \"command\": \"ip addr add 10.0.1.1/24 dev eth1\",\n      \"status\": \"success\",\n      \"output\": \"\"\n    },\n    {\n      \"command\": \"ip addr add 10.0.2.1/24 dev eth2\",\n      \"status\": \"success\",\n      \"output\": \"\"\n    }\n  ],\n  \"rollback_snapshot\": {\n    \"captured\": true,\n    \"device\": \"router\",\n    \"stack_depth\": 1,\n    \"snapshot_kind\": \"generic\"\n  }\n}"
+    "observation": "{\n  \"results\": [\n    {\n      \"command\": \"ip addr add 10.0.1.1/24 dev eth1\",\n      \"status\": \"success\",\n      \"output\": \"\"\n    },\n    {\n      \"command\": \"ip addr add 10.0.2.1/24 dev eth2\",\n      \"status\": \"success\",\n      \"output\": \"\"\n    }\n  ],\n  \"rollback_snapshot\": {\n    \"captured\": true,\n    \"device\": \"router\",\n    \"stack_depth\": 1,\n    \"snapshot_kind\": \"linux\",\n    \"driver_kind\": \"linux\",\n    \"rollback_supported\": true\n  }\n}"
   },
   {
     "step": 3,
-    "thought": "Executed final testcase validation for single-turn mode.",
-    "action": "validation_summary",
+    "thought": "Single-turn execution completed. Final testcase validation is reserved for the benchmark evaluator.",
+    "action": "agent_execution_complete",
     "observation": {
-      "passed": 5,
-      "total": 5,
-      "results": [
-        {
-          "name": "PC1 can ping PC2",
-          "device": "pc1",
-          "command": "ping -c 3 -W 2 10.0.2.2",
-          "expected_output": "3 packets transmitted, 3 packets received",
-          "status": "pass",
-          "output": "{\n  \"output\": \"PING 10.0.2.2 (10.0.2.2): 56 data bytes\\n64 bytes from 10.0.2.2: seq=0 ttl=63 time=1.832 ms\\n64 bytes from 10.0.2.2: seq=1 ttl=63 time=0.171 ms\\n64 bytes from 10.0.2.2: seq=2 ttl=63 time=0.185 ms\\n\\n--- 10.0.2.2 ping statistics ---\\n3 packets transmitted, 3 packets received, 0% packet loss\\nround-trip min/avg/max = 0.171/0.729/1.832 ms\"\n}"
-        },
-        {
-          "name": "PC2 can ping PC1",
-          "device": "pc2",
-          "command": "ping -c 3 -W 2 10.0.1.2",
-          "expected_output": "3 packets transmitted, 3 packets received",
-          "status": "pass",
-          "output": "{\n  \"output\": \"PING 10.0.1.2 (10.0.1.2): 56 data bytes\\n64 bytes from 10.0.1.2: seq=0 ttl=63 time=0.052 ms\\n64 bytes from 10.0.1.2: seq=1 ttl=63 time=0.156 ms\\n64 bytes from 10.0.1.2: seq=2 ttl=63 time=0.150 ms\\n\\n--- 10.0.1.2 ping statistics ---\\n3 packets transmitted, 3 packets received, 0% packet loss\\nround-trip min/avg/max = 0.052/0.119/0.156 ms\"\n}"
-        },
-        {
-          "name": "Router eth1 has correct IP",
-          "device": "router",
-          "command": "ip addr show eth1",
-          "expected_output": "10.0.1.1/24",
-          "status": "pass",
-          "output": "{\n  \"output\": \"109: eth1@if108: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 9500 qdisc noqueue state UP group default \\n    link/ether aa:c1:ab:70:7e:c1 brd ff:ff:ff:ff:ff:ff link-netnsid 2\\n    inet 10.0.1.1/24 scope global eth1\\n       valid_lft forever preferred_lft forever\\n    inet6 fe80::a8c1:abff:fe70:7ec1/64 scope link \\n       valid_lft forever preferred_lft forever\"\n}"
-        },
-        {
-          "name": "Router eth2 has correct IP",
-          "device": "router",
-          "command": "ip addr show eth2",
-          "expected_output": "10.0.2.1/24",
-          "status": "pass",
-          "output": "{\n  \"output\": \"106: eth2@if107: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 9500 qdisc noqueue state UP group default \\n    link/ether aa:c1:ab:55:72:06 brd ff:ff:ff:ff:ff:ff link-netnsid 1\\n    inet 10.0.2.1/24 scope global eth2\\n       valid_lft forever preferred_lft forever\\n    inet6 fe80::a8c1:abff:fe55:7206/64 scope link \\n       valid_lft forever preferred_lft forever\"\n}"
-        },
-        {
-          "name": "IP forwarding is enabled",
-          "device": "router",
-          "command": "cat /proc/sys/net/ipv4/ip_forward",
-          "expected_output": "1",
-          "status": "pass",
-          "output": "{\n  \"output\": \"1\"\n}"
-        }
-      ]
+      "agent_ran_private_testcases": false,
+      "reason": "Ground-truth testcases must remain hidden from the agent."
     }
   },
   {
     "step": 4,
-    "thought": "The task is to enable connectivity between PC1 and PC2 through a router. PC1 and PC2 are on different subnets (10.0.1.0/24 and 10.0.2.0/24 respectively) and are already configured with the correct IP addresses and static routes pointing to the router as their gateway. The router, however, is missing the necessary IP addresses on its interfaces to serve as the gateway for these subnets. The solution adds the required IP addresses: 10.0.1.1/24 to eth1 (connected to PC1) and 10.0.2.1/24 to eth2 (connected to PC2). IP forwarding is already enabled on the router, so no configuration is needed for that. These changes establish the routing path between the two PCs.\n\nFinal validation result: passed 5/5 testcases.",
+    "thought": "The task is to enable connectivity between PC1 and PC2. PC1 (10.0.1.2/24) and PC2 (10.0.2.2/24) are on different subnets and are already configured with the correct IP addresses and static routes pointing to the router as their gateway for the remote subnet. The router, which connects these two subnets, needs IP addresses on its interfaces to act as the gateway. According to the topology, router's eth1 connects to PC1's network and eth2 connects to PC2's network. Therefore, IP address 10.0.1.1/24 is assigned to router's eth1, and 10.0.2.1/24 is assigned to router's eth2. The router's running configuration shows that IPv4 forwarding is already enabled, so no further action is needed for that. No changes are required on PC1 or PC2.",
     "action": "finish",
-    "final_reasoning": "The task is to enable connectivity between PC1 and PC2 through a router. PC1 and PC2 are on different subnets (10.0.1.0/24 and 10.0.2.0/24 respectively) and are already configured with the correct IP addresses and static routes pointing to the router as their gateway. The router, however, is missing the necessary IP addresses on its interfaces to serve as the gateway for these subnets. The solution adds the required IP addresses: 10.0.1.1/24 to eth1 (connected to PC1) and 10.0.2.1/24 to eth2 (connected to PC2). IP forwarding is already enabled on the router, so no configuration is needed for that. These changes establish the routing path between the two PCs.\n\nFinal validation result: passed 5/5 testcases."
+    "final_reasoning": "The task is to enable connectivity between PC1 and PC2. PC1 (10.0.1.2/24) and PC2 (10.0.2.2/24) are on different subnets and are already configured with the correct IP addresses and static routes pointing to the router as their gateway for the remote subnet. The router, which connects these two subnets, needs IP addresses on its interfaces to act as the gateway. According to the topology, router's eth1 connects to PC1's network and eth2 connects to PC2's network. Therefore, IP address 10.0.1.1/24 is assigned to router's eth1, and 10.0.2.1/24 is assigned to router's eth2. The router's running configuration shows that IPv4 forwarding is already enabled, so no further action is needed for that. No changes are required on PC1 or PC2."
   }
 ]
