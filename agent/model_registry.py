@@ -10,7 +10,7 @@ from langchain_openai import ChatOpenAI
 load_dotenv()
 
 
-# Build a chat model client for the selected provider and model.
+# Costruisce un client per il modello di chat selezionato.
 def get_model(provider: str, model: str, temperature: float = 0, max_tokens: int | None = None):
     provider = provider.lower()
 

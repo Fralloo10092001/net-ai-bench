@@ -30,7 +30,7 @@ pricing = {
 }
 
 
-# Extract token usage metadata from a model response.
+# Estrae i metadati sull'utilizzo dei token da una risposta del modello.
 def extract_usage_from_response(response: Any) -> dict[str, int]:
     prompt_tokens = 0
     completion_tokens = 0
@@ -83,7 +83,7 @@ def extract_usage_from_response(response: Any) -> dict[str, int]:
     }
 
 
-# Sum two usage dictionaries.
+# Somma due dizionari di utilizzo.
 def add_usage(acc: dict[str, int], delta: dict[str, int]) -> dict[str, int]:
     return {
         "prompt_tokens": acc.get("prompt_tokens", 0) + delta.get("prompt_tokens", 0),
@@ -92,7 +92,7 @@ def add_usage(acc: dict[str, int], delta: dict[str, int]) -> dict[str, int]:
     }
 
 
-# Estimate cost for a single provider/model pair.
+# Stima il costo per una coppia provider/modello singola.
 def _estimate_single_cost_usd(provider: str, model: str, usage: dict[str, int]) -> float:
     key = (provider.lower(), model)
     if key not in pricing:
@@ -104,7 +104,7 @@ def _estimate_single_cost_usd(provider: str, model: str, usage: dict[str, int]) 
     return input_cost + output_cost
 
 
-# Estimate total cost, supporting both single-model and planner-executor runs.
+# Stima il costo totale, supportando sia le esecuzioni con un singolo modello che quelle con planner ed executor.
 def estimate_cost_usd(
     provider: str,
     model: str,

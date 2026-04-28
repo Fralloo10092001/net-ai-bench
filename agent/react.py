@@ -98,7 +98,7 @@ Output rules:
 - Do not spend extra steps re-checking every interface and route unless needed to debug a failure.
 """.strip()
 
-# Clean model output by removing optional markdown fences.
+# Pulisce l'output del modello rimuovendo spazi bianchi e eventuali code block markdown
 def _clean_model_output(text: str) -> str:
     text = text.strip()
 
@@ -114,8 +114,6 @@ def _clean_model_output(text: str) -> str:
 
     return text
 
-
-# Parse the model JSON decision.
 # Converte l'output del modello in una decisione JSON validata
 def _parse_agent_decision(text: str) -> dict[str, Any]:
     text = _clean_model_output(text)
@@ -148,7 +146,7 @@ def _parse_agent_decision(text: str) -> dict[str, Any]:
     return data
 
 
-# Extract plain text from an MCP tool result.
+# Estrae testo leggibile dall'output di uno strumento MCP
 def _extract_mcp_text(result: Any) -> Any:
     if not hasattr(result, "content"):
         return str(result)
@@ -165,7 +163,7 @@ def _extract_mcp_text(result: Any) -> Any:
     return extracted
 
 
-# Build platform-specific guidance from the task text.
+# Costruisce indicazioni specifiche per la piattaforma a partire dal testo del task.
 def _build_platform_guidance(task_text: str) -> str:
     lower = task_text.lower()
 
@@ -194,7 +192,7 @@ PLATFORM GUIDANCE:
 """.strip()
 
 
-# Build the available-tools section dynamically, depending on whether rollback is enabled.
+# Costruisce dinamicamente la sezione dei tool disponibili in base all'abilitazione del rollback.
 def _build_available_tools_text(enable_rollback: bool) -> str:
     lines = [
         "Available tools:",
@@ -213,7 +211,7 @@ def _build_available_tools_text(enable_rollback: bool) -> str:
     return "\n".join(lines)
 
 
-# Build the step prompt for a single ReAct turn.
+# Costruisce il prompt di step per un singolo turno ReAct.
 def _build_step_prompt(
     task_text: str,
     valid_tool_names: list[str],
@@ -281,13 +279,13 @@ INSTRUCTIONS FOR THIS STEP:
     return "\n\n".join(part for part in parts if part.strip())
 
 
-# List all available MCP tools from the session.
+# Elenca tutti i tool MCP disponibili nella sessione.
 async def _list_tool_names(session: ClientSession) -> list[str]:
     tools = await session.list_tools()
     return [t.name for t in tools.tools]
 
 
-# Remove rollback tools from the valid tool list when rollback is disabled.
+# Rimuove i tool di rollback dalla lista valida quando il rollback è disabilitato.
 def _filter_tool_names(valid_tool_names: list[str], enable_rollback: bool) -> list[str]:
     if enable_rollback:
         return valid_tool_names
@@ -296,7 +294,7 @@ def _filter_tool_names(valid_tool_names: list[str], enable_rollback: bool) -> li
     return [name for name in valid_tool_names if name not in blocked]
 
 
-# Count rollback-related tool usage in the agent history.
+# Conta l'utilizzo dei tool di rollback nella history dell'agente.
 def _collect_rollback_metrics(history: list[dict[str, Any]]) -> dict[str, int]:
     rollback_calls = 0
     rollback_status_calls = 0
@@ -318,12 +316,12 @@ def _collect_rollback_metrics(history: list[dict[str, Any]]) -> dict[str, int]:
 
 
 class ReActAgent(Agent):
-    # Initialize the ReAct agent, optionally enabling rollback tools.
+    # Inizializza l'agente ReAct abilitando opzionalmente i tool di rollback.
     def __init__(self, llm, enable_rollback: bool = False):
         self.llm = llm
         self.enable_rollback = enable_rollback
 
-    # Run the full ReAct loop against the MCP session.
+    # Esegue l'intero loop ReAct sulla sessione MCP.
     async def run(self, session: ClientSession, task_text: str, max_steps: int) -> RunResult:
         history: list[dict[str, Any]] = []
         valid_tool_names = await _list_tool_names(session)
