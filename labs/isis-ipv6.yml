@@ -15,6 +15,9 @@ topology:
       binds:
         - lab-configs/isis-ipv6/r1/daemons:/etc/frr/daemons
         - lab-configs/isis-ipv6/r1/frr.conf:/etc/frr/frr.conf
+      exec:
+        - sysctl -w net.ipv6.conf.all.forwarding=1
+        - sysctl -w net.ipv6.conf.all.forwarding=1
 
     r2:
       kind: linux
@@ -22,6 +25,9 @@ topology:
       binds:
         - lab-configs/isis-ipv6/r2/daemons:/etc/frr/daemons
         - lab-configs/isis-ipv6/r2/frr.conf:/etc/frr/frr.conf
+      exec:
+        - sysctl -w net.ipv6.conf.all.forwarding=1
+        - sysctl -w net.ipv6.conf.all.forwarding=1
 
     pc2:
       kind: linux

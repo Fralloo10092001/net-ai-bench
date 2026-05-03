@@ -8,24 +8,25 @@
     "PC1 is 2001:db8:1::2/64 and PC2 is 2001:db8:2::2/64.",
     "Routers run IS-IS for IPv6 and must advertise the connected LAN prefixes."
   ],
-"startup_configs": {
-  "pc1": [
-    "ip -6 addr add 2001:db8:1::2/64 dev eth1",
-    "ip -6 route add 2001:db8:2::/64 via 2001:db8:1::1"
-  ],
-  "r1": [],
-  "r2": [],
-  "pc2": [
-    "ip -6 addr add 2001:db8:2::2/64 dev eth1",
-    "ip -6 route add 2001:db8:1::/64 via 2001:db8:2::1"
-  ]
-},
-"ground_truth_configs": {
-  "r1": ["sysctl -w net.ipv6.conf.all.forwarding=1"],
-  "r2": ["sysctl -w net.ipv6.conf.all.forwarding=1"]
-},
-"ground_truth_reasoning": "FRR is pre-configured via mounted config files, because configuration-mode vtysh commands are not allowed by the Linux driver. The evaluation checks end-to-end IPv6 reachability and validates that FRR exposes an IS-IS configuration via show running-config.",
-"testcases": [
+  "startup_configs": {
+    "pc1": [
+      "ip -6 addr add 2001:db8:1::2/64 dev eth1",
+      "ip -6 route add 2001:db8:2::/64 via 2001:db8:1::1"
+    ],
+    "r1": [
+      "sysctl -w net.ipv6.conf.all.forwarding=1"
+    ],
+    "r2": [
+      "sysctl -w net.ipv6.conf.all.forwarding=1"
+    ],
+    "pc2": [
+      "ip -6 addr add 2001:db8:2::2/64 dev eth1",
+      "ip -6 route add 2001:db8:1::/64 via 2001:db8:2::1"
+    ]
+  },
+  "ground_truth_configs": {},
+  "ground_truth_reasoning": "FRR is pre-configured via mounted config files, because configuration-mode vtysh commands are not allowed by the Linux driver. The evaluation checks end-to-end IPv6 reachability and validates that FRR exposes an IS-IS configuration via show running-config.",
+  "testcases": [
     {
       "name": "PC1 can ping PC2 over IPv6",
       "device": "pc1",

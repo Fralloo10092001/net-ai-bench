@@ -1,2 +1,0 @@
-{"device": "r1", "command": "sysctl -w net.ipv6.conf.all.forwarding=1"}
-{"device": "r2", "command": "sysctl -w net.ipv6.conf.all.forwarding=1"}
