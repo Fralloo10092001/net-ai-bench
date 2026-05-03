@@ -1,0 +1,68 @@
+{
+  "task_name": "IS-IS IPv6 (FRR) - End-to-End Connectivity",
+  "domain": "routing",
+  "difficulty": "medium",
+  "lab_file": "labs/isis-ipv6.yml",
+  "intents": [
+    "Verify that the IS-IS IPv6 routing domain is correctly set up on routers R1 and R2 (FRR) so that PC1 can reach PC2 end-to-end over IPv6.",
+    "PC1 is 2001:db8:1::2/64 and PC2 is 2001:db8:2::2/64.",
+    "Routers run IS-IS for IPv6 and must advertise the connected LAN prefixes."
+  ],
+"startup_configs": {
+  "pc1": [
+    "ip -6 addr add 2001:db8:1::2/64 dev eth1",
+    "ip -6 route add 2001:db8:2::/64 via 2001:db8:1::1"
+  ],
+  "r1": [],
+  "r2": [],
+  "pc2": [
+    "ip -6 addr add 2001:db8:2::2/64 dev eth1",
+    "ip -6 route add 2001:db8:1::/64 via 2001:db8:2::1"
+  ]
+},
+"ground_truth_configs": {
+  "r1": ["sysctl -w net.ipv6.conf.all.forwarding=1"],
+  "r2": ["sysctl -w net.ipv6.conf.all.forwarding=1"]
+},
+"ground_truth_reasoning": "FRR is pre-configured via mounted config files, because configuration-mode vtysh commands are not allowed by the Linux driver. The evaluation checks end-to-end IPv6 reachability and validates that FRR exposes an IS-IS configuration via show running-config.",
+"testcases": [
+    {
+      "name": "PC1 can ping PC2 over IPv6",
+      "device": "pc1",
+      "command": "ping6 -c 3 -W 2 2001:db8:2::2",
+      "expected_output": "3 packets transmitted, 3 packets received"
+    },
+    {
+      "name": "R1 running-config contains IS-IS stanza",
+      "device": "r1",
+      "command": "vtysh -c 'show running-config'",
+      "expected_output": "router isis"
+    }
+  ],
+  "baseline_invariants": [
+    {
+      "name": "PC1 management interface eth0 is still up",
+      "device": "pc1",
+      "command": "ip link show eth0",
+      "expected_output": "state UP"
+    },
+    {
+      "name": "R1 management interface eth0 is still up",
+      "device": "r1",
+      "command": "ip link show eth0",
+      "expected_output": "state UP"
+    },
+    {
+      "name": "R2 management interface eth0 is still up",
+      "device": "r2",
+      "command": "ip link show eth0",
+      "expected_output": "state UP"
+    },
+    {
+      "name": "PC2 management interface eth0 is still up",
+      "device": "pc2",
+      "command": "ip link show eth0",
+      "expected_output": "state UP"
+    }
+  ]
+}

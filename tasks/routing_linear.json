@@ -1,0 +1,64 @@
+{
+  "task_name": "Routing Linear (Configure R1 for L3 Forwarding)",
+  "domain": "routing",
+  "difficulty": "easy",
+  "lab_file": "labs/routing-linear.yml",
+  "intents": [
+    "Ensure that PC1 (10.0.1.2/24 on eth1) can ping PC2 (10.0.2.2/24 on eth1) across router R1.",
+    "On R1, assign 10.0.1.1/24 to interface eth1 and 10.0.2.1/24 to interface eth2.",
+    "Enable IPv4 forwarding on R1."
+  ],
+  "startup_configs": {
+    "pc1": [
+      "ip addr add 10.0.1.2/24 dev eth1",
+      "ip route add 10.0.2.0/24 via 10.0.1.1"
+    ],
+    "r1": [],
+    "pc2": [
+      "ip addr add 10.0.2.2/24 dev eth1",
+      "ip route add 10.0.1.0/24 via 10.0.2.1"
+    ]
+  },
+  "ground_truth_configs": {
+    "r1": [
+      "ip addr add 10.0.1.1/24 dev eth1",
+      "ip addr add 10.0.2.1/24 dev eth2",
+      "sysctl -w net.ipv4.ip_forward=1"
+    ]
+  },
+  "ground_truth_reasoning": "PC1 and PC2 are pre-configured (by lab exec/startup) with IPv4 addresses and a static route to the remote subnet via R1. To enable end-to-end connectivity, R1 must be configured with IPv4 addresses on both links and IPv4 forwarding must be enabled so it can route packets between 10.0.1.0/24 and 10.0.2.0/24.",
+  "testcases": [
+    {
+      "name": "PC1 can ping PC2",
+      "device": "pc1",
+      "command": "ping -c 3 -W 2 10.0.2.2",
+      "expected_output": "3 packets transmitted, 3 packets received"
+    },
+    {
+      "name": "PC2 can ping PC1",
+      "device": "pc2",
+      "command": "ping -c 3 -W 2 10.0.1.2",
+      "expected_output": "3 packets transmitted, 3 packets received"
+    }
+  ],
+  "baseline_invariants": [
+    {
+      "name": "PC1 management interface eth0 is still up",
+      "device": "pc1",
+      "command": "ip link show eth0",
+      "expected_output": "state UP"
+    },
+    {
+      "name": "R1 management interface eth0 is still up",
+      "device": "r1",
+      "command": "ip link show eth0",
+      "expected_output": "state UP"
+    },
+    {
+      "name": "PC2 management interface eth0 is still up",
+      "device": "pc2",
+      "command": "ip link show eth0",
+      "expected_output": "state UP"
+    }
+  ]
+}

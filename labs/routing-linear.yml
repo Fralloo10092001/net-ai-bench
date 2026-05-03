@@ -1,0 +1,23 @@
+name: routing-linear
+
+topology:
+  nodes:
+    pc1:
+      kind: linux
+      image: alpine:latest
+      exec:
+        - ip addr add 10.0.1.2/24 dev eth1
+        - ip route add 10.0.2.0/24 via 10.0.1.1
+    r1:
+      kind: linux
+      image: alpine:latest
+    pc2:
+      kind: linux
+      image: alpine:latest
+      exec:
+        - ip addr add 10.0.2.2/24 dev eth1
+        - ip route add 10.0.1.0/24 via 10.0.2.1
+
+  links:
+    - endpoints: ["pc1:eth1", "r1:eth1"]
+    - endpoints: ["r1:eth2", "pc2:eth1"]

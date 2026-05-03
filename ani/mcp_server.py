@@ -204,8 +204,8 @@ def _pop_and_restore_snapshot(device: str) -> dict[str, Any]:
 @mcp.tool()
 def get_topology(devices: list[str] | None = None) -> dict:
     """
-    Return the lab topology (nodes and links) from the lab YAML.
-    If devices is None or empty, return the full topology.
+    Restituisce la topologia del lab (nodi e link) dal YAML del lab.
+    Se devices è None o vuoto, restituisce la topologia completa.
     """
     topology = _load_topology_from_lab()
 
@@ -223,7 +223,7 @@ def get_topology(devices: list[str] | None = None) -> dict:
 @mcp.tool()
 def get_running_config(device: str) -> dict:
     """
-    Return the active configuration of a device.
+    Restituisce la configurazione attiva di un device.
     """
     driver = _driver_for(device)
     return driver.get_running_config(device)
@@ -233,8 +233,8 @@ def get_running_config(device: str) -> dict:
 @mcp.tool()
 def update_config(device: str, commands: list[str]) -> dict:
     """
-    Apply a list of commands to a device.
-    A rollback snapshot is automatically captured before mutation.
+    Applica una lista di comandi a un device.
+    Prima della modifica viene catturato automaticamente uno snapshot di rollback.
     """
     driver = _driver_for(device)
     support_info = _rollback_support_info(device)
@@ -267,7 +267,7 @@ def update_config(device: str, commands: list[str]) -> dict:
 @mcp.tool()
 def execute_validation(device: str, command: str) -> dict:
     """
-    Execute a read-only command on a device and return its output.
+    Esegue un comando in sola lettura su un device e restituisce il suo output.
     """
     driver = _driver_for(device)
     return driver.execute_validation(device, command)
@@ -277,7 +277,7 @@ def execute_validation(device: str, command: str) -> dict:
 @mcp.tool()
 def rollback(device: str) -> dict:
     """
-    Roll back the device to the last saved snapshot.
+    Ripristina il device all'ultimo snapshot salvato.
     """
     return _pop_and_restore_snapshot(device)
 
@@ -286,7 +286,7 @@ def rollback(device: str) -> dict:
 @mcp.tool()
 def get_rollback_status(device: str | None = None) -> dict:
     """
-    Return rollback stack information for one device or for the whole lab.
+    Restituisce informazioni sullo stack di rollback per un device o per l'intero lab.
     """
     if device:
         support_info = _rollback_support_info(device)

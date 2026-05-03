@@ -1,0 +1,68 @@
+{
+  "task_name": "Routing Linear (Troubleshooting: Link Down on R1)",
+  "domain": "troubleshooting",
+  "difficulty": "easy",
+  "lab_file": "labs/routing-linear-linkdown.yml",
+  "intents": [
+    "PC1 (10.0.1.2) cannot reach PC2 (10.0.2.2) because a link is down. Diagnose and fix the issue so that PC1 can ping PC2 and PC2 can ping PC1.",
+    "Bring up the down interface on R1.",
+    "Configure R1 with 10.0.1.1/24 on eth1 and 10.0.2.1/24 on eth2.",
+    "Enable IPv4 forwarding on R1."
+  ],
+  "startup_configs": {
+    "pc1": [
+      "ip addr add 10.0.1.2/24 dev eth1",
+      "ip route add 10.0.2.0/24 via 10.0.1.1"
+    ],
+    "r1": [
+      "ip link set eth2 down"
+    ],
+    "pc2": [
+      "ip addr add 10.0.2.2/24 dev eth1",
+      "ip route add 10.0.1.0/24 via 10.0.2.1"
+    ]
+  },
+  "ground_truth_configs": {
+    "r1": [
+      "ip link set eth2 up",
+      "ip addr add 10.0.1.1/24 dev eth1",
+      "ip addr add 10.0.2.1/24 dev eth2",
+      "sysctl -w net.ipv4.ip_forward=1"
+    ]
+  },
+  "ground_truth_reasoning": "The lab starts with PC1 and PC2 pre-configured and with static routes pointing to R1. However, R1's eth2 is down, so there is no L2/L3 connectivity to PC2. The fix is to bring eth2 up, then configure IPv4 addresses on R1 interfaces and enable IPv4 forwarding so R1 can route between the two subnets.",
+  "testcases": [
+    {
+      "name": "PC1 can ping PC2 after fix",
+      "device": "pc1",
+      "command": "ping -c 3 -W 2 10.0.2.2",
+      "expected_output": "3 packets transmitted, 3 packets received"
+    },
+    {
+      "name": "PC2 can ping PC1 after fix",
+      "device": "pc2",
+      "command": "ping -c 3 -W 2 10.0.1.2",
+      "expected_output": "3 packets transmitted, 3 packets received"
+    }
+  ],
+  "baseline_invariants": [
+    {
+      "name": "PC1 management interface eth0 is still up",
+      "device": "pc1",
+      "command": "ip link show eth0",
+      "expected_output": "state UP"
+    },
+    {
+      "name": "R1 management interface eth0 is still up",
+      "device": "r1",
+      "command": "ip link show eth0",
+      "expected_output": "state UP"
+    },
+    {
+      "name": "PC2 management interface eth0 is still up",
+      "device": "pc2",
+      "command": "ip link show eth0",
+      "expected_output": "state UP"
+    }
+  ]
+}
