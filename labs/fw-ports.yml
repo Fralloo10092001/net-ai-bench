@@ -1,0 +1,19 @@
+name: fw-ports
+
+topology:
+  nodes:
+    wan:
+      kind: linux
+      image: nicolaka/netshoot:latest
+
+    fw:
+      kind: linux
+      image: nicolaka/netshoot:latest
+
+    lan:
+      kind: linux
+      image: alpine:latest
+
+  links:
+    - endpoints: ["wan:eth1", "fw:eth1"]
+    - endpoints: ["fw:eth2", "lan:eth1"]

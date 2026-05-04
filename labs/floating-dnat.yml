@@ -1,0 +1,25 @@
+name: floating-dnat
+
+topology:
+  nodes:
+    wan:
+      kind: linux
+      image: nicolaka/netshoot:latest
+    edge1:
+      kind: linux
+      image: nicolaka/netshoot:latest
+    edge2:
+      kind: linux
+      image: nicolaka/netshoot:latest
+    srv:
+      kind: linux
+      image: nicolaka/netshoot:latest
+
+  links:
+    # WAN segment
+    - endpoints: ["wan:eth1", "edge1:eth1"]
+    - endpoints: ["wan:eth2", "edge2:eth1"]
+
+    # LAN segment
+    - endpoints: ["edge1:eth2", "srv:eth1"]
+    - endpoints: ["edge2:eth2", "srv:eth2"]

@@ -22,6 +22,9 @@ ALLOWED_PREFIXES = [
     "ip rule del",
     "ip rule show",
     "ip -6 rule show",
+    "nft add table ",
+    "nft add chain ",
+    "nft add rule ",
 
     # Forwarding
     "sysctl -w net.ipv4.ip_forward=",
@@ -79,6 +82,25 @@ ALLOWED_PREFIXES = [
     "iptables -t nat -A ",
     "iptables -A FORWARD ",
     "iptables -C ",
+    "iptables -t nat -A PREROUTING ",
+    "iptables -t nat -A POSTROUTING ",
+    "iptables -t nat -C PREROUTING ",
+    "iptables -t nat -C POSTROUTING ",
+    "iptables -A FORWARD ",
+    "iptables -C FORWARD ",
+    # Start long-running services in background (used for internal HTTP server)
+    "nohup ",
+
+    # DNAT/SNAT rules for Floating IP task
+    "iptables -t nat -A PREROUTING ",
+    "iptables -t nat -A POSTROUTING ",
+    "iptables -t nat -C PREROUTING ",
+    "iptables -t nat -C POSTROUTING ",
+    "iptables -A FORWARD ",
+    "iptables -C FORWARD ",
+    "iptables -t nat -D PREROUTING ",
+    "iptables -t nat -D POSTROUTING ",
+    "iptables -D FORWARD ",
 ]
 
 # Comandi o sottostringhe pericolose da bloccare
@@ -117,6 +139,8 @@ BLOCKED_SUBSTRINGS = [
     "wget ",
     "nc -e",
     "bash -c",
+    "flush ruleset",
+    "nft delete ruleset",
 ]
 
 # Token di chaining shell che vogliamo proibire
@@ -124,6 +148,11 @@ FORBIDDEN_TOKENS = ["&&", "||", ";"]
 
 # Comandi read-only ammessi per get_running_config e validation
 READ_ONLY_PREFIXES = [
+    "iptables -t nat -S",
+    "iptables -S",
+    "nft list ruleset",
+    "nft list tables",
+    "nft list table ",
     "ip addr show",
     "ip -6 addr show",
     "ip link show",
@@ -227,14 +256,47 @@ class LinuxDriver(BaseDriver):
         except Exception:
             return default
 
-    # Controlla se un comando generico rientra nella allowlist di sicurezza
+    def _allows_semicolon_for_nft_chain(self, cmd: str) -> bool:
+        if ";" not in cmd:
+            return True
+        return cmd.startswith("nft add chain ")
+
     def _is_allowed_command(self, cmd: str) -> bool:
         cmd = cmd.strip()
 
         if not cmd:
             return False
 
-        if any(tok in cmd for tok in FORBIDDEN_TOKENS):
+        # Still block shell chaining operators
+        if "&&" in cmd or "||" in cmd:
+            return False
+
+        # Prevent taking down data-plane interfaces (common destructive behavior)
+        # (Note: we allow eth0 to be manipulated only if it's already in allowlist, but
+        # we explicitly block eth1/eth2 down.)
+        if cmd.startswith("ip link set"):
+            lowered = cmd.lower()
+            if (" eth1 " in lowered or lowered.endswith(" eth1") or " dev eth1" in lowered) and " down" in lowered:
+                return False
+            if (" eth2 " in lowered or lowered.endswith(" eth2") or " dev eth2" in lowered) and " down" in lowered:
+                return False
+
+        # Prevent deleting IPv4 addressing on data-plane interfaces
+        # This keeps the lab reachable and avoids "destructive_fail" caused by LLMs wiping IPs.
+        if cmd.startswith("ip addr del"):
+            lowered = cmd.lower()
+            if " dev eth1" in lowered or " dev eth2" in lowered:
+                return False
+
+        # (Optional) also prevent deleting IPv6 global addresses on eth1/eth2
+        # Note: your driver already allows "ip -6 addr show" but not "ip -6 addr del" by default.
+        if cmd.startswith("ip -6 addr del"):
+            lowered = cmd.lower()
+            if " dev eth1" in lowered or " dev eth2" in lowered:
+                return False
+
+        # Block ';' except for nft chain definitions that require it
+        if ";" in cmd and not self._allows_semicolon_for_nft_chain(cmd):
             return False
 
         if any(bad in cmd for bad in BLOCKED_SUBSTRINGS):
@@ -246,14 +308,16 @@ class LinuxDriver(BaseDriver):
 
         return any(cmd.startswith(prefix) for prefix in ALLOWED_PREFIXES)
 
-    # Controlla se un comando è read-only e quindi sicuro per inspection/validation
     def _is_readonly_command(self, cmd: str) -> bool:
         cmd = cmd.strip()
 
         if not cmd:
             return False
 
-        if any(tok in cmd for tok in FORBIDDEN_TOKENS):
+        if "&&" in cmd or "||" in cmd:
+            return False
+
+        if ";" in cmd and not self._allows_semicolon_for_nft_chain(cmd):
             return False
 
         if any(bad in cmd for bad in BLOCKED_SUBSTRINGS):

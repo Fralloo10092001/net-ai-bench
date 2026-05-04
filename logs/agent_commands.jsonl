@@ -1,8 +1,13 @@
-{"device": "fw", "command": "sysctl -w net.ipv4.conf.eth1.rp_filter=1"}
-{"device": "wan", "command": "ip addr add 192.168.1.100/24 dev eth1"}
-{"device": "wan", "command": "ip addr del 192.168.1.100/24 dev eth1"}
-{"device": "wan", "command": "ip addr add 10.0.0.2/24 dev eth1"}
-{"device": "wan", "command": "ip route add 192.168.1.0/24 via 10.0.0.1"}
-{"device": "wan", "command": "ip addr add 192.168.1.100/24 dev eth1"}
-{"device": "wan", "command": "ip addr del 192.168.1.100/24 dev eth1"}
-{"device": "wan", "command": "ip addr add 192.168.1.100/32 dev eth1"}
+{"device": "srv", "command": "ip addr add 10.0.0.100/24 dev eth1"}
+{"device": "srv", "command": "ip link set eth1 up"}
+{"device": "wan", "command": "ip addr add 198.51.100.1/24 dev eth1"}
+{"device": "wan", "command": "ip link set eth1 up"}
+{"device": "edge1", "command": "ip addr add 198.51.100.100/24 dev eth1"}
+{"device": "edge1", "command": "iptables -t nat -A PREROUTING -d 198.51.100.100 -p tcp --dport 8080 -j DNAT --to-destination 10.0.0.100:8080"}
+{"device": "edge1", "command": "iptables -t nat -A POSTROUTING -d 10.0.0.100 -p tcp --dport 8080 -j MASQUERADE"}
+{"device": "edge1", "command": "iptables -t nat -D PREROUTING -d 198.51.100.100 -p tcp --dport 8080 -j DNAT --to-destination 10.0.0.100:8080"}
+{"device": "edge1", "command": "iptables -t nat -D POSTROUTING -d 10.0.0.100 -p tcp --dport 8080 -j MASQUERADE"}
+{"device": "edge2", "command": "ip addr add 10.0.0.2/24 dev eth2"}
+{"device": "edge2", "command": "ip addr add 198.51.100.100/24 dev eth1"}
+{"device": "edge2", "command": "iptables -t nat -A PREROUTING -d 198.51.100.100 -p tcp --dport 8080 -j DNAT --to-destination 10.0.0.100:8080"}
+{"device": "edge2", "command": "iptables -t nat -A POSTROUTING -d 10.0.0.100 -p tcp --dport 8080 -j MASQUERADE"}

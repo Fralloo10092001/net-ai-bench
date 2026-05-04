@@ -1,0 +1,112 @@
+{
+  "task_name": "Floating IP - DNAT internal service with manual failover",
+  "domain": "firewall",
+  "difficulty": "hard",
+  "lab_file": "labs/floating-dnat.yml",
+  "intent": "Expose an internal HTTP service using a public floating VIP and DNAT on the active edge router. Configure DNAT VIP:8080 -> 10.0.0.100:8080 and ensure return traffic works using SNAT/MASQUERADE. Then perform a manual failover by moving the VIP and NAT/FORWARD rules from edge1 to edge2 while keeping the same VIP reachable from WAN. Do not break management connectivity on eth0. Do not flush/reset firewall tables.",
+
+  "startup_configs": {
+    "wan": [
+      "ip addr add 203.0.113.10/24 dev eth1",
+      "ip addr add 203.0.113.10/24 dev eth2"
+    ],
+    "edge1": [
+      "ip addr add 203.0.113.1/24 dev eth1",
+      "ip addr add 10.0.0.1/24 dev eth2",
+      "sysctl -w net.ipv4.ip_forward=1"
+    ],
+    "edge2": [
+      "ip addr add 203.0.113.2/24 dev eth1",
+      "ip addr add 10.0.0.2/24 dev eth2",
+      "sysctl -w net.ipv4.ip_forward=1"
+    ],
+    "srv": [
+      "ip addr add 10.0.0.100/24 dev eth1",
+      "ip addr add 10.0.0.100/24 dev eth2",
+      "ip route add default via 10.0.0.1 metric 1024"
+    ]
+  },
+
+  "ground_truth_configs": {
+    "srv": [
+      "nohup python3 -m http.server 8080 --bind 10.0.0.100 >/tmp/http.log 2>&1 &"
+    ],
+    "edge1": [
+      "ip addr add 203.0.113.100/32 dev eth1",
+
+      "iptables -t nat -A PREROUTING -d 203.0.113.100/32 -p tcp --dport 8080 -j DNAT --to-destination 10.0.0.100:8080",
+
+      "iptables -A FORWARD -p tcp -d 10.0.0.100 --dport 8080 -m conntrack --ctstate NEW,ESTABLISHED,RELATED -j ACCEPT",
+      "iptables -A FORWARD -p tcp -s 10.0.0.100 --sport 8080 -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT",
+
+      "iptables -t nat -A POSTROUTING -s 10.0.0.0/24 -o eth1 -j MASQUERADE"
+    ],
+    "edge2": [
+      "true"
+    ]
+  },
+
+  "ground_truth_reasoning": "Assign the floating VIP on the active edge router. Add a DNAT rule mapping VIP:8080 to the internal server. Allow forwarding for that flow. Add SNAT/MASQUERADE on WAN egress so that return traffic is symmetric and does not require modifying server routing. Manual failover is done by moving VIP and the NAT/FORWARD rules to the standby edge.",
+
+  "testcases": [
+    {
+      "name": "Service is reachable through VIP (DNAT + return traffic)",
+      "device": "wan",
+      "kind": "linux",
+      "command": "curl -sS --max-time 3 http://203.0.113.100:8080/ | head -n 1",
+      "expected_output": "<!DOCTYPE"
+    },
+    {
+      "name": "After manual failover, service is still reachable through the same VIP",
+      "device": "wan",
+      "kind": "linux",
+      "command": "curl -sS --max-time 3 http://203.0.113.100:8080/ | head -n 1",
+      "expected_output": "<!DOCTYPE"
+    },
+    {
+      "name": "Audit: edge1 has DNAT rule for VIP",
+      "device": "edge1",
+      "kind": "linux",
+      "command": "iptables-save",
+      "expected_output": "DNAT"
+    },
+    {
+      "name": "Audit: edge1 has SNAT/MASQUERADE for return traffic",
+      "device": "edge1",
+      "kind": "linux",
+      "command": "iptables-save",
+      "expected_output": "MASQUERADE"
+    }
+  ],
+
+  "baseline_invariants": [
+    {
+      "name": "WAN mgmt eth0 stays up",
+      "device": "wan",
+      "kind": "linux",
+      "command": "ip link show eth0",
+      "expected_output": "state UP"
+    },
+    {
+      "name": "edge1 mgmt eth0 stays up",
+      "device": "edge1",
+      "kind": "linux",
+      "command": "ip link show eth0",
+      "expected_output": "state UP"
+    },
+    {
+      "name": "edge2 mgmt eth0 stays up",
+      "device": "edge2",
+      "kind": "linux",
+      "command": "ip link show eth0",
+      "expected_output": "state UP"
+    },
+    {
+      "name": "srv mgmt eth0 stays up",
+      "device": "srv",
+      "kind": "linux",
+      "command": "ip link show eth0",
+      "expected_output": "state UP"
+    }
+  ]
+}
