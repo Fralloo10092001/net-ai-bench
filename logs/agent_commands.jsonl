@@ -1,0 +1,12 @@
+{"device": "fw", "command": "ip addr add 10.0.1.2/24 dev eth1"}
+{"device": "fw", "command": "ip addr add 10.0.2.1/24 dev eth2"}
+{"device": "fw", "command": "sysctl -w net.ipv4.conf.eth1.rp_filter=1"}
+{"device": "fw", "command": "sysctl -w net.ipv4.conf.all.rp_filter=1"}
+{"device": "wan", "command": "ip addr add 10.0.1.1/24 dev eth1"}
+{"device": "wan", "command": "ip route add 10.0.2.0/24 via 10.0.1.2 dev eth1"}
+{"device": "lan", "command": "ip addr add 10.0.2.2/24 dev eth1"}
+{"device": "lan", "command": "ip route add 10.0.1.0/24 via 10.0.2.1 dev eth1"}
+{"device": "wan", "command": "ip addr add 10.0.2.10/32 dev dummy0"}
+{"device": "wan", "command": "ip link set dummy0 up"}
+{"device": "wan", "command": "ip addr add 10.0.2.10/32 dev eth1"}
+{"device": "wan", "command": "ip addr del 10.0.2.10/32 dev eth1"}

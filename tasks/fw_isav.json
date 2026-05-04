@@ -4,7 +4,7 @@
   "difficulty": "medium",
   "lab_file": "labs/fw-isav.yml",
 
-  "intent": "Configure a simple firewall/router with anti-spoofing (ISAV/uRPF) so that legitimate WAN-to-LAN traffic works but spoofed-source traffic from the WAN is dropped. Do not break management connectivity on eth0.",
+  "intent": "Configure a simple firewall/router with ISAV-style anti-spoofing so that legitimate WAN-to-LAN traffic works but spoofed-source traffic from the WAN is dropped. Do not break management connectivity on eth0.",
 
   "startup_configs": {
     "wan": [
@@ -30,7 +30,7 @@
     ]
   },
 
-  "ground_truth_reasoning": "Traffic from the WAN must be filtered to prevent spoofed-source packets (ISAV). Enable strict reverse-path filtering (rp_filter=1) on the WAN-facing interface of the firewall so that packets with a source address that would not be routed back via the same interface are dropped. Keep normal forwarding and static routes so legitimate WAN<->LAN traffic still works.",
+  "ground_truth_reasoning": "To prevent spoofed-source traffic from the WAN (ISAV/BCP38), enable strict reverse-path filtering (rp_filter=1) on the WAN-facing interface of the firewall. Packets arriving on the WAN with a source address that would not be routed back via the same interface should be dropped. Keep normal forwarding and static routes so legitimate WAN<->LAN traffic still works.",
 
   "testcases": [
     {
@@ -41,11 +41,11 @@
       "expected_output": "3 packets transmitted, 3 packets received"
     },
     {
-      "name": "Spoofed source from WAN is dropped by ISAV/uRPF on firewall",
+      "name": "Spoofed source from WAN is dropped by ISAV/uRPF on firewall (nping spoof)",
       "device": "wan",
       "kind": "linux",
-      "command": "hping3 --icmp --spoof 10.0.0.2 192.168.1.2 -c 3",
-      "expected_output": "0 replies"
+      "command": "nping --icmp --source-ip 10.0.0.2 192.168.1.2 -c 3",
+      "expected_output": "RCVD: 0"
     },
     {
       "name": "Firewall has rp_filter enabled on WAN interface",
