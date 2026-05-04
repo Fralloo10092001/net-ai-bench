@@ -1,0 +1,82 @@
+{
+  "task_name": "FW ISAV (uRPF) - Block Spoofed Source Traffic",
+  "domain": "firewall",
+  "difficulty": "medium",
+  "lab_file": "labs/fw-isav.yml",
+
+  "intent": "Configure a simple firewall/router with anti-spoofing (ISAV/uRPF) so that legitimate WAN-to-LAN traffic works but spoofed-source traffic from the WAN is dropped. Do not break management connectivity on eth0.",
+
+  "startup_configs": {
+    "wan": [
+      "ip addr add 203.0.113.2/24 dev eth1",
+      "ip route add 192.168.1.0/24 via 203.0.113.1 metric 1024"
+    ],
+    "fw": [
+      "ip addr add 203.0.113.1/24 dev eth1",
+      "ip addr add 192.168.1.1/24 dev eth2",
+      "sysctl -w net.ipv4.ip_forward=1",
+      "ip route add 192.168.1.0/24 dev eth2 metric 256",
+      "ip route add 203.0.113.0/24 dev eth1 metric 256"
+    ],
+    "lan": [
+      "ip addr add 192.168.1.2/24 dev eth1",
+      "ip route add 203.0.113.0/24 via 192.168.1.1 metric 1024"
+    ]
+  },
+
+  "ground_truth_configs": {
+    "fw": [
+      "sysctl -w net.ipv4.conf.eth1.rp_filter=1"
+    ]
+  },
+
+  "ground_truth_reasoning": "Traffic from the WAN must be filtered to prevent spoofed-source packets (ISAV). Enable strict reverse-path filtering (rp_filter=1) on the WAN-facing interface of the firewall so that packets with a source address that would not be routed back via the same interface are dropped. Keep normal forwarding and static routes so legitimate WAN<->LAN traffic still works.",
+
+  "testcases": [
+    {
+      "name": "Legitimate WAN host can reach LAN host (baseline reachability)",
+      "device": "wan",
+      "kind": "linux",
+      "command": "ping -c 3 192.168.1.2",
+      "expected_output": "3 packets transmitted, 3 packets received"
+    },
+    {
+      "name": "Spoofed source from WAN is dropped by ISAV/uRPF on firewall",
+      "device": "wan",
+      "kind": "linux",
+      "command": "hping3 --icmp --spoof 10.0.0.2 192.168.1.2 -c 3",
+      "expected_output": "0 replies"
+    },
+    {
+      "name": "Firewall has rp_filter enabled on WAN interface",
+      "device": "fw",
+      "kind": "linux",
+      "command": "sysctl net.ipv4.conf.eth1.rp_filter",
+      "expected_output": "net.ipv4.conf.eth1.rp_filter = 1"
+    }
+  ],
+
+  "baseline_invariants": [
+    {
+      "name": "WAN management interface eth0 is still up",
+      "device": "wan",
+      "kind": "linux",
+      "command": "ip link show eth0",
+      "expected_output": "state UP"
+    },
+    {
+      "name": "FW management interface eth0 is still up",
+      "device": "fw",
+      "kind": "linux",
+      "command": "ip link show eth0",
+      "expected_output": "state UP"
+    },
+    {
+      "name": "LAN management interface eth0 is still up",
+      "device": "lan",
+      "kind": "linux",
+      "command": "ip link show eth0",
+      "expected_output": "state UP"
+    }
+  ]
+}

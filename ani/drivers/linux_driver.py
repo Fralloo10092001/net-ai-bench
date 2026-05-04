@@ -22,17 +22,34 @@ ALLOWED_PREFIXES = [
     "ip rule del",
     "ip rule show",
     "ip -6 rule show",
+
+    # Forwarding
     "sysctl -w net.ipv4.ip_forward=",
     "sysctl -w net.ipv6.conf.all.forwarding=",
+    "sysctl -w net.ipv4.conf.all.rp_filter=",
+    "sysctl -w net.ipv4.conf.default.rp_filter=",
+    "sysctl -w net.ipv4.conf.eth1.rp_filter=",
+    "sysctl -w net.ipv4.conf.eth2.rp_filter=",
+"sysctl net.ipv4.conf.eth2.rp_filter",
+
+    # Read sysctl forwarding (some tasks inspect)
     "sysctl net.ipv4.ip_forward",
     "sysctl net.ipv6.conf.all.forwarding",
     "sysctl net.ipv4.ip_forward net.ipv6.conf.all.forwarding",
+
+    # Read sysctl rp_filter (optional but useful)
+    "sysctl net.ipv4.conf.all.rp_filter",
+    "sysctl net.ipv4.conf.default.rp_filter",
+    "sysctl net.ipv4.conf.eth1.rp_filter",
+
+    # /proc sysctl equivalents
     "cat /proc/sys/net/ipv4/ip_forward",
     "cat /proc/sys/net/ipv6/conf/all/forwarding",
     "echo 1 > /proc/sys/net/ipv4/ip_forward",
     "echo 0 > /proc/sys/net/ipv4/ip_forward",
     "echo 1 > /proc/sys/net/ipv6/conf/all/forwarding",
     "echo 0 > /proc/sys/net/ipv6/conf/all/forwarding",
+
     "ping ",
     "ping6 ",
     "traceroute ",
@@ -45,12 +62,24 @@ ALLOWED_PREFIXES = [
     "ip -br link",
     "hostname",
     "uname ",
+
+    # FRR show
     "vtysh -c 'show running-config'",
     "vtysh -c \"show running-config\"",
     "vtysh -c 'show version'",
     "vtysh -c \"show version\"",
+
+    # Firewall read
     "nft list ruleset",
     "iptables-save",
+
+    # Firewall apply (Task 4) - load ruleset from file
+    "nft -f ",
+
+    # NAT minimal (Task 5) - allow only additive rules / checks
+    "iptables -t nat -A ",
+    "iptables -A FORWARD ",
+    "iptables -C ",
 ]
 
 # Comandi o sottostringhe pericolose da bloccare
@@ -60,12 +89,27 @@ BLOCKED_SUBSTRINGS = [
     "shutdown",
     "poweroff",
     "mkfs",
+
+    # Prevent flushing/resetting firewalls
     "iptables -F",
+    "iptables -P",          # default policies
+    "iptables -X",          # delete chains
+    "iptables -Z",          # zero counters (not dangerous but hides evidence)
+    "iptables-restore",     # too powerful
+
     "nft flush",
+    "nft reset",
+    "nft delete table",
+    "nft delete chain",
+    "nft -f /etc/",         # avoid writing system-level firewall configs (optional hardening)
+
+    # Prevent modifying /etc
     "> /etc/",
     ">> /etc/",
     "chmod ",
     "chown ",
+
+    # Package managers / downloads / shells
     "apt ",
     "yum ",
     "dnf ",
@@ -88,25 +132,40 @@ READ_ONLY_PREFIXES = [
     "ip -6 route show",
     "ip rule show",
     "ip -6 rule show",
+
     "sysctl net.ipv4.ip_forward",
     "sysctl net.ipv6.conf.all.forwarding",
     "sysctl net.ipv4.ip_forward net.ipv6.conf.all.forwarding",
+
+    # Read rp_filter
+    "sysctl net.ipv4.conf.all.rp_filter",
+    "sysctl net.ipv4.conf.default.rp_filter",
+    "sysctl net.ipv4.conf.eth1.rp_filter",
+
     "cat /proc/sys/net/ipv4/ip_forward",
     "cat /proc/sys/net/ipv6/conf/all/forwarding",
+
     "hostname",
     "uname ",
+
     "vtysh -c 'show running-config'",
     "vtysh -c \"show running-config\"",
     "vtysh -c 'show version'",
     "vtysh -c \"show version\"",
+
     "nft list ruleset",
     "iptables-save",
+
     "ss ",
     "netstat ",
     "arp ",
     "ip neigh",
     "ip -br addr",
     "ip -br link",
+
+    # Optional: readable iptables views (useful for audits)
+    "iptables -S",
+    "iptables -t nat -S",
 ]
 
 
