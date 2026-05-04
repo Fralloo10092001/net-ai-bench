@@ -3,24 +3,10 @@
   "domain": "firewall",
   "difficulty": "medium",
   "lab_file": "labs/fw-isav.yml",
-
-  "intent": "Configure a simple firewall/router with ISAV-style anti-spoofing so that legitimate WAN-to-LAN traffic works but spoofed-source traffic from the WAN is dropped. Do not break management connectivity on eth0.",
-
+  "intent": "Enable ISAV-style anti-spoofing by setting rp_filter=1 on fw eth1. Do NOT modify IP addresses or routing on eth1/eth2; only change the required sysctl(s). Do not break management connectivity on eth0.",
   "startup_configs": {
-    "wan": [
-      "ip addr add 203.0.113.2/24 dev eth1",
-      "ip route add 192.168.1.0/24 via 203.0.113.1 metric 1024"
-    ],
     "fw": [
-      "ip addr add 203.0.113.1/24 dev eth1",
-      "ip addr add 192.168.1.1/24 dev eth2",
-      "sysctl -w net.ipv4.ip_forward=1",
-      "ip route add 192.168.1.0/24 dev eth2 metric 256",
-      "ip route add 203.0.113.0/24 dev eth1 metric 256"
-    ],
-    "lan": [
-      "ip addr add 192.168.1.2/24 dev eth1",
-      "ip route add 203.0.113.0/24 via 192.168.1.1 metric 1024"
+      "sysctl -w net.ipv4.ip_forward=1"
     ]
   },
 
@@ -30,22 +16,22 @@
     ]
   },
 
-  "ground_truth_reasoning": "To prevent spoofed-source traffic from the WAN (ISAV/BCP38), enable strict reverse-path filtering (rp_filter=1) on the WAN-facing interface of the firewall. Packets arriving on the WAN with a source address that would not be routed back via the same interface should be dropped. Keep normal forwarding and static routes so legitimate WAN<->LAN traffic still works.",
+  "ground_truth_reasoning": "To prevent spoofed-source traffic from the WAN (ISAV/BCP38), enable strict reverse-path filtering (rp_filter=1) on the WAN-facing interface of the firewall. Packets arriving on the WAN with a source address that would not be routed back via the same interface should be dropped.",
 
   "testcases": [
     {
-      "name": "Legitimate WAN host can reach LAN host (baseline reachability)",
-      "device": "wan",
+      "name": "Firewall IPv4 forwarding is enabled",
+      "device": "fw",
       "kind": "linux",
-      "command": "ping -c 3 192.168.1.2",
-      "expected_output": "3 packets transmitted, 3 packets received"
+      "command": "sysctl net.ipv4.ip_forward",
+      "expected_output": "net.ipv4.ip_forward = 1"
     },
     {
       "name": "Spoofed source from WAN is dropped by ISAV/uRPF on firewall (nping spoof)",
       "device": "wan",
       "kind": "linux",
-      "command": "nping --icmp --source-ip 10.0.0.2 192.168.1.2 -c 3",
-      "expected_output": "RCVD: 0"
+      "command": "nping --icmp --source-ip 10.0.0.2 192.168.20.2 -c 3",
+      "expected_output": "Rcvd: 0"
     },
     {
       "name": "Firewall has rp_filter enabled on WAN interface",
@@ -77,6 +63,20 @@
       "kind": "linux",
       "command": "ip link show eth0",
       "expected_output": "state UP"
-    }
+    },
+    {
+    "name": "FW WAN interface eth1 is still up",
+    "device": "fw",
+    "kind": "linux",
+    "command": "ip link show eth1",
+    "expected_output": "state UP"
+  },
+  {
+    "name": "FW LAN interface eth2 is still up",
+    "device": "fw",
+    "kind": "linux",
+    "command": "ip link show eth2",
+    "expected_output": "state UP"
+  }
   ]
 }

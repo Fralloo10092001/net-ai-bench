@@ -30,7 +30,6 @@ ALLOWED_PREFIXES = [
     "sysctl -w net.ipv4.conf.default.rp_filter=",
     "sysctl -w net.ipv4.conf.eth1.rp_filter=",
     "sysctl -w net.ipv4.conf.eth2.rp_filter=",
-    "sysctl net.ipv4.conf.eth2.rp_filter",
 
     # Read sysctl forwarding (some tasks inspect)
     "sysctl net.ipv4.ip_forward",
@@ -141,6 +140,7 @@ READ_ONLY_PREFIXES = [
     "sysctl net.ipv4.conf.all.rp_filter",
     "sysctl net.ipv4.conf.default.rp_filter",
     "sysctl net.ipv4.conf.eth1.rp_filter",
+    "sysctl net.ipv4.conf.eth2.rp_filter",
 
     "cat /proc/sys/net/ipv4/ip_forward",
     "cat /proc/sys/net/ipv6/conf/all/forwarding",

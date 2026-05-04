@@ -1,1 +1,1 @@
-The task required configuring ISAV-style anti-spoofing on the 'fw' device to block spoofed source traffic from the WAN while allowing legitimate WAN-to-LAN traffic. I have successfully configured `rp_filter` on `fw:eth1` to mode 1 (strict reverse path forwarding). I validated that legitimate traffic from 'wan' to 'lan' works, and that spoofed traffic from 'wan' (using a source IP from the LAN subnet) to 'lan' is blocked. All requirements of the task have been met.
+Agent reached maximum number of steps before finishing.
