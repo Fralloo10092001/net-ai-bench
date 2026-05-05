@@ -1,13 +1,8 @@
-{"device": "srv", "command": "ip addr add 10.0.0.100/24 dev eth1"}
-{"device": "srv", "command": "ip link set eth1 up"}
-{"device": "wan", "command": "ip addr add 198.51.100.1/24 dev eth1"}
-{"device": "wan", "command": "ip link set eth1 up"}
-{"device": "edge1", "command": "ip addr add 198.51.100.100/24 dev eth1"}
-{"device": "edge1", "command": "iptables -t nat -A PREROUTING -d 198.51.100.100 -p tcp --dport 8080 -j DNAT --to-destination 10.0.0.100:8080"}
-{"device": "edge1", "command": "iptables -t nat -A POSTROUTING -d 10.0.0.100 -p tcp --dport 8080 -j MASQUERADE"}
-{"device": "edge1", "command": "iptables -t nat -D PREROUTING -d 198.51.100.100 -p tcp --dport 8080 -j DNAT --to-destination 10.0.0.100:8080"}
-{"device": "edge1", "command": "iptables -t nat -D POSTROUTING -d 10.0.0.100 -p tcp --dport 8080 -j MASQUERADE"}
-{"device": "edge2", "command": "ip addr add 10.0.0.2/24 dev eth2"}
-{"device": "edge2", "command": "ip addr add 198.51.100.100/24 dev eth1"}
-{"device": "edge2", "command": "iptables -t nat -A PREROUTING -d 198.51.100.100 -p tcp --dport 8080 -j DNAT --to-destination 10.0.0.100:8080"}
-{"device": "edge2", "command": "iptables -t nat -A POSTROUTING -d 10.0.0.100 -p tcp --dport 8080 -j MASQUERADE"}
+{"device": "edge2", "command": "ip addr add 203.0.113.254/32 dev eth1"}
+{"device": "edge2", "command": "iptables -t nat -A PREROUTING -d 203.0.113.254 -p tcp --dport 8080 -j DNAT --to-destination 10.0.0.100:8080"}
+{"device": "edge2", "command": "iptables -A FORWARD -d 10.0.0.100 -p tcp --dport 8080 -j ACCEPT"}
+{"device": "edge2", "command": "iptables -t nat -A POSTROUTING -o eth2 -d 10.0.0.100 -p tcp --dport 8080 -j MASQUERADE"}
+{"device": "edge2", "command": "iptables -A FORWARD -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT"}
+{"device": "edge2", "command": "ip addr add 203.0.113.254/24 dev eth1"}
+{"device": "edge2", "command": "ip link set eth1 up"}
+{"device": "edge2", "command": "ip addr add 203.0.113.254/24 dev eth1"}
