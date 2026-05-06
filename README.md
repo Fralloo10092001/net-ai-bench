@@ -234,6 +234,9 @@ OPENAI_API_KEY=
 ANTHROPIC_API_KEY=
 GOOGLE_API_KEY=
 OPENROUTER_API_KEY=
+DEEPSEEK_API_KEY=
+NVIDIA_API_KEY=
+NVIDIA_KIMI_API_KEY=
 ```
 
 Il file `.env` è escluso da Git tramite `.gitignore`.
@@ -261,6 +264,23 @@ Esempio con OpenAI:
 ]
 ```
 
+Esempio con DeepSeek:
+
+```json
+[
+  { "provider": "deepseek", "model": "deepseek-v4-pro" }
+]
+```
+
+Esempio con DeepSeek servito da NVIDIA NIM:
+
+```json
+[
+  { "provider": "nvidia", "model": "deepseek-ai/deepseek-v4-pro" },
+  { "provider": "nvidia", "model": "moonshotai/kimi-k2.6" }
+]
+```
+
 Provider supportati da `agent/model_registry.py`:
 
 | Provider | Variabile ambiente | Note |
@@ -269,8 +289,10 @@ Provider supportati da `agent/model_registry.py`:
 | `anthropic` | `ANTHROPIC_API_KEY` | Usa `ChatAnthropic` |
 | `google` | `GOOGLE_API_KEY` | Usa `ChatGoogleGenerativeAI` |
 | `openrouter` | `OPENROUTER_API_KEY` | Usa endpoint OpenAI-compatible OpenRouter |
+| `deepseek` | `DEEPSEEK_API_KEY` | Usa endpoint OpenAI-compatible DeepSeek |
+| `nvidia` | `NVIDIA_API_KEY`, `NVIDIA_KIMI_API_KEY` | Usa endpoint NVIDIA OpenAI-compatible con `ChatOpenAI` |
 
-I prezzi usati per stimare `estimated_cost_usd` sono definiti in `agent/usage_utils.py`.
+I prezzi usati per stimare `estimated_cost_usd` sono definiti in `agent/usage_utils.py`. Per DeepSeek viene usata una stima basata sul prezzo input cache-miss scontato, perché il benchmark non separa i token input cache-hit da quelli cache-miss.
 
 ---
 

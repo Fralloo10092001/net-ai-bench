@@ -35,6 +35,24 @@ pricing = {
         "input_per_million": 0.30,
         "output_per_million": 2.50,
     },
+    ("deepseek", "deepseek-v4-pro"): {
+        # DeepSeek reports separate input cache-hit/cache-miss prices.
+        # NetAiBench only tracks aggregate input tokens, so this uses the
+        # current discounted cache-miss price as a conservative estimate.
+        "input_per_million": 0.435,
+        "output_per_million": 0.87,
+    },
+    ("nvidia", "deepseek-ai/deepseek-v4-pro"): {
+        # Reference estimate based on DeepSeek discounted cache-miss pricing.
+        # NVIDIA-hosted billing or free credits may differ from direct DeepSeek.
+        "input_per_million": 0.435,
+        "output_per_million": 0.87,
+    },
+    ("nvidia", "moonshotai/kimi-k2.6"): {
+        # Worst-case cache-miss estimate provided for Kimi-K2.6 on 2026-05-06.
+        "input_per_million": 0.95,
+        "output_per_million": 4.00,
+    },
 }
 
 

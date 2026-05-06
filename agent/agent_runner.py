@@ -100,6 +100,16 @@ def _get_token_budgets(
         executor = 1200
         validator = 600
 
+    elif provider == "deepseek":
+        planner = 3000
+        executor = 2200
+        validator = 800
+
+    elif provider == "nvidia":
+        planner = 4096
+        executor = 3000
+        validator = 1000
+
     elif provider == "anthropic":
         planner = 3000
         executor = 2200
@@ -398,6 +408,8 @@ if __name__ == "__main__":
             "anthropic",
             "google",
             "openrouter",
+            "deepseek",
+            "nvidia",
         ],
     )
 
@@ -426,6 +438,8 @@ if __name__ == "__main__":
             "anthropic",
             "google",
             "openrouter",
+            "deepseek",
+            "nvidia",
         ],
     )
 
@@ -438,6 +452,8 @@ if __name__ == "__main__":
             "anthropic",
             "google",
             "openrouter",
+            "deepseek",
+            "nvidia",
         ],
     )
 

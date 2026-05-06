@@ -64,4 +64,50 @@ def get_model(provider: str, model: str, temperature: float = 0, max_tokens: int
 
         return ChatOpenAI(**kwargs)
 
+    if provider == "deepseek":
+        api_key = os.environ.get("DEEPSEEK_API_KEY")
+        if not api_key:
+            raise ValueError("DEEPSEEK_API_KEY is not set")
+
+        kwargs = {
+            "model": model,
+            "temperature": temperature,
+            "api_key": api_key,
+            "base_url": "https://api.deepseek.com",
+        }
+        if max_tokens is not None:
+            kwargs["max_tokens"] = max_tokens
+
+        return ChatOpenAI(**kwargs)
+
+    if provider == "nvidia":
+        api_key_var = "NVIDIA_KIMI_API_KEY" if model == "moonshotai/kimi-k2.6" else "NVIDIA_API_KEY"
+        api_key = os.environ.get(api_key_var) or os.environ.get("NVIDIA_API_KEY")
+        if not api_key:
+            raise ValueError(f"{api_key_var} is not set")
+
+        # ChatNVIDIA currently fails this model lookup when the catalog returns
+        # duplicate entries, so use NVIDIA's OpenAI-compatible endpoint.
+        top_p = 1 if model == "moonshotai/kimi-k2.6" else 0.95
+        chat_template_kwargs = {"thinking": True}
+        if model == "deepseek-ai/deepseek-v4-pro":
+            chat_template_kwargs["reasoning_effort"] = "max"
+
+        kwargs = {
+            "model": model,
+            "api_key": api_key,
+            "base_url": "https://integrate.api.nvidia.com/v1",
+            "temperature": temperature,
+            "top_p": top_p,
+            "extra_body": {
+                "chat_template_kwargs": chat_template_kwargs,
+            },
+        }
+        if max_tokens is not None:
+            kwargs["max_completion_tokens"] = max_tokens
+        else:
+            kwargs["max_completion_tokens"] = 16384
+
+        return ChatOpenAI(**kwargs)
+
     raise ValueError(f"Unsupported provider: {provider}")
