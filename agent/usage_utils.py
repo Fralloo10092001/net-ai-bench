@@ -7,6 +7,14 @@ pricing = {
         "input_per_million": 1.25,
         "output_per_million": 5.00,
     },
+    ("openai", "gpt-5.4-mini"): {
+        "input_per_million": 0.75,
+        "output_per_million": 4.50,
+    },
+    ("openai", "gpt-5.4"): {
+        "input_per_million": 2.50,
+        "output_per_million": 15.00,
+    },
     ("openrouter", "openai/gpt-4o-mini"): {
         "input_per_million": 0.60,
         "output_per_million": 2.40,
