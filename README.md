@@ -1,6 +1,6 @@
-# NetConfBench
+# NetAiBench
 
-**NetConfBench** è un framework per valutare agenti basati su Large Language Models (LLM) su attività pratiche di networking. Il benchmark esegue laboratori riproducibili con [Containerlab](https://containerlab.dev/), espone all'agente un set controllato di tool operativi e valuta automaticamente se il task è stato completato senza degradare lo stato della rete.
+**NetAiBench** è un framework per valutare agenti basati su Large Language Models (LLM) su attività pratiche di networking. Il benchmark esegue laboratori riproducibili con [Containerlab](https://containerlab.dev/), espone all'agente un set controllato di tool operativi e valuta automaticamente se il task è stato completato senza degradare lo stato della rete.
 
 L'agente riceve un obiettivo in linguaggio naturale, ispeziona la topologia, legge la configurazione corrente dei nodi, applica comandi e valida il risultato. Il framework misura non solo la correttezza funzionale, ma anche l'aderenza ai comandi attesi, la qualità del ragionamento e la sicurezza operativa.
 
@@ -103,7 +103,7 @@ Il progetto supporta tre modalità agentiche:
 ## Struttura Del Progetto
 
 ```text
-netconfbench/
+NetAiBench/
 ├── agent/
 │   ├── agent_runner.py        # CLI e orchestrazione di un singolo run agente
 │   ├── base.py                # classi base e RunResult
@@ -568,7 +568,7 @@ I fallimenti principali riguardano sintassi FRR/IS-IS, precisione nftables e ade
 
 ## Obiettivo Del Progetto
 
-NetConfBench valuta quanto un agente LLM sia capace di operare in ambienti di rete reali e riproducibili. Il benchmark non misura solo se un task "passa", ma anche:
+NetAiBench valuta quanto un agente LLM sia capace di operare in ambienti di rete reali e riproducibili. Il benchmark non misura solo se un task "passa", ma anche:
 
 - se l'agente mantiene invarianti di sicurezza;
 - se usa comandi coerenti con la soluzione attesa;
