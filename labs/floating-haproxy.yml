@@ -1,0 +1,52 @@
+name: floating-haproxy
+
+topology:
+  nodes:
+    client:
+      kind: linux
+      image: nicolaka/netshoot:latest
+      exec:
+        - ip addr add 203.0.113.10/24 dev eth1
+        - ip route add 203.0.113.100/32 via 203.0.113.2
+
+    edge1:
+      kind: linux
+      image: haproxy:2.9-alpine
+      binds:
+        - ../lab-configs/floating-haproxy/edge1/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+      exec:
+        - ip addr add 10.1.21.1/24 dev eth2
+        - ip addr add 10.1.22.1/24 dev eth3
+
+    edge2:
+      kind: linux
+      image: haproxy:2.9-alpine
+      binds:
+        - ../lab-configs/floating-haproxy/edge2/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+      exec:
+        - ip addr add 203.0.113.2/24 dev eth1
+        - ip addr add 10.2.21.1/24 dev eth2
+        - ip addr add 10.2.22.1/24 dev eth3
+
+    backend-a:
+      kind: linux
+      image: nicolaka/netshoot:latest
+      exec:
+        - ip addr add 10.2.21.101/24 dev eth1
+        - ip addr add 10.1.21.101/24 dev eth2
+        - sh -c "mkdir -p /www && printf 'backend-a' >/www/index.html && nohup python3 -m http.server 8080 --bind 0.0.0.0 --directory /www >/tmp/http.log 2>&1 &"
+
+    backend-b:
+      kind: linux
+      image: nicolaka/netshoot:latest
+      exec:
+        - ip addr add 10.2.22.102/24 dev eth1
+        - ip addr add 10.1.22.102/24 dev eth2
+        - sh -c "mkdir -p /www && printf 'backend-b' >/www/index.html && nohup python3 -m http.server 8080 --bind 0.0.0.0 --directory /www >/tmp/http.log 2>&1 &"
+
+  links:
+    - endpoints: ["client:eth1", "edge2:eth1"]
+    - endpoints: ["edge2:eth2", "backend-a:eth1"]
+    - endpoints: ["edge2:eth3", "backend-b:eth1"]
+    - endpoints: ["edge1:eth2", "backend-a:eth2"]
+    - endpoints: ["edge1:eth3", "backend-b:eth2"]

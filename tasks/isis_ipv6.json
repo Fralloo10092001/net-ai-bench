@@ -1,69 +1,109 @@
 {
-  "task_name": "IS-IS IPv6 (FRR) - End-to-End Connectivity",
+  "task_name": "isis_ipv6",
+  "lab_file": "labs/isis-ipv6.yml",
   "domain": "routing",
   "difficulty": "medium",
-  "lab_file": "labs/isis-ipv6.yml",
   "intents": [
-    "Verify that the IS-IS IPv6 routing domain is correctly set up on routers R1 and R2 (FRR) so that PC1 can reach PC2 end-to-end over IPv6.",
-    "PC1 is 2001:db8:1::2/64 and PC2 is 2001:db8:2::2/64.",
-    "Routers run IS-IS for IPv6 and must advertise the connected LAN prefixes."
+    "Configure dynamic IPv6 reachability with FRRouting IS-IS between r1 and r2.",
+    "pc1 already uses 2001:db8:1::2/64 and reaches its router at 2001:db8:1::1.",
+    "pc2 already uses 2001:db8:2::2/64 and reaches its router at 2001:db8:2::1.",
+    "On r1, configure 2001:db8:1::1/64 on eth1 and 2001:db8:12::1/64 on eth2.",
+    "On r2, configure 2001:db8:12::2/64 on eth2 and 2001:db8:2::1/64 on eth1.",
+    "Enable IPv6 forwarding on r1 and r2.",
+    "Run IS-IS process CORE in FRR, enable it on the router interfaces, advertise the LAN prefixes, and use wide metrics.",
+    "Do not modify management connectivity on eth0."
   ],
   "startup_configs": {
     "pc1": [
       "ip -6 addr add 2001:db8:1::2/64 dev eth1",
       "ip -6 route add 2001:db8:2::/64 via 2001:db8:1::1"
     ],
-    "r1": [
-      "sysctl -w net.ipv6.conf.all.forwarding=1"
-    ],
-    "r2": [
-      "sysctl -w net.ipv6.conf.all.forwarding=1"
-    ],
+    "r1": [],
+    "r2": [],
     "pc2": [
       "ip -6 addr add 2001:db8:2::2/64 dev eth1",
       "ip -6 route add 2001:db8:1::/64 via 2001:db8:2::1"
     ]
   },
-  "ground_truth_configs": {},
-  "ground_truth_reasoning": "FRR is pre-configured via mounted config files, because configuration-mode vtysh commands are not allowed by the Linux driver. The evaluation checks end-to-end IPv6 reachability and validates that FRR exposes an IS-IS configuration via show running-config.",
-  "testcases": [
-    {
-      "name": "PC1 can ping PC2 over IPv6",
-      "device": "pc1",
-      "command": "ping6 -c 3 -W 2 2001:db8:2::2",
-      "expected_output": "3 packets transmitted, 3 packets received"
-    },
-    {
-      "name": "R1 running-config contains IS-IS stanza",
-      "device": "r1",
-      "command": "vtysh -c 'show running-config'",
-      "expected_output": "router isis"
-    }
-  ],
+  "ground_truth_configs": {
+    "r1": [
+      "sysctl -w net.ipv6.conf.all.forwarding=1",
+      "vtysh -c 'configure terminal' -c 'interface eth1' -c 'ipv6 address 2001:db8:1::1/64' -c 'ipv6 router isis CORE' -c 'exit' -c 'interface eth2' -c 'ipv6 address 2001:db8:12::1/64' -c 'ipv6 router isis CORE' -c 'isis network point-to-point' -c 'exit' -c 'router isis CORE' -c 'net 49.0001.0000.0000.0001.00' -c 'is-type level-2-only' -c 'metric-style wide' -c 'topology ipv6-unicast' -c 'redistribute ipv6 connected level-2' -c 'end'"
+    ],
+    "r2": [
+      "sysctl -w net.ipv6.conf.all.forwarding=1",
+      "vtysh -c 'configure terminal' -c 'interface eth1' -c 'ipv6 address 2001:db8:2::1/64' -c 'ipv6 router isis CORE' -c 'exit' -c 'interface eth2' -c 'ipv6 address 2001:db8:12::2/64' -c 'ipv6 router isis CORE' -c 'isis network point-to-point' -c 'exit' -c 'router isis CORE' -c 'net 49.0001.0000.0000.0002.00' -c 'is-type level-2-only' -c 'metric-style wide' -c 'topology ipv6-unicast' -c 'redistribute ipv6 connected level-2' -c 'end'"
+    ]
+  },
+  "ground_truth_reasoning": "The hosts already have IPv6 addresses and static routes toward their local router, so the routers must supply the LAN gateway addresses, enable IPv6 forwarding, and exchange routes dynamically. FRR IS-IS CORE is enabled on each LAN-facing and core-facing interface; the point-to-point core link forms the adjacency, wide metrics and the ipv6-unicast topology are enabled, and connected IPv6 prefixes are redistributed into level 2 so pc1 and pc2 can reach each other without static routes on the routers.",
   "baseline_invariants": [
     {
-      "name": "PC1 management interface eth0 is still up",
+      "name": "PC1 management interface is still up",
       "device": "pc1",
       "command": "ip link show eth0",
       "expected_output": "state UP"
     },
     {
-      "name": "R1 management interface eth0 is still up",
+      "name": "R1 management interface is still up",
       "device": "r1",
       "command": "ip link show eth0",
       "expected_output": "state UP"
     },
     {
-      "name": "R2 management interface eth0 is still up",
+      "name": "R2 management interface is still up",
       "device": "r2",
       "command": "ip link show eth0",
       "expected_output": "state UP"
     },
     {
-      "name": "PC2 management interface eth0 is still up",
+      "name": "PC2 management interface is still up",
       "device": "pc2",
       "command": "ip link show eth0",
       "expected_output": "state UP"
+    },
+    {
+      "name": "R1 management default route is preserved",
+      "device": "r1",
+      "command": "ip route show default",
+      "expected_output": "default via 172.20.20.1 dev eth0"
+    },
+    {
+      "name": "R2 management default route is preserved",
+      "device": "r2",
+      "command": "ip route show default",
+      "expected_output": "default via 172.20.20.1 dev eth0"
+    }
+  ],
+  "testcases": [
+    {
+      "name": "PC1 can ping PC2 over IPv6",
+      "device": "pc1",
+      "command": "ping6 -c 3 -W 2 2001:db8:2::2",
+      "expected_output": "0% packet loss"
+    },
+    {
+      "name": "PC2 can ping PC1 over IPv6",
+      "device": "pc2",
+      "command": "ping6 -c 3 -W 2 2001:db8:1::2",
+      "expected_output": "0% packet loss"
+    },
+    {
+      "name": "R1 running config contains IS-IS CORE",
+      "device": "r1",
+      "command": "vtysh -c 'show running-config'",
+      "expected_output": "router isis CORE"
+    },
+    {
+      "name": "R2 running config contains IS-IS CORE",
+      "device": "r2",
+      "command": "vtysh -c 'show running-config'",
+      "expected_output": "router isis CORE"
+    },
+    {
+      "name": "R1 advertises connected IPv6 prefixes into IS-IS",
+      "device": "r1",
+      "command": "vtysh -c 'show running-config'",
+      "expected_output": "redistribute ipv6 connected level-2"
     }
   ]
 }

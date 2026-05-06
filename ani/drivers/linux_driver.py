@@ -1,4 +1,6 @@
 import json
+import re
+import shlex
 import subprocess
 from pathlib import Path
 from typing import Any
@@ -12,11 +14,16 @@ ALLOWED_PREFIXES = [
     "ip addr del",
     "ip addr show",
     "ip -6 addr show",
+    "ip -6 addr add",
+    "ip -6 addr del",
+    "ip link add",
     "ip link set",
     "ip link show",
     "ip route add",
     "ip route del",
     "ip route show",
+    "ip -6 route add",
+    "ip -6 route del",
     "ip -6 route show",
     "ip rule add",
     "ip rule del",
@@ -70,6 +77,10 @@ ALLOWED_PREFIXES = [
     "vtysh -c \"show running-config\"",
     "vtysh -c 'show version'",
     "vtysh -c \"show version\"",
+    "vtysh -c 'configure terminal'",
+    "vtysh -c \"configure terminal\"",
+    "vtysh -c 'conf t'",
+    "vtysh -c \"conf t\"",
 
     # Firewall read
     "nft list ruleset",
@@ -135,12 +146,14 @@ BLOCKED_SUBSTRINGS = [
     "yum ",
     "dnf ",
     "apk ",
-    "curl ",
     "wget ",
     "nc -e",
     "bash -c",
     "flush ruleset",
     "nft delete ruleset",
+
+    # Keep bind-mounted FRR startup configs immutable across benchmark runs.
+    "write memory",
 ]
 
 # Token di chaining shell che vogliamo proibire
@@ -181,6 +194,8 @@ READ_ONLY_PREFIXES = [
     "vtysh -c \"show running-config\"",
     "vtysh -c 'show version'",
     "vtysh -c \"show version\"",
+    "vtysh -c 'show ",
+    "vtysh -c \"show ",
 
     "nft list ruleset",
     "iptables-save",
@@ -188,9 +203,13 @@ READ_ONLY_PREFIXES = [
     "ss ",
     "netstat ",
     "arp ",
+    "curl -sS --max-time ",
+    "curl --max-time ",
+    "haproxy -c -f ",
     "ip neigh",
     "ip -br addr",
     "ip -br link",
+    "nping ",
 
     # Optional: readable iptables views (useful for audits)
     "iptables -S",
@@ -228,7 +247,39 @@ class LinuxDriver(BaseDriver):
             raise RuntimeError(f"Container not found: {container_name}")
 
         result = subprocess.run(
-            ["docker", "exec", container_name, "sh", "-c", command],
+            ["docker", "exec", "-u", "0", container_name, "sh", "-c", command],
+            capture_output=True,
+            text=True,
+            check=check,
+            timeout=timeout,
+        )
+
+        stdout = result.stdout.strip()
+        stderr = result.stderr.strip()
+
+        if stderr and not stdout:
+            return stderr
+        if stdout and stderr:
+            return f"{stdout}\n{stderr}"
+        return stdout
+
+    # Esegue un comando passando contenuto su stdin, usato solo dai restore interni.
+    def _exec_stdin(
+        self,
+        node: str,
+        command: str,
+        data: str,
+        check: bool = False,
+        timeout: int = 20,
+    ) -> str:
+        container_name = self._clab(node)
+
+        if not self._container_exists(container_name):
+            raise RuntimeError(f"Container not found: {container_name}")
+
+        result = subprocess.run(
+            ["docker", "exec", "-i", "-u", "0", container_name, "sh", "-c", command],
+            input=data,
             capture_output=True,
             text=True,
             check=check,
@@ -326,7 +377,45 @@ class LinuxDriver(BaseDriver):
         if cmd.startswith("ping ") or cmd.startswith("ping6 "):
             return "-c" in cmd
 
+        if cmd.startswith("curl "):
+            return "--max-time" in cmd and re.search(r"\shttps?://", cmd) is not None
+
+        if cmd.startswith("nping "):
+            return " -c " in f" {cmd} "
+
         return any(cmd.startswith(prefix) for prefix in READ_ONLY_PREFIXES)
+
+    # Esegue un comando read-only opzionale e scarta output che indica assenza tool.
+    def _capture_optional_readonly(self, node: str, command: str, timeout: int = 10) -> dict[str, Any]:
+        try:
+            out = self._exec_readonly(node, command, timeout=timeout).strip()
+        except Exception as e:
+            return {
+                "available": False,
+                "data": "",
+                "error": str(e),
+            }
+
+        lowered = out.lower()
+        unavailable_markers = [
+            "not found",
+            "no such file or directory",
+            "can't initialize",
+            "permission denied",
+        ]
+
+        if any(marker in lowered for marker in unavailable_markers):
+            return {
+                "available": False,
+                "data": "",
+                "error": out,
+            }
+
+        return {
+            "available": True,
+            "data": out,
+            "error": "",
+        }
 
     # Esegue un comando solo se è esplicitamente classificato come read-only
     def _exec_readonly(self, node: str, command: str, timeout: int = 10) -> str:
@@ -429,6 +518,263 @@ class LinuxDriver(BaseDriver):
                 continue
             results.append(rule)
         return results
+
+    # Estrae lo stato link/VRF necessario per ripristinare master e link virtuali.
+    def _extract_links(self, link_json: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        links = []
+
+        for link in link_json or []:
+            ifname = link.get("ifname")
+            if not ifname:
+                continue
+
+            linkinfo = link.get("linkinfo") or {}
+            info_data = linkinfo.get("info_data") or {}
+
+            links.append({
+                "ifname": ifname,
+                "master": link.get("master"),
+                "kind": linkinfo.get("info_kind"),
+                "table": info_data.get("table"),
+                "flags": link.get("flags") or [],
+            })
+
+        return links
+
+    # Parser fallback per immagini con BusyBox ip senza output JSON.
+    def _parse_ip_addr_show(self, text: str, family: str) -> list[dict[str, str]]:
+        results = []
+        current_ifname = ""
+
+        for line in text.splitlines():
+            interface_match = re.match(r"^\d+:\s+([^:]+):", line)
+            if interface_match:
+                current_ifname = interface_match.group(1).split("@", 1)[0]
+                continue
+
+            if not current_ifname or current_ifname == "lo":
+                continue
+
+            if family == "inet":
+                match = re.search(r"\binet\s+(\S+)", line)
+                if not match:
+                    continue
+
+                if "scope host" in line:
+                    continue
+
+                results.append({
+                    "ifname": current_ifname,
+                    "cidr": match.group(1),
+                })
+
+            elif family == "inet6":
+                match = re.search(r"\binet6\s+(\S+)", line)
+                if not match:
+                    continue
+
+                if "scope host" in line or "scope link" in line:
+                    continue
+
+                results.append({
+                    "ifname": current_ifname,
+                    "cidr": match.group(1),
+                })
+
+        return results
+
+    # Parser fallback per route testuali Linux/BusyBox.
+    def _parse_ip_route_show(self, text: str) -> list[dict[str, Any]]:
+        routes = []
+
+        for line in text.splitlines():
+            normalized = line.strip()
+            if not normalized:
+                continue
+
+            tokens = normalized.split()
+            route: dict[str, Any] = {
+                "dst": tokens[0],
+            }
+
+            idx = 1
+            while idx < len(tokens):
+                token = tokens[idx]
+
+                if token == "via" and idx + 1 < len(tokens):
+                    route["gateway"] = tokens[idx + 1]
+                    idx += 2
+                    continue
+
+                if token == "dev" and idx + 1 < len(tokens):
+                    route["dev"] = tokens[idx + 1]
+                    idx += 2
+                    continue
+
+                if token == "metric" and idx + 1 < len(tokens):
+                    route["metric"] = tokens[idx + 1]
+                    idx += 2
+                    continue
+
+                if token == "proto" and idx + 1 < len(tokens):
+                    route["protocol"] = tokens[idx + 1]
+                    idx += 2
+                    continue
+
+                idx += 1
+
+            routes.append(route)
+
+        return routes
+
+    # Parser fallback per ip rule show testuale.
+    def _parse_ip_rule_show(self, text: str) -> list[dict[str, Any]]:
+        rules = []
+
+        for line in text.splitlines():
+            normalized = line.strip()
+            match = re.match(r"^(\d+):\s+(.*)$", normalized)
+            if not match:
+                continue
+
+            rule: dict[str, Any] = {
+                "priority": int(match.group(1)),
+            }
+            tokens = match.group(2).split()
+
+            idx = 0
+            while idx < len(tokens):
+                token = tokens[idx]
+
+                if token == "from" and idx + 1 < len(tokens) and tokens[idx + 1] != "all":
+                    rule["src"] = tokens[idx + 1]
+                    idx += 2
+                    continue
+
+                if token == "to" and idx + 1 < len(tokens) and tokens[idx + 1] != "all":
+                    rule["dst"] = tokens[idx + 1]
+                    idx += 2
+                    continue
+
+                if token in {"lookup", "table"} and idx + 1 < len(tokens):
+                    rule["table"] = tokens[idx + 1]
+                    idx += 2
+                    continue
+
+                idx += 1
+
+            rules.append(rule)
+
+        return rules
+
+    # Parser fallback per ip link show testuale.
+    def _parse_ip_link_show(self, text: str) -> list[dict[str, Any]]:
+        links = []
+
+        for line in text.splitlines():
+            match = re.match(r"^\d+:\s+([^:]+):\s+<([^>]*)>(.*)$", line)
+            if not match:
+                continue
+
+            ifname = match.group(1).split("@", 1)[0]
+            suffix = match.group(3)
+            master = None
+
+            master_match = re.search(r"\bmaster\s+(\S+)", suffix)
+            if master_match:
+                master = master_match.group(1)
+
+            kind = None
+            table = None
+            if ifname.startswith("vrf"):
+                kind = "vrf"
+
+            links.append({
+                "ifname": ifname,
+                "master": master,
+                "kind": kind,
+                "table": table,
+                "flags": [flag for flag in match.group(2).split(",") if flag],
+            })
+
+        return links
+
+    def _capture_ipv4_addresses(self, device: str) -> list[dict[str, str]]:
+        data = self._exec_json(device, "ip -j addr show", default=None)
+        if data is not None:
+            return self._extract_ipv4_addresses(data)
+
+        text = self._exec(device, "ip addr show", check=False)
+        return self._parse_ip_addr_show(text, "inet")
+
+    def _capture_ipv6_addresses(self, device: str) -> list[dict[str, str]]:
+        data = self._exec_json(device, "ip -j -6 addr show", default=None)
+        if data is not None:
+            return self._extract_ipv6_addresses(data)
+
+        text = self._exec(device, "ip addr show", check=False)
+        return self._parse_ip_addr_show(text, "inet6")
+
+    def _capture_ipv4_routes(self, device: str) -> list[dict[str, Any]]:
+        data = self._exec_json(device, "ip -j route show", default=None)
+        if data is not None:
+            return self._extract_ipv4_routes(data)
+
+        text = self._exec(device, "ip route show", check=False)
+        return self._extract_ipv4_routes(self._parse_ip_route_show(text))
+
+    def _capture_ipv6_routes(self, device: str) -> list[dict[str, Any]]:
+        data = self._exec_json(device, "ip -j -6 route show", default=None)
+        if data is not None:
+            return self._extract_ipv6_routes(data)
+
+        text = self._exec(device, "ip -6 route show", check=False)
+        return self._extract_ipv6_routes(self._parse_ip_route_show(text))
+
+    def _capture_ipv4_rules(self, device: str) -> list[dict[str, Any]]:
+        data = self._exec_json(device, "ip -j rule show", default=None)
+        if data is not None:
+            return self._extract_ipv4_rules(data)
+
+        text = self._exec(device, "ip rule show", check=False)
+        return self._extract_ipv4_rules(self._parse_ip_rule_show(text))
+
+    def _capture_ipv6_rules(self, device: str) -> list[dict[str, Any]]:
+        data = self._exec_json(device, "ip -j -6 rule show", default=None)
+        if data is not None:
+            return self._extract_ipv6_rules(data)
+
+        text = self._exec(device, "ip -6 rule show", check=False)
+        return self._extract_ipv6_rules(self._parse_ip_rule_show(text))
+
+    def _capture_links(self, device: str) -> list[dict[str, Any]]:
+        data = self._exec_json(device, "ip -j link show", default=None)
+        if data is not None:
+            return self._extract_links(data)
+
+        text = self._exec(device, "ip link show", check=False)
+        return self._parse_ip_link_show(text)
+
+    # Normalizza show running-config FRR per frr-reload.py.
+    def _normalize_frr_config(self, text: str) -> str:
+        lines = []
+
+        for line in text.splitlines():
+            stripped = line.strip()
+
+            if not stripped:
+                continue
+            if stripped == "Building configuration...":
+                continue
+            if stripped == "Current configuration:":
+                continue
+
+            lines.append(line.rstrip())
+
+        if not lines:
+            return ""
+
+        return "\n".join(lines).strip() + "\n"
 
     # Converte una route IPv4 JSON in un comando ip route add
     def _ipv4_route_to_command(self, route: dict[str, Any]) -> str | None:
@@ -543,9 +889,34 @@ class LinuxDriver(BaseDriver):
         }
         return self._stable_state_key(relevant)
 
+    # Costruisce una mappa ifname -> link state.
+    def _link_by_name(self, links: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+        return {
+            str(link.get("ifname")): link
+            for link in links
+            if link.get("ifname")
+        }
+
     # Indica se una interfaccia è protetta perché usata tipicamente per management
     def _is_protected_interface(self, ifname: str | None) -> bool:
         return ifname in {"eth0", "mgmt0", "management0"}
+
+    # Indica se un link creato dopo lo snapshot puo' essere rimosso dal rollback.
+    def _is_removable_created_link(self, link: dict[str, Any]) -> bool:
+        ifname = str(link.get("ifname") or "")
+
+        if self._is_protected_interface(ifname):
+            return False
+
+        if ifname.startswith("vrf"):
+            return True
+
+        return link.get("kind") in {
+            "vrf",
+            "dummy",
+            "bridge",
+            "veth",
+        }
 
     # Indica se una route è protetta e non deve essere rimossa dal rollback automatico
     def _is_protected_route(self, route: dict[str, Any]) -> bool:
@@ -631,6 +1002,190 @@ class LinuxDriver(BaseDriver):
             "output": out,
         })
 
+    # Ripristina la running config FRR da uno snapshot, se FRR e frr-reload.py sono disponibili.
+    def _restore_frr_config(
+        self,
+        device: str,
+        snapshot: dict[str, Any],
+        steps: list[dict[str, str]],
+        skipped: list[dict[str, str]],
+    ) -> None:
+        frr_state = snapshot.get("frr", {})
+
+        if not frr_state.get("available"):
+            return
+
+        config = self._normalize_frr_config(str(frr_state.get("data", "")))
+        if not config:
+            skipped.append({
+                "step": "restore frr running-config",
+                "reason": "empty FRR snapshot",
+            })
+            return
+
+        tmp_path = "/tmp/netconfbench-rollback-frr.conf"
+        out = self._exec_stdin(
+            device,
+            f"cat > {shlex.quote(tmp_path)}",
+            config,
+            check=False,
+            timeout=10,
+        )
+        steps.append({
+            "step": f"write {tmp_path}",
+            "status": "ok",
+            "output": out,
+        })
+
+        reload_cmd = (
+            f"if command -v frr-reload.py >/dev/null 2>&1; then "
+            f"frr-reload.py --reload {shlex.quote(tmp_path)}; "
+            f"else /usr/lib/frr/frr-reload.py --reload {shlex.quote(tmp_path)}; fi"
+        )
+        out = self._exec(device, reload_cmd, check=False, timeout=35)
+        steps.append({
+            "step": "restore frr running-config",
+            "status": "ok",
+            "output": out,
+        })
+
+    # Ripristina nftables usando un ruleset testuale nello snapshot.
+    def _restore_nft_ruleset(
+        self,
+        device: str,
+        snapshot: dict[str, Any],
+        steps: list[dict[str, str]],
+    ) -> None:
+        nft_state = snapshot.get("nft", {})
+
+        if not nft_state.get("available"):
+            return
+
+        ruleset = str(nft_state.get("data", "")).strip()
+        restore_input = "flush ruleset\n"
+
+        if ruleset:
+            restore_input += ruleset + "\n"
+
+        out = self._exec_stdin(
+            device,
+            "nft -f -",
+            restore_input,
+            check=False,
+            timeout=20,
+        )
+        steps.append({
+            "step": "restore nft ruleset",
+            "status": "ok",
+            "output": out,
+        })
+
+    # Ripristina iptables usando iptables-restore, non esposto agli agenti.
+    def _restore_iptables_rules(
+        self,
+        device: str,
+        snapshot: dict[str, Any],
+        steps: list[dict[str, str]],
+    ) -> None:
+        iptables_state = snapshot.get("iptables", {})
+
+        if not iptables_state.get("available"):
+            return
+
+        rules = str(iptables_state.get("data", "")).strip()
+        if not rules:
+            return
+
+        out = self._exec_stdin(
+            device,
+            "iptables-restore",
+            rules + "\n",
+            check=False,
+            timeout=20,
+        )
+        steps.append({
+            "step": "restore iptables rules",
+            "status": "ok",
+            "output": out,
+        })
+
+    # Ripristina master VRF/link state e rimuove link virtuali creati dopo lo snapshot.
+    def _restore_link_state(
+        self,
+        device: str,
+        snapshot: dict[str, Any],
+        steps: list[dict[str, str]],
+        skipped: list[dict[str, str]],
+    ) -> None:
+        snapshot_links = self._link_by_name(snapshot.get("links", []))
+        current_links = self._link_by_name(self._capture_links(device))
+
+        # Recreate missing VRF links if they existed in the snapshot.
+        for ifname, snapshot_link in snapshot_links.items():
+            if ifname in current_links:
+                continue
+            if snapshot_link.get("kind") != "vrf" or snapshot_link.get("table") is None:
+                continue
+
+            cmd = f"ip link add {shlex.quote(ifname)} type vrf table {snapshot_link['table']}"
+            self._run_rollback_command(device, cmd, steps)
+
+        current_links = self._link_by_name(self._capture_links(device))
+
+        # Restore interface master before deleting created VRFs.
+        for ifname, snapshot_link in snapshot_links.items():
+            if ifname not in current_links:
+                continue
+            if self._is_protected_interface(ifname) or ifname == "lo":
+                continue
+
+            current_master = current_links[ifname].get("master")
+            snapshot_master = snapshot_link.get("master")
+
+            if current_master == snapshot_master:
+                continue
+
+            quoted_ifname = shlex.quote(ifname)
+            if snapshot_master:
+                cmd = f"ip link set {quoted_ifname} master {shlex.quote(str(snapshot_master))}"
+            else:
+                cmd = f"ip link set {quoted_ifname} nomaster"
+
+            self._run_rollback_command(device, cmd, steps)
+
+        current_links = self._link_by_name(self._capture_links(device))
+
+        # Restore administrative up/down state for links present in both snapshots.
+        for ifname, snapshot_link in snapshot_links.items():
+            current_link = current_links.get(ifname)
+            if not current_link:
+                continue
+            if self._is_protected_interface(ifname) or ifname == "lo":
+                continue
+
+            snapshot_up = "UP" in (snapshot_link.get("flags") or [])
+            current_up = "UP" in (current_link.get("flags") or [])
+
+            if snapshot_up == current_up:
+                continue
+
+            state = "up" if snapshot_up else "down"
+            self._run_rollback_command(device, f"ip link set {shlex.quote(ifname)} {state}", steps)
+
+        # Delete virtual links created after the snapshot, notably VRFs.
+        for ifname, current_link in current_links.items():
+            if ifname in snapshot_links:
+                continue
+
+            if not self._is_removable_created_link(current_link):
+                skipped.append({
+                    "step": f"ip link del {ifname}",
+                    "reason": "created link kind is not rollback-removable",
+                })
+                continue
+
+            self._run_rollback_command(device, f"ip link del {shlex.quote(ifname)}", steps)
+
     # Ricava uno snapshot esteso e read-only dello stato del nodo Linux
     def get_running_config(self, device: str) -> dict:
         sections = [
@@ -673,26 +1228,35 @@ class LinuxDriver(BaseDriver):
 
     # Cattura uno snapshot strutturato dello stato di rete utile per il rollback
     def capture_rollback_state(self, device: str) -> dict[str, Any]:
-        ipv4_addr_json = self._exec_json(device, "ip -j addr show", default=[])
-        ipv6_addr_json = self._exec_json(device, "ip -j -6 addr show", default=[])
-        ipv4_route_json = self._exec_json(device, "ip -j route show", default=[])
-        ipv6_route_json = self._exec_json(device, "ip -j -6 route show", default=[])
-        ipv4_rule_json = self._exec_json(device, "ip -j rule show", default=[])
-        ipv6_rule_json = self._exec_json(device, "ip -j -6 rule show", default=[])
-
         sysctl_text = self._exec_readonly(
             device,
             "sysctl net.ipv4.ip_forward net.ipv6.conf.all.forwarding"
         )
 
         return {
-            "addresses_v4": self._extract_ipv4_addresses(ipv4_addr_json),
-            "addresses_v6": self._extract_ipv6_addresses(ipv6_addr_json),
-            "routes_v4": self._extract_ipv4_routes(ipv4_route_json),
-            "routes_v6": self._extract_ipv6_routes(ipv6_route_json),
-            "rules_v4": self._extract_ipv4_rules(ipv4_rule_json),
-            "rules_v6": self._extract_ipv6_rules(ipv6_rule_json),
+            "addresses_v4": self._capture_ipv4_addresses(device),
+            "addresses_v6": self._capture_ipv6_addresses(device),
+            "routes_v4": self._capture_ipv4_routes(device),
+            "routes_v6": self._capture_ipv6_routes(device),
+            "rules_v4": self._capture_ipv4_rules(device),
+            "rules_v6": self._capture_ipv6_rules(device),
+            "links": self._capture_links(device),
             "sysctl": self._parse_sysctl_output(sysctl_text),
+            "frr": self._capture_optional_readonly(
+                device,
+                "vtysh -c 'show running-config'",
+                timeout=15,
+            ),
+            "nft": self._capture_optional_readonly(
+                device,
+                "nft list ruleset",
+                timeout=15,
+            ),
+            "iptables": self._capture_optional_readonly(
+                device,
+                "iptables-save",
+                timeout=15,
+            ),
         }
 
     # Ripristina uno snapshot Linux usando una strategia a delta non distruttiva
@@ -701,19 +1265,17 @@ class LinuxDriver(BaseDriver):
         skipped: list[dict[str, str]] = []
 
         try:
-            current_ipv4_addr_json = self._exec_json(device, "ip -j addr show", default=[])
-            current_ipv6_addr_json = self._exec_json(device, "ip -j -6 addr show", default=[])
-            current_ipv4_route_json = self._exec_json(device, "ip -j route show", default=[])
-            current_ipv6_route_json = self._exec_json(device, "ip -j -6 route show", default=[])
-            current_ipv4_rule_json = self._exec_json(device, "ip -j rule show", default=[])
-            current_ipv6_rule_json = self._exec_json(device, "ip -j -6 rule show", default=[])
+            self._restore_nft_ruleset(device, snapshot, steps)
+            self._restore_iptables_rules(device, snapshot, steps)
+            self._restore_frr_config(device, snapshot, steps, skipped)
+            self._restore_link_state(device, snapshot, steps, skipped)
 
-            current_addresses_v4 = self._extract_ipv4_addresses(current_ipv4_addr_json)
-            current_addresses_v6 = self._extract_ipv6_addresses(current_ipv6_addr_json)
-            current_routes_v4 = self._extract_ipv4_routes(current_ipv4_route_json)
-            current_routes_v6 = self._extract_ipv6_routes(current_ipv6_route_json)
-            current_rules_v4 = self._extract_ipv4_rules(current_ipv4_rule_json)
-            current_rules_v6 = self._extract_ipv6_rules(current_ipv6_rule_json)
+            current_addresses_v4 = self._capture_ipv4_addresses(device)
+            current_addresses_v6 = self._capture_ipv6_addresses(device)
+            current_routes_v4 = self._capture_ipv4_routes(device)
+            current_routes_v6 = self._capture_ipv6_routes(device)
+            current_rules_v4 = self._capture_ipv4_rules(device)
+            current_rules_v6 = self._capture_ipv6_rules(device)
 
             snapshot_addresses_v4 = snapshot.get("addresses_v4", [])
             snapshot_addresses_v6 = snapshot.get("addresses_v6", [])

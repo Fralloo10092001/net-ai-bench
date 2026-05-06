@@ -1,0 +1,130 @@
+{
+  "task_name": "vrf_isolation",
+  "lab_file": "labs/vrf-isolation.yml",
+  "domain": "routing",
+  "difficulty": "hard",
+  "intents": [
+    "Configure logical tenant separation on r1 using Linux VRF devices.",
+    "tenant-blue is connected to r1 eth1 on 10.10.1.0/24.",
+    "tenant-red is connected to r1 eth2 on 10.20.1.0/24.",
+    "shared is dual-attached: eth1 is the blue shared segment 10.10.100.0/24 and eth2 is the red shared segment 10.20.100.0/24.",
+    "Create VRF vrf-blue with table 10 and VRF vrf-red with table 20.",
+    "Place r1 eth1 and eth3 in vrf-blue, and r1 eth2 and eth4 in vrf-red.",
+    "Assign gateway addresses on r1 and enable IPv4 forwarding.",
+    "Allow each tenant to reach only its shared service segment, while tenant-blue and tenant-red remain isolated from each other.",
+    "Do not modify management connectivity on eth0."
+  ],
+  "startup_configs": {
+    "tenant-blue": [
+      "ip addr add 10.10.1.2/24 dev eth1",
+      "ip route add 10.10.100.0/24 via 10.10.1.1",
+      "ip route add 10.20.1.0/24 via 10.10.1.1"
+    ],
+    "r1": [],
+    "tenant-red": [
+      "ip addr add 10.20.1.2/24 dev eth1",
+      "ip route add 10.20.100.0/24 via 10.20.1.1",
+      "ip route add 10.10.1.0/24 via 10.20.1.1"
+    ],
+    "shared": [
+      "ip addr add 10.10.100.2/24 dev eth1",
+      "ip route add 10.10.1.0/24 via 10.10.100.1",
+      "ip addr add 10.20.100.2/24 dev eth2",
+      "ip route add 10.20.1.0/24 via 10.20.100.1"
+    ]
+  },
+  "ground_truth_configs": {
+    "r1": [
+      "ip link add vrf-blue type vrf table 10",
+      "ip link add vrf-red type vrf table 20",
+      "ip link set vrf-blue up",
+      "ip link set vrf-red up",
+      "ip link set eth1 master vrf-blue",
+      "ip link set eth3 master vrf-blue",
+      "ip link set eth2 master vrf-red",
+      "ip link set eth4 master vrf-red",
+      "ip addr add 10.10.1.1/24 dev eth1",
+      "ip addr add 10.10.100.1/24 dev eth3",
+      "ip addr add 10.20.1.1/24 dev eth2",
+      "ip addr add 10.20.100.1/24 dev eth4",
+      "sysctl -w net.ipv4.ip_forward=1"
+    ]
+  },
+  "ground_truth_reasoning": "The tenant-facing and shared-facing interfaces are separated into two Linux VRF devices so each tenant has an independent routing table. vrf-blue contains tenant-blue and the blue shared segment; vrf-red contains tenant-red and the red shared segment. This provides a controlled service leak through the dual-attached shared node while avoiding any route between the tenant-blue and tenant-red LANs. Enabling IPv4 forwarding lets r1 route within each VRF only.",
+  "baseline_invariants": [
+    {
+      "name": "tenant-blue management interface is still up",
+      "device": "tenant-blue",
+      "command": "ip link show eth0",
+      "expected_output": "state UP"
+    },
+    {
+      "name": "r1 management interface is still up",
+      "device": "r1",
+      "command": "ip link show eth0",
+      "expected_output": "state UP"
+    },
+    {
+      "name": "tenant-red management interface is still up",
+      "device": "tenant-red",
+      "command": "ip link show eth0",
+      "expected_output": "state UP"
+    },
+    {
+      "name": "shared management interface is still up",
+      "device": "shared",
+      "command": "ip link show eth0",
+      "expected_output": "state UP"
+    },
+    {
+      "name": "r1 management default route is preserved",
+      "device": "r1",
+      "command": "ip route show default",
+      "expected_output": "default via 172.20.20.1 dev eth0"
+    }
+  ],
+  "testcases": [
+    {
+      "name": "tenant-blue reaches its shared segment",
+      "device": "tenant-blue",
+      "command": "ping -c 3 -W 2 10.10.100.2",
+      "expected_output": "0% packet loss"
+    },
+    {
+      "name": "tenant-red reaches its shared segment",
+      "device": "tenant-red",
+      "command": "ping -c 3 -W 2 10.20.100.2",
+      "expected_output": "0% packet loss"
+    },
+    {
+      "name": "tenant-blue cannot reach tenant-red",
+      "device": "tenant-blue",
+      "command": "ping -c 3 -W 2 10.20.1.2",
+      "expected_output": "100% packet loss"
+    },
+    {
+      "name": "tenant-red cannot reach tenant-blue",
+      "device": "tenant-red",
+      "command": "ping -c 3 -W 2 10.10.1.2",
+      "expected_output": "100% packet loss"
+    },
+    {
+      "name": "r1 has the blue VRF",
+      "device": "r1",
+      "command": "ip link show vrf-blue",
+      "expected_output": "vrf"
+    },
+    {
+      "name": "r1 has the red VRF",
+      "device": "r1",
+      "command": "ip link show vrf-red",
+      "expected_output": "vrf"
+    },
+    {
+      "name": "r1 IPv4 forwarding is enabled",
+      "device": "r1",
+      "command": "cat /proc/sys/net/ipv4/ip_forward",
+      "expected_output": "1"
+    }
+  ]
+}

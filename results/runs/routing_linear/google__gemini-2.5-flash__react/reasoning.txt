@@ -1,0 +1,1 @@
+Connectivity between pc1 and pc2 through r1 has been successfully established and validated. The IP addresses were configured on r1's eth1 and eth2, and IPv4 forwarding was already enabled. The ping from pc1 to pc2 was successful, indicating the task is complete.

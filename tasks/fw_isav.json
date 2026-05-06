@@ -1,82 +1,97 @@
 {
-  "task_name": "FW ISAV (uRPF) - Block Spoofed Source Traffic",
+  "task_name": "fw_isav",
+  "lab_file": "labs/fw-isav.yml",
   "domain": "firewall",
   "difficulty": "medium",
-  "lab_file": "labs/fw-isav.yml",
-  "intent": "Enable ISAV-style anti-spoofing by setting rp_filter=1 on fw eth1. Do NOT modify IP addresses or routing on eth1/eth2; only change the required sysctl(s). Do not break management connectivity on eth0.",
+  "intents": [
+    "Configure ISAV-style anti-spoofing on fw to block amplification/reflection traffic arriving from the WAN with a spoofed LAN source.",
+    "wan is connected to fw eth1 on 198.51.100.0/24.",
+    "lan is connected to fw eth2 on 10.10.20.0/24.",
+    "Keep legitimate forwarding from wan to lan working.",
+    "Drop traffic entering fw eth1 if its IPv4 source belongs to the protected LAN prefix 10.10.20.0/24.",
+    "Enable strict reverse-path filtering on fw eth1 as an additional anti-spoofing signal.",
+    "Do not modify IP addressing or management connectivity on eth0."
+  ],
   "startup_configs": {
+    "wan": [
+      "ip addr add 198.51.100.2/24 dev eth1",
+      "ip route add 10.10.20.0/24 via 198.51.100.1"
+    ],
     "fw": [
+      "ip addr add 198.51.100.1/24 dev eth1",
+      "ip addr add 10.10.20.1/24 dev eth2",
       "sysctl -w net.ipv4.ip_forward=1"
+    ],
+    "lan": [
+      "ip addr add 10.10.20.2/24 dev eth1",
+      "ip route add 198.51.100.0/24 via 10.10.20.1"
     ]
   },
-
   "ground_truth_configs": {
     "fw": [
+      "nft add table inet isav",
+      "nft add chain inet isav forward '{ type filter hook forward priority -10; policy accept; }'",
+      "nft add rule inet isav forward iifname \"eth1\" ip saddr 10.10.20.0/24 counter drop",
       "sysctl -w net.ipv4.conf.eth1.rp_filter=1"
     ]
   },
-
-  "ground_truth_reasoning": "To prevent spoofed-source traffic from the WAN (ISAV/BCP38), enable strict reverse-path filtering (rp_filter=1) on the WAN-facing interface of the firewall. Packets arriving on the WAN with a source address that would not be routed back via the same interface should be dropped.",
-
-  "testcases": [
+  "ground_truth_reasoning": "ISAV/anti-amplification filtering should be placed on the WAN ingress side. Legitimate WAN traffic has a source reachable via fw eth1, while packets entering eth1 with a source from the protected LAN prefix are spoofed and should be dropped before forwarding. The nftables forward-hook rule enforces the ACL, and strict rp_filter on eth1 adds a kernel-level reverse-path check without changing the data-plane addressing.",
+  "baseline_invariants": [
     {
-      "name": "Firewall IPv4 forwarding is enabled",
-      "device": "fw",
-      "kind": "linux",
-      "command": "sysctl net.ipv4.ip_forward",
-      "expected_output": "net.ipv4.ip_forward = 1"
+      "name": "WAN management interface is still up",
+      "device": "wan",
+      "command": "ip link show eth0",
+      "expected_output": "state UP"
     },
     {
-      "name": "Spoofed source from WAN is dropped by ISAV/uRPF on firewall (nping spoof)",
+      "name": "FW management interface is still up",
+      "device": "fw",
+      "command": "ip link show eth0",
+      "expected_output": "state UP"
+    },
+    {
+      "name": "LAN management interface is still up",
+      "device": "lan",
+      "command": "ip link show eth0",
+      "expected_output": "state UP"
+    },
+    {
+      "name": "FW WAN address is unchanged",
+      "device": "fw",
+      "command": "ip addr show eth1",
+      "expected_output": "198.51.100.1/24"
+    },
+    {
+      "name": "FW LAN address is unchanged",
+      "device": "fw",
+      "command": "ip addr show eth2",
+      "expected_output": "10.10.20.1/24"
+    }
+  ],
+  "testcases": [
+    {
+      "name": "Legitimate WAN to LAN ICMP still works",
       "device": "wan",
-      "kind": "linux",
-      "command": "nping --icmp --source-ip 10.0.0.2 192.168.20.2 -c 3",
+      "command": "ping -c 3 -W 2 10.10.20.2",
+      "expected_output": "0% packet loss"
+    },
+    {
+      "name": "Spoofed LAN-source probe from WAN receives no replies",
+      "device": "wan",
+      "command": "nping --icmp --source-ip 10.10.20.200 10.10.20.2 -c 3",
       "expected_output": "Rcvd: 0"
     },
     {
-      "name": "Firewall has rp_filter enabled on WAN interface",
+      "name": "ISAV ACL is installed on the forward path",
       "device": "fw",
-      "kind": "linux",
+      "command": "nft list ruleset",
+      "expected_output": "iifname \"eth1\" ip saddr 10.10.20.0/24"
+    },
+    {
+      "name": "Strict rp_filter is enabled on WAN interface",
+      "device": "fw",
       "command": "sysctl net.ipv4.conf.eth1.rp_filter",
       "expected_output": "net.ipv4.conf.eth1.rp_filter = 1"
     }
-  ],
-
-  "baseline_invariants": [
-    {
-      "name": "WAN management interface eth0 is still up",
-      "device": "wan",
-      "kind": "linux",
-      "command": "ip link show eth0",
-      "expected_output": "state UP"
-    },
-    {
-      "name": "FW management interface eth0 is still up",
-      "device": "fw",
-      "kind": "linux",
-      "command": "ip link show eth0",
-      "expected_output": "state UP"
-    },
-    {
-      "name": "LAN management interface eth0 is still up",
-      "device": "lan",
-      "kind": "linux",
-      "command": "ip link show eth0",
-      "expected_output": "state UP"
-    },
-    {
-    "name": "FW WAN interface eth1 is still up",
-    "device": "fw",
-    "kind": "linux",
-    "command": "ip link show eth1",
-    "expected_output": "state UP"
-  },
-  {
-    "name": "FW LAN interface eth2 is still up",
-    "device": "fw",
-    "kind": "linux",
-    "command": "ip link show eth2",
-    "expected_output": "state UP"
-  }
   ]
 }

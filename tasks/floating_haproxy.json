@@ -1,0 +1,111 @@
+{
+  "task_name": "floating_haproxy",
+  "lab_file": "labs/floating-haproxy.yml",
+  "domain": "firewall",
+  "difficulty": "hard",
+  "intents": [
+    "Activate the public floating VIP for the HAProxy load balancer on edge2.",
+    "edge1 and edge2 are frontier nodes; HAProxy is already installed and configured on both nodes from mounted lab configuration.",
+    "The final state must expose VIP 203.0.113.100/32 on edge2 eth1.",
+    "Traffic from client to http://203.0.113.100:8080/ must be balanced by HAProxy across backend-a and backend-b.",
+    "Preserve the existing HAProxy configuration, backend addressing, and management connectivity.",
+    "Do not modify backend servers and do not flush firewall state."
+  ],
+  "startup_configs": {
+    "client": [
+      "ip addr add 203.0.113.10/24 dev eth1",
+      "ip route add 203.0.113.100/32 via 203.0.113.2"
+    ],
+    "edge1": [
+      "ip addr add 10.1.21.1/24 dev eth2",
+      "ip addr add 10.1.22.1/24 dev eth3"
+    ],
+    "edge2": [
+      "ip addr add 203.0.113.2/24 dev eth1",
+      "ip addr add 10.2.21.1/24 dev eth2",
+      "ip addr add 10.2.22.1/24 dev eth3"
+    ],
+    "backend-a": [
+      "ip addr add 10.2.21.101/24 dev eth1"
+    ],
+    "backend-b": [
+      "ip addr add 10.2.22.102/24 dev eth1"
+    ]
+  },
+  "ground_truth_configs": {
+    "edge2": [
+      "ip addr add 203.0.113.100/32 dev eth1"
+    ]
+  },
+  "ground_truth_reasoning": "HAProxy is already configured to listen on TCP 8080 and to health-check both backend servers. The missing network state is the floating public VIP on the active frontier node. Adding 203.0.113.100/32 to edge2 eth1 makes client traffic for the VIP arrive at edge2, where HAProxy can distribute it across backend-a and backend-b without touching backend hosts or management networking.",
+  "baseline_invariants": [
+    {
+      "name": "client management interface is still up",
+      "device": "client",
+      "command": "ip link show eth0",
+      "expected_output": "state UP"
+    },
+    {
+      "name": "edge1 management interface is still up",
+      "device": "edge1",
+      "command": "ip link show eth0",
+      "expected_output": "state UP"
+    },
+    {
+      "name": "edge2 management interface is still up",
+      "device": "edge2",
+      "command": "ip link show eth0",
+      "expected_output": "state UP"
+    },
+    {
+      "name": "backend-a management interface is still up",
+      "device": "backend-a",
+      "command": "ip link show eth0",
+      "expected_output": "state UP"
+    },
+    {
+      "name": "backend-b management interface is still up",
+      "device": "backend-b",
+      "command": "ip link show eth0",
+      "expected_output": "state UP"
+    },
+    {
+      "name": "edge2 base WAN address is unchanged",
+      "device": "edge2",
+      "command": "ip addr show eth1",
+      "expected_output": "203.0.113.2/24"
+    }
+  ],
+  "testcases": [
+    {
+      "name": "edge2 owns the floating VIP",
+      "device": "edge2",
+      "command": "ip addr show eth1",
+      "expected_output": "203.0.113.100/32"
+    },
+    {
+      "name": "HAProxy configuration on edge2 is valid",
+      "device": "edge2",
+      "command": "sh -c \"haproxy -c -f /usr/local/etc/haproxy/haproxy.cfg >/dev/null 2>&1 && echo haproxy-valid\"",
+      "expected_output": "haproxy-valid"
+    },
+    {
+      "name": "Client reaches the HAProxy VIP",
+      "device": "client",
+      "command": "curl -sS --max-time 3 http://203.0.113.100:8080/",
+      "expected_output": "backend-"
+    },
+    {
+      "name": "Load balancing reaches backend-a",
+      "device": "client",
+      "command": "sh -c \"for i in 1 2 3 4; do curl -sS --max-time 2 http://203.0.113.100:8080/; done\"",
+      "expected_output": "backend-a"
+    },
+    {
+      "name": "Load balancing reaches backend-b",
+      "device": "client",
+      "command": "sh -c \"for i in 1 2 3 4; do curl -sS --max-time 2 http://203.0.113.100:8080/; done\"",
+      "expected_output": "backend-b"
+    }
+  ]
+}

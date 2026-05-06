@@ -1,0 +1,38 @@
+name: vrf-isolation
+
+topology:
+  nodes:
+    tenant-blue:
+      kind: linux
+      image: alpine:latest
+      exec:
+        - ip addr add 10.10.1.2/24 dev eth1
+        - ip route add 10.10.100.0/24 via 10.10.1.1
+        - ip route add 10.20.1.0/24 via 10.10.1.1
+
+    r1:
+      kind: linux
+      image: nicolaka/netshoot:latest
+
+    tenant-red:
+      kind: linux
+      image: alpine:latest
+      exec:
+        - ip addr add 10.20.1.2/24 dev eth1
+        - ip route add 10.20.100.0/24 via 10.20.1.1
+        - ip route add 10.10.1.0/24 via 10.20.1.1
+
+    shared:
+      kind: linux
+      image: alpine:latest
+      exec:
+        - ip addr add 10.10.100.2/24 dev eth1
+        - ip route add 10.10.1.0/24 via 10.10.100.1
+        - ip addr add 10.20.100.2/24 dev eth2
+        - ip route add 10.20.1.0/24 via 10.20.100.1
+
+  links:
+    - endpoints: ["tenant-blue:eth1", "r1:eth1"]
+    - endpoints: ["tenant-red:eth1", "r1:eth2"]
+    - endpoints: ["shared:eth1", "r1:eth3"]
+    - endpoints: ["shared:eth2", "r1:eth4"]

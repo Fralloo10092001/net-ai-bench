@@ -1,0 +1,100 @@
+{
+  "task_name": "isis_misconfigured",
+  "lab_file": "labs/isis-misconfigured.yml",
+  "domain": "troubleshooting",
+  "difficulty": "medium",
+  "intents": [
+    "Troubleshoot an IPv6 IS-IS domain where pc1 cannot reach pc2 because the r1-r2 adjacency does not form.",
+    "The lab starts with FRR and IPv6 addressing already present on r1 and r2.",
+    "Inspect the IS-IS state, running config, and IPv6 routes to identify the misconfiguration.",
+    "Fix the missing IS-IS activation on r2 eth2, the core-facing interface toward r1.",
+    "After the fix, r1 and r2 must form an IS-IS adjacency and exchange the LAN IPv6 prefixes.",
+    "Do not replace the addressing plan and do not modify management connectivity on eth0."
+  ],
+  "startup_configs": {
+    "pc1": [
+      "ip -6 addr add 2001:db8:1::2/64 dev eth1",
+      "ip -6 route add 2001:db8:2::/64 via 2001:db8:1::1"
+    ],
+    "r1": [
+      "sysctl -w net.ipv6.conf.all.forwarding=1"
+    ],
+    "r2": [
+      "sysctl -w net.ipv6.conf.all.forwarding=1"
+    ],
+    "pc2": [
+      "ip -6 addr add 2001:db8:2::2/64 dev eth1",
+      "ip -6 route add 2001:db8:1::/64 via 2001:db8:2::1"
+    ]
+  },
+  "ground_truth_configs": {
+    "r2": [
+      "vtysh -c 'configure terminal' -c 'interface eth2' -c 'ipv6 router isis CORE' -c 'isis network point-to-point' -c 'end'"
+    ]
+  },
+  "ground_truth_reasoning": "The IPv6 addressing and forwarding are already in place, but r2 eth2 is missing IS-IS activation, so no adjacency can form over the r1-r2 core link. The correct repair is to enter FRR configuration mode on r2, enable ipv6 router isis CORE under eth2, mark the link point-to-point, and then validate the neighbor table, LSDB-derived routes, and end-to-end IPv6 ping.",
+  "baseline_invariants": [
+    {
+      "name": "PC1 management interface is still up",
+      "device": "pc1",
+      "command": "ip link show eth0",
+      "expected_output": "state UP"
+    },
+    {
+      "name": "R1 management interface is still up",
+      "device": "r1",
+      "command": "ip link show eth0",
+      "expected_output": "state UP"
+    },
+    {
+      "name": "R2 management interface is still up",
+      "device": "r2",
+      "command": "ip link show eth0",
+      "expected_output": "state UP"
+    },
+    {
+      "name": "PC2 management interface is still up",
+      "device": "pc2",
+      "command": "ip link show eth0",
+      "expected_output": "state UP"
+    },
+    {
+      "name": "R2 IPv6 forwarding remains enabled",
+      "device": "r2",
+      "command": "cat /proc/sys/net/ipv6/conf/all/forwarding",
+      "expected_output": "1"
+    }
+  ],
+  "testcases": [
+    {
+      "name": "PC1 can ping PC2 after IS-IS repair",
+      "device": "pc1",
+      "command": "ping6 -c 3 -W 2 2001:db8:2::2",
+      "expected_output": "0% packet loss"
+    },
+    {
+      "name": "PC2 can ping PC1 after IS-IS repair",
+      "device": "pc2",
+      "command": "ping6 -c 3 -W 2 2001:db8:1::2",
+      "expected_output": "0% packet loss"
+    },
+    {
+      "name": "R1 sees R2 as an IS-IS neighbor",
+      "device": "r1",
+      "command": "vtysh -c 'show isis neighbor'",
+      "expected_output": "r2"
+    },
+    {
+      "name": "R2 sees R1 as an IS-IS neighbor",
+      "device": "r2",
+      "command": "vtysh -c 'show isis neighbor'",
+      "expected_output": "r1"
+    },
+    {
+      "name": "R2 core interface is point-to-point IS-IS",
+      "device": "r2",
+      "command": "vtysh -c 'show running-config'",
+      "expected_output": "isis network point-to-point"
+    }
+  ]
+}

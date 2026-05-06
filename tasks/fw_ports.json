@@ -1,133 +1,118 @@
 {
-  "task_name": "FW - Block inbound ports (default deny) with logging and audit",
+  "task_name": "fw_ports",
+  "lab_file": "labs/fw-ports.yml",
   "domain": "firewall",
   "difficulty": "medium",
-  "lab_file": "labs/fw-ports.yml",
-  "intent": "Configure the firewall (fw) with a default-deny inbound policy using nftables. Allow only explicitly authorized traffic, drop everything else, and log drops for audit. Validate enforcement using TCP SYN, UDP, and ICMP tests from the WAN host. Do NOT modify IP addresses or routing on eth1/eth2; only change firewall rules and required sysctl(s). Do not break management connectivity on eth0.",
-
+  "intents": [
+    "Configure a default-deny inbound firewall policy on fw using nftables.",
+    "wan is connected to fw eth1 on 10.40.1.0/24.",
+    "lan is connected to fw eth2 on 10.40.2.0/24.",
+    "Permit established and related traffic, loopback traffic, diagnostic ICMP, TCP port 2222, and UDP port 5555 to fw.",
+    "Drop other inbound TCP/UDP ports and log/audit drops with prefix FW_INPUT_DROP.",
+    "Do not flush/reset firewall state and do not modify IP addressing or management connectivity on eth0."
+  ],
   "startup_configs": {
+    "wan": [
+      "ip addr add 10.40.1.2/24 dev eth1",
+      "ip route add 10.40.2.0/24 via 10.40.1.1"
+    ],
     "fw": [
+      "ip addr add 10.40.1.1/24 dev eth1",
+      "ip addr add 10.40.2.1/24 dev eth2",
       "sysctl -w net.ipv4.ip_forward=1"
     ],
-    "wan": [
-      "ip route add 10.0.2.0/24 via 10.0.1.1 metric 1024"
-    ],
     "lan": [
-      "ip route add 10.0.1.0/24 via 10.0.2.1 metric 1024",
-      "ip route add default via 10.0.2.1 metric 1024"
+      "ip addr add 10.40.2.2/24 dev eth1",
+      "ip route add 10.40.1.0/24 via 10.40.2.1"
     ]
   },
-
   "ground_truth_configs": {
     "fw": [
       "nft add table inet filter",
-      "nft add chain inet filter input { type filter hook input priority 0; policy drop; }",
-      "nft add chain inet filter forward { type filter hook forward priority 0; policy drop; }",
-
+      "nft add chain inet filter input '{ type filter hook input priority 0; policy drop; }'",
       "nft add rule inet filter input ct state established,related accept",
-      "nft add rule inet filter input iifname lo accept",
-
-      "nft add rule inet filter input ip protocol icmp icmp type echo-request accept",
-      "nft add rule inet filter input ip protocol icmp icmp type echo-reply accept",
-
+      "nft add rule inet filter input iifname \"lo\" accept",
+      "nft add rule inet filter input ip protocol icmp accept",
       "nft add rule inet filter input tcp dport 2222 accept",
       "nft add rule inet filter input udp dport 5555 accept",
-
-      "nft add rule inet filter input log prefix \"FW_INPUT_DROP \" level info flags all counter",
-      "nft add rule inet filter input drop"
+      "nft add rule inet filter input log prefix \"FW_INPUT_DROP \" flags all counter drop"
     ]
   },
-
-  "ground_truth_reasoning": "A default-deny inbound policy is enforced by setting the nftables input chain policy to drop and adding explicit allow rules for established/related, loopback, limited ICMP diagnostics, and a small set of authorized ports. A final log+drop rule ensures unauthorized traffic is blocked and auditable.",
-
-  "testcases": [
-    {
-      "name": "ICMP to firewall is allowed (diagnostic ping works)",
-      "device": "wan",
-      "kind": "linux",
-      "command": "ping -c 3 10.0.1.1",
-      "expected_output": "3 packets transmitted, 3 packets received"
-    },
-    {
-      "name": "TCP to allowed port is not silently dropped (RST observed)",
-      "device": "wan",
-      "kind": "linux",
-      "command": "nping --tcp -p 2222 --flags syn 10.0.1.1 -c 3",
-      "expected_output": "Flags [R]"
-    },
-    {
-      "name": "TCP to blocked port is silently dropped (no replies)",
-      "device": "wan",
-      "kind": "linux",
-      "command": "nping --tcp -p 2223 --flags syn 10.0.1.1 -c 3",
-      "expected_output": "Rcvd: 0"
-    },
-    {
-      "name": "UDP to allowed port is not silently dropped (ICMP unreachable observed)",
-      "device": "wan",
-      "kind": "linux",
-      "command": "nping --udp -p 5555 10.0.1.1 -c 3",
-      "expected_output": "Destination unreachable"
-    },
-    {
-      "name": "UDP to blocked port is silently dropped (no replies)",
-      "device": "wan",
-      "kind": "linux",
-      "command": "nping --udp -p 5556 10.0.1.1 -c 3",
-      "expected_output": "Rcvd: 0"
-    },
-    {
-      "name": "Ruleset is auditable and shows default-deny + logging",
-      "device": "fw",
-      "kind": "linux",
-      "command": "nft list ruleset",
-      "expected_output": "FW_INPUT_DROP"
-    }
-  ],
-
+  "ground_truth_reasoning": "The inbound policy is enforced on fw's input hook. A drop policy provides default deny, while explicit rules preserve established/related traffic, loopback, ICMP diagnostics, and the two authorized service ports. The final log+drop rule gives an auditable signal for unauthorized traffic without changing data-plane addressing or management connectivity.",
   "baseline_invariants": [
     {
-      "name": "WAN management interface eth0 is still up",
+      "name": "WAN management interface is still up",
       "device": "wan",
-      "kind": "linux",
       "command": "ip link show eth0",
       "expected_output": "state UP"
     },
     {
-      "name": "FW management interface eth0 is still up",
+      "name": "FW management interface is still up",
       "device": "fw",
-      "kind": "linux",
       "command": "ip link show eth0",
       "expected_output": "state UP"
     },
     {
-      "name": "LAN management interface eth0 is still up",
+      "name": "LAN management interface is still up",
       "device": "lan",
-      "kind": "linux",
       "command": "ip link show eth0",
       "expected_output": "state UP"
     },
-
     {
-      "name": "FW WAN interface eth1 keeps the expected address",
+      "name": "FW WAN address is unchanged",
       "device": "fw",
-      "kind": "linux",
       "command": "ip addr show eth1",
-      "expected_output": "10.0.1.1/24"
+      "expected_output": "10.40.1.1/24"
     },
     {
-      "name": "WAN data interface eth1 keeps the expected address",
+      "name": "FW LAN address is unchanged",
+      "device": "fw",
+      "command": "ip addr show eth2",
+      "expected_output": "10.40.2.1/24"
+    }
+  ],
+  "testcases": [
+    {
+      "name": "ICMP to firewall remains allowed",
       "device": "wan",
-      "kind": "linux",
-      "command": "ip addr show eth1",
-      "expected_output": "10.0.1.2/24"
+      "command": "ping -c 3 -W 2 10.40.1.1",
+      "expected_output": "0% packet loss"
     },
     {
-      "name": "LAN data interface eth1 keeps the expected address",
-      "device": "lan",
-      "kind": "linux",
-      "command": "ip addr show eth1",
-      "expected_output": "10.0.2.2/24"
+      "name": "TCP allowed port 2222 is not silently dropped",
+      "device": "wan",
+      "command": "nping --tcp -p 2222 --flags syn 10.40.1.1 -c 3",
+      "expected_output": "Lost: 0"
+    },
+    {
+      "name": "TCP blocked port 2223 is dropped",
+      "device": "wan",
+      "command": "nping --tcp -p 2223 --flags syn 10.40.1.1 -c 3",
+      "expected_output": "Rcvd: 0"
+    },
+    {
+      "name": "UDP allowed port 5555 is not silently dropped",
+      "device": "wan",
+      "command": "nping --udp -p 5555 10.40.1.1 -c 3",
+      "expected_output": "Port unreachable"
+    },
+    {
+      "name": "UDP blocked port 5556 is dropped",
+      "device": "wan",
+      "command": "nping --udp -p 5556 10.40.1.1 -c 3",
+      "expected_output": "Rcvd: 0"
+    },
+    {
+      "name": "Ruleset is auditable and logs drops",
+      "device": "fw",
+      "command": "nft list ruleset",
+      "expected_output": "FW_INPUT_DROP"
+    },
+    {
+      "name": "Input chain has default drop policy",
+      "device": "fw",
+      "command": "nft list ruleset",
+      "expected_output": "policy drop"
     }
   ]
 }

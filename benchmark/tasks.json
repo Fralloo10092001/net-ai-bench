@@ -1,4 +1,13 @@
 [
-  "tasks/hello_world_ping.json",
-  "tasks/frr_basic.json"
+  "tasks/floating_dnat.json",
+  "tasks/floating_haproxy.json",
+  "tasks/frr_basic.json",
+  "tasks/fw_isav.json",
+  "tasks/fw_ports.json",
+  "tasks/isis_ipv6.json",
+  "tasks/isis_misconfigured.json",
+  "tasks/routing_linear.json",
+  "tasks/routing_linear_linkdown.json",
+  "tasks/ssh_filtering.json",
+  "tasks/vrf_isolation.json"
 ]

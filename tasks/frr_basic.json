@@ -5,12 +5,12 @@
   "difficulty": "easy",
   "intents": [
     "Configure the network using exactly the following addressing plan:",
-    "Set pc1 eth1 to 10.0.1.2/24 and use 10.0.1.1 as default gateway.",
+    "Set pc1 eth1 to 10.0.1.2/24 and route the PC2 subnet via 10.0.1.1.",
     "Set r1 eth1 to 10.0.1.1/24.",
     "Set r1 eth2 to 10.0.12.1/24.",
     "Set r2 eth1 to 10.0.12.2/24.",
     "Set r2 eth2 to 10.0.2.1/24.",
-    "Set pc2 eth1 to 10.0.2.2/24 and use 10.0.2.1 as default gateway.",
+    "Set pc2 eth1 to 10.0.2.2/24 and route the PC1 subnet via 10.0.2.1.",
     "Enable IP forwarding on both routers if needed.",
     "Configure static routes so that PC1 and PC2 can ping each other through R1 and R2."
   ],
@@ -29,14 +29,14 @@
     ],
     "pc1": [
       "ip addr add 10.0.1.2/24 dev eth1",
-      "ip route add default via 10.0.1.1"
+      "ip route add 10.0.2.0/24 via 10.0.1.1"
     ],
     "pc2": [
       "ip addr add 10.0.2.2/24 dev eth1",
-      "ip route add default via 10.0.2.1"
+      "ip route add 10.0.1.0/24 via 10.0.2.1"
     ]
   },
-  "ground_truth_reasoning": "First configure the endpoint and router interface IPv4 addresses according to the required addressing plan: pc1 on 10.0.1.0/24, r1 with interfaces on 10.0.1.0/24 and 10.0.12.0/24, r2 with interfaces on 10.0.12.0/24 and 10.0.2.0/24, and pc2 on 10.0.2.0/24. Then configure the end hosts to use their directly connected router interface as the default gateway. After addressing is in place, enable IPv4 forwarding on both routers so they can route packets between subnets. Finally, install static routes on r1 toward the 10.0.2.0/24 network via r2 and on r2 toward the 10.0.1.0/24 network via r1, so that pc1 and pc2 can reach each other end to end through the two-router path without breaking the existing management connectivity.",
+  "ground_truth_reasoning": "First configure the endpoint and router interface IPv4 addresses according to the required addressing plan: pc1 on 10.0.1.0/24, r1 with interfaces on 10.0.1.0/24 and 10.0.12.0/24, r2 with interfaces on 10.0.12.0/24 and 10.0.2.0/24, and pc2 on 10.0.2.0/24. The Docker management default route on eth0 must remain intact, so the end hosts receive specific routes for the remote lab subnet through their directly connected router. After addressing is in place, enable IPv4 forwarding on both routers and install static routes on r1 toward 10.0.2.0/24 via r2 and on r2 toward 10.0.1.0/24 via r1.",
   "baseline_invariants": [
           {
       "name": "PC1 management interface is still up",

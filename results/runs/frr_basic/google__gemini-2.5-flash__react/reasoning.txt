@@ -1,1 +1,1 @@
-PC1 can successfully ping PC2 (10.0.2.2), which means the end-to-end connectivity required by the task has been established and validated. All addressing and routing requirements have been met.
+PC1 and PC2 can successfully ping each other, indicating that all IP addresses, static routes, and IP forwarding configurations are correct and the task goal has been achieved.

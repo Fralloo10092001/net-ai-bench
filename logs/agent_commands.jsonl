@@ -1,8 +1,23 @@
-{"device": "edge2", "command": "ip addr add 203.0.113.254/32 dev eth1"}
-{"device": "edge2", "command": "iptables -t nat -A PREROUTING -d 203.0.113.254 -p tcp --dport 8080 -j DNAT --to-destination 10.0.0.100:8080"}
-{"device": "edge2", "command": "iptables -A FORWARD -d 10.0.0.100 -p tcp --dport 8080 -j ACCEPT"}
-{"device": "edge2", "command": "iptables -t nat -A POSTROUTING -o eth2 -d 10.0.0.100 -p tcp --dport 8080 -j MASQUERADE"}
-{"device": "edge2", "command": "iptables -A FORWARD -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT"}
-{"device": "edge2", "command": "ip addr add 203.0.113.254/24 dev eth1"}
-{"device": "edge2", "command": "ip link set eth1 up"}
-{"device": "edge2", "command": "ip addr add 203.0.113.254/24 dev eth1"}
+{"device": "r1", "command": "ip link add vrf-blue type vrf table 10"}
+{"device": "r1", "command": "ip link set vrf-blue up"}
+{"device": "r1", "command": "ip link add vrf-red type vrf table 20"}
+{"device": "r1", "command": "ip link set vrf-red up"}
+{"device": "r1", "command": "ip link set eth1 master vrf-blue"}
+{"device": "r1", "command": "ip addr add 10.10.1.1/24 dev eth1"}
+{"device": "r1", "command": "ip link set eth1 up"}
+{"device": "r1", "command": "ip link set eth3 master vrf-blue"}
+{"device": "r1", "command": "ip addr add 10.10.100.1/24 dev eth3"}
+{"device": "r1", "command": "ip link set eth3 up"}
+{"device": "r1", "command": "ip link set eth2 master vrf-red"}
+{"device": "r1", "command": "ip addr add 10.20.1.1/24 dev eth2"}
+{"device": "r1", "command": "ip link set eth2 up"}
+{"device": "r1", "command": "ip link set eth4 master vrf-red"}
+{"device": "r1", "command": "ip addr add 10.20.100.1/24 dev eth4"}
+{"device": "r1", "command": "ip link set eth4 up"}
+{"device": "tenant-blue", "command": "ip addr add 10.10.1.2/24 dev eth1"}
+{"device": "tenant-blue", "command": "ip link set eth1 up"}
+{"device": "tenant-blue", "command": "ip route add default via 10.10.1.1"}
+{"device": "tenant-blue", "command": "ip route del 10.20.1.0/24 via 10.10.1.1"}
+{"device": "tenant-blue", "command": "ip route del default via 10.10.1.1"}
+{"device": "tenant-blue", "command": "ip route add 10.10.100.0/24 via 10.10.1.1"}
+{"device": "tenant-red", "command": "ip route del 10.10.1.0/24 via 10.20.1.1"}

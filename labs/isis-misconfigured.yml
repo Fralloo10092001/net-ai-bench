@@ -1,0 +1,42 @@
+name: isis-misconfigured
+
+topology:
+  nodes:
+    pc1:
+      kind: linux
+      image: alpine:latest
+      exec:
+        - ip -6 addr add 2001:db8:1::2/64 dev eth1
+        - ip -6 route add 2001:db8:2::/64 via 2001:db8:1::1
+
+    r1:
+      kind: linux
+      image: frrouting/frr:latest
+      binds:
+        - ../lab-configs/isis-misconfigured/r1/daemons:/etc/frr/daemons:ro
+        - ../lab-configs/isis-misconfigured/r1/frr.conf:/etc/frr/frr.conf:ro
+        - ../lab-configs/isis-misconfigured/r1/vtysh.conf:/etc/frr/vtysh.conf:ro
+      exec:
+        - sysctl -w net.ipv6.conf.all.forwarding=1
+
+    r2:
+      kind: linux
+      image: frrouting/frr:latest
+      binds:
+        - ../lab-configs/isis-misconfigured/r2/daemons:/etc/frr/daemons:ro
+        - ../lab-configs/isis-misconfigured/r2/frr.conf:/etc/frr/frr.conf:ro
+        - ../lab-configs/isis-misconfigured/r2/vtysh.conf:/etc/frr/vtysh.conf:ro
+      exec:
+        - sysctl -w net.ipv6.conf.all.forwarding=1
+
+    pc2:
+      kind: linux
+      image: alpine:latest
+      exec:
+        - ip -6 addr add 2001:db8:2::2/64 dev eth1
+        - ip -6 route add 2001:db8:1::/64 via 2001:db8:2::1
+
+  links:
+    - endpoints: ["pc1:eth1", "r1:eth1"]
+    - endpoints: ["r1:eth2", "r2:eth2"]
+    - endpoints: ["r2:eth1", "pc2:eth1"]

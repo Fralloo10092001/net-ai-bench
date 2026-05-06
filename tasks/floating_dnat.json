@@ -1,130 +1,122 @@
 {
-  "task_name": "Floating IP - DNAT internal service with manual failover (final state on edge2)",
+  "task_name": "floating_dnat",
+  "lab_file": "labs/floating-dnat.yml",
   "domain": "firewall",
   "difficulty": "hard",
-  "lab_file": "labs/floating-dnat.yml",
-  "intent": "Expose an internal HTTP service using a public floating VIP and DNAT. Configure the system so that in the FINAL STATE the VIP and NAT rules are ACTIVE on edge2 (manual failover completed). Implement DNAT VIP:8080 -> 10.0.0.100:8080 and ensure return traffic works using SNAT/MASQUERADE. Provide auditable iptables rules (DNAT + SNAT + FORWARD allow). Do not break management connectivity on eth0. Do not flush/reset firewall tables. Do not modify lab IP addressing.",
-
-  "startup_configs": {},
-
+  "intents": [
+    "Expose the internal HTTP service through a public floating VIP using DNAT on the frontier node edge2.",
+    "The final state must have VIP 203.0.113.100/32 active on edge2 eth1.",
+    "Map TCP 203.0.113.100:8080 to the internal server 10.0.2.100:8080.",
+    "Add forward rules that allow the DNAT flow and its return traffic.",
+    "Use SNAT/MASQUERADE so return traffic is symmetric and does not depend on changing the server application.",
+    "Do not flush/reset iptables and do not modify existing addressing or management connectivity."
+  ],
+  "startup_configs": {
+    "wan": [
+      "ip addr add 203.0.113.10/24 dev eth1",
+      "ip addr add 203.0.114.10/24 dev eth2",
+      "ip route add 203.0.113.100/32 via 203.0.113.2"
+    ],
+    "edge1": [
+      "ip addr add 203.0.114.1/24 dev eth1",
+      "ip addr add 10.0.1.1/24 dev eth2",
+      "sysctl -w net.ipv4.ip_forward=1"
+    ],
+    "edge2": [
+      "ip addr add 203.0.113.2/24 dev eth1",
+      "ip addr add 10.0.2.1/24 dev eth2",
+      "sysctl -w net.ipv4.ip_forward=1"
+    ],
+    "srv": [
+      "ip addr add 10.0.1.100/24 dev eth1",
+      "ip addr add 10.0.2.100/24 dev eth2",
+      "ip route add default via 10.0.2.1 metric 1024"
+    ]
+  },
   "ground_truth_configs": {
     "edge2": [
       "ip addr add 203.0.113.100/32 dev eth1",
-      "iptables -t nat -A PREROUTING -d 203.0.113.100/32 -p tcp --dport 8080 -j DNAT --to-destination 10.0.0.100:8080",
-      "iptables -A FORWARD -p tcp -d 10.0.0.100 --dport 8080 -m conntrack --ctstate NEW,ESTABLISHED,RELATED -j ACCEPT",
-      "iptables -A FORWARD -p tcp -s 10.0.0.100 --sport 8080 -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT",
-      "iptables -t nat -A POSTROUTING -s 10.0.0.0/24 -o eth1 -j MASQUERADE"
-    ],
-    "edge1": [
-      "true"
+      "iptables -t nat -A PREROUTING -d 203.0.113.100/32 -p tcp --dport 8080 -j DNAT --to-destination 10.0.2.100:8080",
+      "iptables -A FORWARD -p tcp -d 10.0.2.100 --dport 8080 -m conntrack --ctstate NEW,ESTABLISHED,RELATED -j ACCEPT",
+      "iptables -A FORWARD -p tcp -s 10.0.2.100 --sport 8080 -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT",
+      "iptables -t nat -A POSTROUTING -d 10.0.2.100/32 -p tcp --dport 8080 -j MASQUERADE"
     ]
   },
-
-  "ground_truth_reasoning": "Final state has the floating VIP and NAT active on edge2 (manual failover completed). DNAT maps VIP:8080 to 10.0.0.100:8080. FORWARD rules allow the flow. MASQUERADE on WAN egress ensures return traffic works without modifying the server routing.",
-
-  "testcases": [
-    {
-      "name": "Internal service is listening on srv:8080",
-      "device": "srv",
-      "kind": "linux",
-      "command": "ss -lnt",
-      "expected_output": ":8080"
-    },
-    {
-      "name": "Sanity: edge2 can reach the internal service directly on LAN",
-      "device": "edge2",
-      "kind": "linux",
-      "command": "curl -sS --max-time 2 http://10.0.0.100:8080/ | head -n 1",
-      "expected_output": "<!DOCTYPE"
-    },
-    {
-      "name": "Service is reachable through VIP from WAN (DNAT + return traffic) via edge2 final state",
-      "device": "wan",
-      "kind": "linux",
-      "command": "curl -sS --max-time 3 http://203.0.113.100:8080/ | head -n 1",
-      "expected_output": "<!DOCTYPE"
-    },
-    {
-      "name": "Audit: edge2 has DNAT rule VIP:8080 -> 10.0.0.100:8080",
-      "device": "edge2",
-      "kind": "linux",
-      "command": "iptables-save",
-      "expected_output": "--to-destination 10.0.0.100:8080"
-    },
-    {
-      "name": "Audit: edge2 has MASQUERADE for 10.0.0.0/24 out eth1",
-      "device": "edge2",
-      "kind": "linux",
-      "command": "iptables-save",
-      "expected_output": "-s 10.0.0.0/24 -o eth1 -j MASQUERADE"
-    }
-  ],
-
+  "ground_truth_reasoning": "The failover target is edge2, so the VIP belongs on edge2 eth1 in the final state. PREROUTING DNAT maps client connections for 203.0.113.100:8080 to the internal server at 10.0.2.100:8080. Forward rules permit both the new inbound flow and the established return direction. POSTROUTING MASQUERADE toward the internal server makes return traffic symmetric through edge2, while preserving all existing management and base addressing.",
   "baseline_invariants": [
     {
-      "name": "WAN mgmt eth0 stays up",
+      "name": "WAN management interface is still up",
       "device": "wan",
-      "kind": "linux",
       "command": "ip link show eth0",
       "expected_output": "state UP"
     },
     {
-      "name": "edge1 mgmt eth0 stays up",
+      "name": "edge1 management interface is still up",
       "device": "edge1",
-      "kind": "linux",
       "command": "ip link show eth0",
       "expected_output": "state UP"
     },
     {
-      "name": "edge2 mgmt eth0 stays up",
+      "name": "edge2 management interface is still up",
       "device": "edge2",
-      "kind": "linux",
       "command": "ip link show eth0",
       "expected_output": "state UP"
     },
     {
-      "name": "srv mgmt eth0 stays up",
+      "name": "srv management interface is still up",
       "device": "srv",
-      "kind": "linux",
       "command": "ip link show eth0",
       "expected_output": "state UP"
-    },
-
-    {
-      "name": "WAN data-plane addressing is unchanged",
-      "device": "wan",
-      "kind": "linux",
-      "command": "ip addr show eth1",
-      "expected_output": "203.0.113.10/24"
-    },
-    {
-      "name": "edge1 WAN address is unchanged",
-      "device": "edge1",
-      "kind": "linux",
-      "command": "ip addr show eth1",
-      "expected_output": "203.0.113.1/24"
     },
     {
       "name": "edge2 WAN address is unchanged",
       "device": "edge2",
-      "kind": "linux",
       "command": "ip addr show eth1",
       "expected_output": "203.0.113.2/24"
     },
     {
-      "name": "srv LAN address is unchanged",
+      "name": "srv edge2-side address is unchanged",
       "device": "srv",
-      "kind": "linux",
-      "command": "ip addr show eth1",
-      "expected_output": "10.0.0.100/24"
-    },
-
+      "command": "ip addr show eth2",
+      "expected_output": "10.0.2.100/24"
+    }
+  ],
+  "testcases": [
     {
-      "name": "VIP must be present on edge2 eth1 (final state)",
+      "name": "Internal HTTP service is listening",
+      "device": "srv",
+      "command": "ss -lnt",
+      "expected_output": ":8080"
+    },
+    {
+      "name": "edge2 can reach the internal service directly",
       "device": "edge2",
-      "kind": "linux",
+      "command": "curl -sS --max-time 2 http://10.0.2.100:8080/",
+      "expected_output": "floating-dnat-ok"
+    },
+    {
+      "name": "WAN reaches service through floating VIP",
+      "device": "wan",
+      "command": "curl -sS --max-time 3 http://203.0.113.100:8080/",
+      "expected_output": "floating-dnat-ok"
+    },
+    {
+      "name": "edge2 has the floating VIP",
+      "device": "edge2",
       "command": "ip addr show eth1",
       "expected_output": "203.0.113.100/32"
+    },
+    {
+      "name": "edge2 has DNAT audit rule",
+      "device": "edge2",
+      "command": "iptables-save",
+      "expected_output": "--to-destination 10.0.2.100:8080"
+    },
+    {
+      "name": "edge2 has MASQUERADE audit rule",
+      "device": "edge2",
+      "command": "iptables-save",
+      "expected_output": "-d 10.0.2.100/32 -p tcp -m tcp --dport 8080 -j MASQUERADE"
     }
   ]
 }

@@ -7,18 +7,15 @@ topology:
       image: nicolaka/netshoot:latest
       exec:
         - ip addr add 203.0.113.10/24 dev eth1
-        - ip addr add 203.0.113.10/24 dev eth2
-        - ip link set eth1 up
-        - ip link set eth2 up
+        - ip addr add 203.0.114.10/24 dev eth2
+        - ip route add 203.0.113.100/32 via 203.0.113.2
 
     edge1:
       kind: linux
       image: nicolaka/netshoot:latest
       exec:
-        - ip addr add 203.0.113.1/24 dev eth1
-        - ip addr add 10.0.0.1/24 dev eth2
-        - ip link set eth1 up
-        - ip link set eth2 up
+        - ip addr add 203.0.114.1/24 dev eth1
+        - ip addr add 10.0.1.1/24 dev eth2
         - sysctl -w net.ipv4.ip_forward=1
 
     edge2:
@@ -26,27 +23,20 @@ topology:
       image: nicolaka/netshoot:latest
       exec:
         - ip addr add 203.0.113.2/24 dev eth1
-        - ip addr add 10.0.0.2/24 dev eth2
-        - ip link set eth1 up
-        - ip link set eth2 up
+        - ip addr add 10.0.2.1/24 dev eth2
         - sysctl -w net.ipv4.ip_forward=1
 
     srv:
       kind: linux
       image: nicolaka/netshoot:latest
       exec:
-        - ip addr add 10.0.0.100/24 dev eth1
-        - ip addr add 10.0.0.100/24 dev eth2
-        - ip link set eth1 up
-        - ip link set eth2 up
-        - ip route add default via 10.0.0.1 metric 1024
-        - sh -c "nohup python3 -m http.server 8080 -b 10.0.0.100 >/tmp/http.log 2>&1 &"
+        - ip addr add 10.0.1.100/24 dev eth1
+        - ip addr add 10.0.2.100/24 dev eth2
+        - ip route add default via 10.0.2.1 metric 1024
+        - sh -c "mkdir -p /www && printf 'floating-dnat-ok' >/www/index.html && nohup python3 -m http.server 8080 --bind 10.0.2.100 --directory /www >/tmp/http.log 2>&1 &"
 
   links:
-    # WAN segment
-    - endpoints: ["wan:eth1", "edge1:eth1"]
-    - endpoints: ["wan:eth2", "edge2:eth1"]
-
-    # LAN segment
+    - endpoints: ["wan:eth1", "edge2:eth1"]
+    - endpoints: ["wan:eth2", "edge1:eth1"]
     - endpoints: ["edge1:eth2", "srv:eth1"]
     - endpoints: ["edge2:eth2", "srv:eth2"]
