@@ -1,23 +1,10 @@
-{"device": "r1", "command": "ip link add vrf-blue type vrf table 10"}
-{"device": "r1", "command": "ip link set vrf-blue up"}
-{"device": "r1", "command": "ip link add vrf-red type vrf table 20"}
-{"device": "r1", "command": "ip link set vrf-red up"}
-{"device": "r1", "command": "ip link set eth1 master vrf-blue"}
-{"device": "r1", "command": "ip addr add 10.10.1.1/24 dev eth1"}
-{"device": "r1", "command": "ip link set eth1 up"}
-{"device": "r1", "command": "ip link set eth3 master vrf-blue"}
-{"device": "r1", "command": "ip addr add 10.10.100.1/24 dev eth3"}
-{"device": "r1", "command": "ip link set eth3 up"}
-{"device": "r1", "command": "ip link set eth2 master vrf-red"}
-{"device": "r1", "command": "ip addr add 10.20.1.1/24 dev eth2"}
-{"device": "r1", "command": "ip link set eth2 up"}
-{"device": "r1", "command": "ip link set eth4 master vrf-red"}
-{"device": "r1", "command": "ip addr add 10.20.100.1/24 dev eth4"}
-{"device": "r1", "command": "ip link set eth4 up"}
-{"device": "tenant-blue", "command": "ip addr add 10.10.1.2/24 dev eth1"}
-{"device": "tenant-blue", "command": "ip link set eth1 up"}
-{"device": "tenant-blue", "command": "ip route add default via 10.10.1.1"}
-{"device": "tenant-blue", "command": "ip route del 10.20.1.0/24 via 10.10.1.1"}
-{"device": "tenant-blue", "command": "ip route del default via 10.10.1.1"}
-{"device": "tenant-blue", "command": "ip route add 10.10.100.0/24 via 10.10.1.1"}
-{"device": "tenant-red", "command": "ip route del 10.10.1.0/24 via 10.20.1.1"}
+{"device": "r1", "command": "ip addr add 10.0.1.1/24 dev eth1"}
+{"device": "r1", "command": "ip addr add 10.0.12.1/24 dev eth2"}
+{"device": "r1", "command": "ip route add 10.0.2.0/24 via 10.0.12.2"}
+{"device": "r2", "command": "ip addr add 10.0.12.2/24 dev eth1"}
+{"device": "r2", "command": "ip addr add 10.0.2.1/24 dev eth2"}
+{"device": "r2", "command": "ip route add 10.0.1.0/24 via 10.0.12.1"}
+{"device": "pc1", "command": "ip addr add 10.0.1.2/24 dev eth1"}
+{"device": "pc1", "command": "ip route add 10.0.2.0/24 via 10.0.1.1"}
+{"device": "pc2", "command": "ip addr add 10.0.2.2/24 dev eth1"}
+{"device": "pc2", "command": "ip route add 10.0.1.0/24 via 10.0.2.1"}

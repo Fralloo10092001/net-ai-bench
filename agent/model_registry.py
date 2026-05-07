@@ -90,7 +90,7 @@ def get_model(provider: str, model: str, temperature: float = 0, max_tokens: int
         # duplicate entries, so use NVIDIA's OpenAI-compatible endpoint.
         top_p = 1 if model == "moonshotai/kimi-k2.6" else 0.95
         chat_template_kwargs = {"thinking": True}
-        if model == "deepseek-ai/deepseek-v4-pro":
+        if model in {"deepseek-ai/deepseek-v4-pro", "deepseek-ai/deepseek-v4-flash"}:
             chat_template_kwargs["reasoning_effort"] = "max"
 
         kwargs = {

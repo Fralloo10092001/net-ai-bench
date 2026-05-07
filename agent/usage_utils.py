@@ -42,11 +42,22 @@ pricing = {
         "input_per_million": 0.435,
         "output_per_million": 0.87,
     },
+    ("deepseek", "deepseek-v4-flash"): {
+        # DeepSeek cache-miss worst-case estimate provided for 2026-05-06.
+        "input_per_million": 0.14,
+        "output_per_million": 0.28,
+    },
     ("nvidia", "deepseek-ai/deepseek-v4-pro"): {
         # Reference estimate based on DeepSeek discounted cache-miss pricing.
         # NVIDIA-hosted billing or free credits may differ from direct DeepSeek.
         "input_per_million": 0.435,
         "output_per_million": 0.87,
+    },
+    ("nvidia", "deepseek-ai/deepseek-v4-flash"): {
+        # Reference estimate based on DeepSeek cache-miss worst-case pricing.
+        # NVIDIA-hosted billing or free credits may differ from direct DeepSeek.
+        "input_per_million": 0.14,
+        "output_per_million": 0.28,
     },
     ("nvidia", "moonshotai/kimi-k2.6"): {
         # Worst-case cache-miss estimate provided for Kimi-K2.6 on 2026-05-06.

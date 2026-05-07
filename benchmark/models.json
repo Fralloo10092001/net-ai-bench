@@ -1,5 +1,7 @@
 [
   {"provider": "google", "model": "gemini-2.5-flash" },
-  {"provider": "nvidia", "model": "deepseek-ai/deepseek-v4-pro" },
+  {"provider": "openai", "model": "gpt-5.4-mini" },
+  {"provider": "deepseek", "model": "deepseek-v4-pro" },
+  {"provider": "nvidia", "model": "deepseek-ai/deepseek-v4-flash" },
   {"provider": "nvidia", "model": "moonshotai/kimi-k2.6" }
 ]
