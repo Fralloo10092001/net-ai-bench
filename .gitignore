@@ -37,6 +37,8 @@ backups/
 # File "Zone.Identifier" (Windows ADS copiati su Linux)
 *:Zone.Identifier
 
-# Labs: versiona solo i file .yml di primo livello
+# Labs: versiona i file .yml di primo livello e le configurazioni montate
 labs/*
 !labs/*.yml
+!labs/lab-configs/
+!labs/lab-configs/**

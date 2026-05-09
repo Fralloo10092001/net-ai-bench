@@ -67,7 +67,7 @@ Il progetto supporta tre modalità agentiche:
 │                         Containerlab / Docker                        │
 │                                                                     │
 │  labs/*.yml definisce topologie riproducibili con nodi Linux/FRR.   │
-│  lab-configs/ contiene configurazioni montate read-only nei lab.    │
+│  labs/lab-configs/ contiene configurazioni read-only dei lab.       │
 └─────────────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────────────┐
@@ -140,12 +140,11 @@ NetAiBench/
 │   ├── ssh-filtering.yml
 │   ├── vrf-isolation.yml
 │   ├── hello-world.yml
-│   └── srl02.yml
-│
-├── lab-configs/               # configurazioni montate nei lab
-│   ├── floating-haproxy/
-│   ├── isis-ipv6/
-│   └── isis-misconfigured/
+│   ├── srl02.yml
+│   └── lab-configs/           # configurazioni montate read-only nei lab
+│   │   ├── floating-haproxy/
+│   │   ├── isis-ipv6/
+│   │   └── isis-misconfigured/
 │
 ├── tasks/                     # task JSON benchmarkabili
 │   ├── floating_dnat.json
@@ -506,7 +505,7 @@ Il rollback è stack-based e agent-driven.
 - Senza `--enable-rollback`, gli snapshot possono essere catturati internamente, ma il tool non viene esposto al modello.
 - Il rollback non è automatico: il framework non ripara da solo i run falliti.
 
-Per i nodi Linux, lo snapshot include indirizzi, route, rule, link/VRF, firewall e, quando disponibile, running config FRR. Le configurazioni montate da `lab-configs/` sono montate read-only e non vengono mutate dall'agente.
+Per i nodi Linux, lo snapshot include indirizzi, route, rule, link/VRF, firewall e, quando disponibile, running config FRR. Le configurazioni montate da `labs/lab-configs/` sono montate read-only e non vengono mutate dall'agente.
 
 ---
 

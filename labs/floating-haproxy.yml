@@ -13,7 +13,7 @@ topology:
       kind: linux
       image: haproxy:2.9-alpine
       binds:
-        - ../lab-configs/floating-haproxy/edge1/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+        - lab-configs/floating-haproxy/edge1/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
       exec:
         - ip addr add 10.1.21.1/24 dev eth2
         - ip addr add 10.1.22.1/24 dev eth3
@@ -22,7 +22,7 @@ topology:
       kind: linux
       image: haproxy:2.9-alpine
       binds:
-        - ../lab-configs/floating-haproxy/edge2/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+        - lab-configs/floating-haproxy/edge2/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
       exec:
         - ip addr add 203.0.113.2/24 dev eth1
         - ip addr add 10.2.21.1/24 dev eth2
