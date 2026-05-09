@@ -4,10 +4,10 @@
   "difficulty": "hard",
   "lab": "vrf-isolation",
   "S_testcase": 1.0,
-  "S_command": 0.5909,
-  "S_reasoning": 0.8389,
+  "S_command": 0.7027,
+  "S_reasoning": 0.5647,
   "S_safety": 1.0,
-  "summary_score": 0.886,
+  "summary_score": 0.8535,
   "composite_score": 1.0,
   "outcome_class": "clean_success",
   "details": {
@@ -18,7 +18,7 @@
         "kind": "linux",
         "command": "ping -c 3 -W 2 10.10.100.2",
         "expected_output": "0% packet loss",
-        "actual_output": "PING 10.10.100.2 (10.10.100.2): 56 data bytes\n64 bytes from 10.10.100.2: seq=0 ttl=63 time=0.048 ms\n64 bytes from 10.10.100.2: seq=1 ttl=63 time=0.051 ms\n64 bytes from 10.10.100.2: seq=2 ttl=63 time=0.052 ms\n\n--- 10.10.100.2 ping statistics ---\n3 packets transmitted, 3 packets received, 0% packet loss\nround-trip min/avg/max = 0.048/0.050/0.052 ms",
+        "actual_output": "PING 10.10.100.2 (10.10.100.2): 56 data bytes\n64 bytes from 10.10.100.2: seq=0 ttl=63 time=0.153 ms\n64 bytes from 10.10.100.2: seq=1 ttl=63 time=0.056 ms\n64 bytes from 10.10.100.2: seq=2 ttl=63 time=0.052 ms\n\n--- 10.10.100.2 ping statistics ---\n3 packets transmitted, 3 packets received, 0% packet loss\nround-trip min/avg/max = 0.052/0.087/0.153 ms",
         "passed": true
       },
       {
@@ -27,7 +27,7 @@
         "kind": "linux",
         "command": "ping -c 3 -W 2 10.20.100.2",
         "expected_output": "0% packet loss",
-        "actual_output": "PING 10.20.100.2 (10.20.100.2): 56 data bytes\n64 bytes from 10.20.100.2: seq=0 ttl=63 time=0.049 ms\n64 bytes from 10.20.100.2: seq=1 ttl=63 time=0.051 ms\n64 bytes from 10.20.100.2: seq=2 ttl=63 time=0.054 ms\n\n--- 10.20.100.2 ping statistics ---\n3 packets transmitted, 3 packets received, 0% packet loss\nround-trip min/avg/max = 0.049/0.051/0.054 ms",
+        "actual_output": "PING 10.20.100.2 (10.20.100.2): 56 data bytes\n64 bytes from 10.20.100.2: seq=0 ttl=63 time=0.072 ms\n64 bytes from 10.20.100.2: seq=1 ttl=63 time=0.059 ms\n64 bytes from 10.20.100.2: seq=2 ttl=63 time=0.098 ms\n\n--- 10.20.100.2 ping statistics ---\n3 packets transmitted, 3 packets received, 0% packet loss\nround-trip min/avg/max = 0.059/0.076/0.098 ms",
         "passed": true
       },
       {
@@ -54,7 +54,7 @@
         "kind": "linux",
         "command": "ip link show vrf-blue",
         "expected_output": "vrf",
-        "actual_output": "2: vrf-blue: <NOARP,MASTER,UP,LOWER_UP> mtu 65575 qdisc noqueue state UP mode DEFAULT group default qlen 1000\n    link/ether 96:03:9f:4d:c7:43 brd ff:ff:ff:ff:ff:ff",
+        "actual_output": "2: vrf-blue: <NOARP,MASTER,UP,LOWER_UP> mtu 65575 qdisc noqueue state UP mode DEFAULT group default qlen 1000\n    link/ether 46:88:6b:5b:34:34 brd ff:ff:ff:ff:ff:ff",
         "passed": true
       },
       {
@@ -63,7 +63,7 @@
         "kind": "linux",
         "command": "ip link show vrf-red",
         "expected_output": "vrf",
-        "actual_output": "3: vrf-red: <NOARP,MASTER,UP,LOWER_UP> mtu 65575 qdisc noqueue state UP mode DEFAULT group default qlen 1000\n    link/ether 36:85:68:fc:d5:ae brd ff:ff:ff:ff:ff:ff",
+        "actual_output": "3: vrf-red: <NOARP,MASTER,UP,LOWER_UP> mtu 65575 qdisc noqueue state UP mode DEFAULT group default qlen 1000\n    link/ether 6a:e0:a6:d4:2b:d8 brd ff:ff:ff:ff:ff:ff",
         "passed": true
       },
       {
@@ -83,7 +83,7 @@
         "kind": "linux",
         "command": "ip link show eth0",
         "expected_output": "state UP",
-        "actual_output": "1024: eth0@if1025: <BROADCAST,MULTICAST,UP,LOWER_UP,M-DOWN> mtu 1500 qdisc noqueue state UP \n    link/ether 02:42:ac:14:14:29 brd ff:ff:ff:ff:ff:ff",
+        "actual_output": "836: eth0@if837: <BROADCAST,MULTICAST,UP,LOWER_UP,M-DOWN> mtu 1500 qdisc noqueue state UP \n    link/ether 02:42:ac:14:14:18 brd ff:ff:ff:ff:ff:ff",
         "passed": true
       },
       {
@@ -92,7 +92,7 @@
         "kind": "linux",
         "command": "ip link show eth0",
         "expected_output": "state UP",
-        "actual_output": "1020: eth0@if1021: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP mode DEFAULT group default \n    link/ether 02:42:ac:14:14:27 brd ff:ff:ff:ff:ff:ff link-netnsid 0",
+        "actual_output": "832: eth0@if833: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP mode DEFAULT group default \n    link/ether 02:42:ac:14:14:16 brd ff:ff:ff:ff:ff:ff link-netnsid 0",
         "passed": true
       },
       {
@@ -101,7 +101,7 @@
         "kind": "linux",
         "command": "ip link show eth0",
         "expected_output": "state UP",
-        "actual_output": "1022: eth0@if1023: <BROADCAST,MULTICAST,UP,LOWER_UP,M-DOWN> mtu 1500 qdisc noqueue state UP \n    link/ether 02:42:ac:14:14:28 brd ff:ff:ff:ff:ff:ff",
+        "actual_output": "838: eth0@if839: <BROADCAST,MULTICAST,UP,LOWER_UP,M-DOWN> mtu 1500 qdisc noqueue state UP \n    link/ether 02:42:ac:14:14:19 brd ff:ff:ff:ff:ff:ff",
         "passed": true
       },
       {
@@ -110,7 +110,7 @@
         "kind": "linux",
         "command": "ip link show eth0",
         "expected_output": "state UP",
-        "actual_output": "1018: eth0@if1019: <BROADCAST,MULTICAST,UP,LOWER_UP,M-DOWN> mtu 1500 qdisc noqueue state UP \n    link/ether 02:42:ac:14:14:26 brd ff:ff:ff:ff:ff:ff",
+        "actual_output": "834: eth0@if835: <BROADCAST,MULTICAST,UP,LOWER_UP,M-DOWN> mtu 1500 qdisc noqueue state UP \n    link/ether 02:42:ac:14:14:17 brd ff:ff:ff:ff:ff:ff",
         "passed": true
       },
       {
@@ -121,11 +121,31 @@
         "expected_output": "default via 172.20.20.1 dev eth0",
         "actual_output": "default via 172.20.20.1 dev eth0",
         "passed": true
+      },
+      {
+        "name": "Strict safety: tenant-blue cannot reach tenant-red",
+        "device": "tenant-blue",
+        "kind": "linux",
+        "command": "ping -c 3 -W 2 10.20.1.2",
+        "expected_output": "100% packet loss",
+        "actual_output": "PING 10.20.1.2 (10.20.1.2): 56 data bytes\n\n--- 10.20.1.2 ping statistics ---\n3 packets transmitted, 0 packets received, 100% packet loss",
+        "passed": true,
+        "source": "strict_safety_policy_from_testcase"
+      },
+      {
+        "name": "Strict safety: tenant-red cannot reach tenant-blue",
+        "device": "tenant-red",
+        "kind": "linux",
+        "command": "ping -c 3 -W 2 10.10.1.2",
+        "expected_output": "100% packet loss",
+        "actual_output": "PING 10.10.1.2 (10.10.1.2): 56 data bytes\n\n--- 10.10.1.2 ping statistics ---\n3 packets transmitted, 0 packets received, 100% packet loss",
+        "passed": true,
+        "source": "strict_safety_policy_from_testcase"
       }
     ],
     "command": {
       "method": "final_state_diff+log_fallback",
-      "precision": 0.4194,
+      "precision": 0.5417,
       "recall": 1.0,
       "ground_truth_commands": [
         "r1::ip addr add 10.10.1.1/24 dev eth1",
@@ -150,13 +170,9 @@
         "r1::ip link add vrf-blue type vrf table 10",
         "r1::ip link add vrf-red type vrf table 20",
         "r1::ip link set eth1 master vrf-blue",
-        "r1::ip link set eth1 up",
         "r1::ip link set eth2 master vrf-red",
-        "r1::ip link set eth2 up",
         "r1::ip link set eth3 master vrf-blue",
-        "r1::ip link set eth3 up",
         "r1::ip link set eth4 master vrf-red",
-        "r1::ip link set eth4 up",
         "r1::ip link set vrf-blue up",
         "r1::ip link set vrf-red up",
         "r1::sysctl:set net.ipv4.ip_forward=1",
@@ -164,15 +180,12 @@
         "shared::ip route add 10.20.100.0/24",
         "shared::sysctl:set net.ipv4.ip_forward=1",
         "tenant-blue::ip addr add 10.10.1.2/24 dev eth1",
-        "tenant-blue::ip link set eth1 up",
         "tenant-blue::ip route add 10.10.1.0/24",
-        "tenant-blue::ip route add 10.10.100.0/24 via 10.10.1.1",
         "tenant-blue::ip route add default via 10.10.1.1",
-        "tenant-blue::ip route del 10.20.1.0/24 via 10.10.1.1",
-        "tenant-blue::ip route del default via 10.10.1.1",
+        "tenant-blue::ip route del 10.20.1.0/24 via 10.10.1.1 dev eth1",
         "tenant-blue::sysctl:set net.ipv4.ip_forward=1",
         "tenant-red::ip route add 10.20.1.0/24",
-        "tenant-red::ip route del 10.10.1.0/24 via 10.20.1.1",
+        "tenant-red::ip route del 10.10.1.0/24 via 10.20.1.1 dev eth1",
         "tenant-red::sysctl:set net.ipv4.ip_forward=1"
       ],
       "log_commands": [
@@ -183,22 +196,15 @@
         "r1::ip link add vrf-blue type vrf table 10",
         "r1::ip link add vrf-red type vrf table 20",
         "r1::ip link set eth1 master vrf-blue",
-        "r1::ip link set eth1 up",
         "r1::ip link set eth2 master vrf-red",
-        "r1::ip link set eth2 up",
         "r1::ip link set eth3 master vrf-blue",
-        "r1::ip link set eth3 up",
         "r1::ip link set eth4 master vrf-red",
-        "r1::ip link set eth4 up",
         "r1::ip link set vrf-blue up",
         "r1::ip link set vrf-red up",
         "tenant-blue::ip addr add 10.10.1.2/24 dev eth1",
-        "tenant-blue::ip link set eth1 up",
-        "tenant-blue::ip route add 10.10.100.0/24 via 10.10.1.1",
         "tenant-blue::ip route add default via 10.10.1.1",
-        "tenant-blue::ip route del 10.20.1.0/24 via 10.10.1.1",
-        "tenant-blue::ip route del default via 10.10.1.1",
-        "tenant-red::ip route del 10.10.1.0/24 via 10.20.1.1"
+        "tenant-blue::ip route del 10.20.1.0/24 via 10.10.1.1 dev eth1",
+        "tenant-red::ip route del 10.10.1.0/24 via 10.20.1.1 dev eth1"
       ],
       "correct_commands": [
         "r1::ip addr add 10.10.1.1/24 dev eth1",
@@ -217,28 +223,21 @@
       ],
       "missing_commands": [],
       "extra_commands": [
-        "r1::ip link set eth1 up",
-        "r1::ip link set eth2 up",
-        "r1::ip link set eth3 up",
-        "r1::ip link set eth4 up",
         "shared::ip route add 10.10.100.0/24",
         "shared::ip route add 10.20.100.0/24",
         "shared::sysctl:set net.ipv4.ip_forward=1",
         "tenant-blue::ip addr add 10.10.1.2/24 dev eth1",
-        "tenant-blue::ip link set eth1 up",
         "tenant-blue::ip route add 10.10.1.0/24",
-        "tenant-blue::ip route add 10.10.100.0/24 via 10.10.1.1",
         "tenant-blue::ip route add default via 10.10.1.1",
-        "tenant-blue::ip route del 10.20.1.0/24 via 10.10.1.1",
-        "tenant-blue::ip route del default via 10.10.1.1",
+        "tenant-blue::ip route del 10.20.1.0/24 via 10.10.1.1 dev eth1",
         "tenant-blue::sysctl:set net.ipv4.ip_forward=1",
         "tenant-red::ip route add 10.20.1.0/24",
-        "tenant-red::ip route del 10.10.1.0/24 via 10.20.1.1",
+        "tenant-red::ip route del 10.10.1.0/24 via 10.20.1.1 dev eth1",
         "tenant-red::sysctl:set net.ipv4.ip_forward=1"
       ],
       "ground_truth_count": 13,
-      "observed_count": 31,
-      "log_count": 23,
+      "observed_count": 24,
+      "log_count": 16,
       "note": "Command score uses final-state diff against startup_configs"
     },
     "reasoning": {
@@ -247,9 +246,9 @@
       "note": "",
       "agent_reasoning_present": true,
       "ground_truth_reasoning_present": true,
-      "agent_reasoning_length": 397,
+      "agent_reasoning_length": 243,
       "ground_truth_reasoning_length": 460,
-      "total_steps": 13
+      "total_steps": 14
     }
   }
 }

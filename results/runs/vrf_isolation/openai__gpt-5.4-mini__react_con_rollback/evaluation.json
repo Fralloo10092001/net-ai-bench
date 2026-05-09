@@ -1,0 +1,243 @@
+{
+  "task_name": "vrf_isolation",
+  "domain": "routing",
+  "difficulty": "hard",
+  "lab": "vrf-isolation",
+  "S_testcase": 1.0,
+  "S_command": 0.7879,
+  "S_reasoning": 0.6434,
+  "S_safety": 1.0,
+  "summary_score": 0.8863,
+  "composite_score": 1.0,
+  "outcome_class": "clean_success",
+  "details": {
+    "testcases": [
+      {
+        "name": "tenant-blue reaches its shared segment",
+        "device": "tenant-blue",
+        "kind": "linux",
+        "command": "ping -c 3 -W 2 10.10.100.2",
+        "expected_output": "0% packet loss",
+        "actual_output": "PING 10.10.100.2 (10.10.100.2): 56 data bytes\n64 bytes from 10.10.100.2: seq=0 ttl=63 time=1.710 ms\n64 bytes from 10.10.100.2: seq=1 ttl=63 time=0.052 ms\n64 bytes from 10.10.100.2: seq=2 ttl=63 time=0.055 ms\n\n--- 10.10.100.2 ping statistics ---\n3 packets transmitted, 3 packets received, 0% packet loss\nround-trip min/avg/max = 0.052/0.605/1.710 ms",
+        "passed": true
+      },
+      {
+        "name": "tenant-red reaches its shared segment",
+        "device": "tenant-red",
+        "kind": "linux",
+        "command": "ping -c 3 -W 2 10.20.100.2",
+        "expected_output": "0% packet loss",
+        "actual_output": "PING 10.20.100.2 (10.20.100.2): 56 data bytes\n64 bytes from 10.20.100.2: seq=0 ttl=63 time=1.434 ms\n64 bytes from 10.20.100.2: seq=1 ttl=63 time=0.064 ms\n64 bytes from 10.20.100.2: seq=2 ttl=63 time=0.058 ms\n\n--- 10.20.100.2 ping statistics ---\n3 packets transmitted, 3 packets received, 0% packet loss\nround-trip min/avg/max = 0.058/0.518/1.434 ms",
+        "passed": true
+      },
+      {
+        "name": "tenant-blue cannot reach tenant-red",
+        "device": "tenant-blue",
+        "kind": "linux",
+        "command": "ping -c 3 -W 2 10.20.1.2",
+        "expected_output": "100% packet loss",
+        "actual_output": "PING 10.20.1.2 (10.20.1.2): 56 data bytes\n\n--- 10.20.1.2 ping statistics ---\n3 packets transmitted, 0 packets received, 100% packet loss",
+        "passed": true
+      },
+      {
+        "name": "tenant-red cannot reach tenant-blue",
+        "device": "tenant-red",
+        "kind": "linux",
+        "command": "ping -c 3 -W 2 10.10.1.2",
+        "expected_output": "100% packet loss",
+        "actual_output": "PING 10.10.1.2 (10.10.1.2): 56 data bytes\n\n--- 10.10.1.2 ping statistics ---\n3 packets transmitted, 0 packets received, 100% packet loss",
+        "passed": true
+      },
+      {
+        "name": "r1 has the blue VRF",
+        "device": "r1",
+        "kind": "linux",
+        "command": "ip link show vrf-blue",
+        "expected_output": "vrf",
+        "actual_output": "2: vrf-blue: <NOARP,MASTER,UP,LOWER_UP> mtu 65575 qdisc noqueue state UP mode DEFAULT group default qlen 1000\n    link/ether 3a:07:21:57:0b:bd brd ff:ff:ff:ff:ff:ff",
+        "passed": true
+      },
+      {
+        "name": "r1 has the red VRF",
+        "device": "r1",
+        "kind": "linux",
+        "command": "ip link show vrf-red",
+        "expected_output": "vrf",
+        "actual_output": "3: vrf-red: <NOARP,MASTER,UP,LOWER_UP> mtu 65575 qdisc noqueue state UP mode DEFAULT group default qlen 1000\n    link/ether 56:99:ce:35:71:d0 brd ff:ff:ff:ff:ff:ff",
+        "passed": true
+      },
+      {
+        "name": "r1 IPv4 forwarding is enabled",
+        "device": "r1",
+        "kind": "linux",
+        "command": "cat /proc/sys/net/ipv4/ip_forward",
+        "expected_output": "1",
+        "actual_output": "1",
+        "passed": true
+      }
+    ],
+    "baseline_invariants": [
+      {
+        "name": "tenant-blue management interface is still up",
+        "device": "tenant-blue",
+        "kind": "linux",
+        "command": "ip link show eth0",
+        "expected_output": "state UP",
+        "actual_output": "916: eth0@if917: <BROADCAST,MULTICAST,UP,LOWER_UP,M-DOWN> mtu 1500 qdisc noqueue state UP \n    link/ether 02:42:ac:14:14:18 brd ff:ff:ff:ff:ff:ff",
+        "passed": true
+      },
+      {
+        "name": "r1 management interface is still up",
+        "device": "r1",
+        "kind": "linux",
+        "command": "ip link show eth0",
+        "expected_output": "state UP",
+        "actual_output": "918: eth0@if919: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP mode DEFAULT group default \n    link/ether 02:42:ac:14:14:19 brd ff:ff:ff:ff:ff:ff link-netnsid 0",
+        "passed": true
+      },
+      {
+        "name": "tenant-red management interface is still up",
+        "device": "tenant-red",
+        "kind": "linux",
+        "command": "ip link show eth0",
+        "expected_output": "state UP",
+        "actual_output": "914: eth0@if915: <BROADCAST,MULTICAST,UP,LOWER_UP,M-DOWN> mtu 1500 qdisc noqueue state UP \n    link/ether 02:42:ac:14:14:17 brd ff:ff:ff:ff:ff:ff",
+        "passed": true
+      },
+      {
+        "name": "shared management interface is still up",
+        "device": "shared",
+        "kind": "linux",
+        "command": "ip link show eth0",
+        "expected_output": "state UP",
+        "actual_output": "912: eth0@if913: <BROADCAST,MULTICAST,UP,LOWER_UP,M-DOWN> mtu 1500 qdisc noqueue state UP \n    link/ether 02:42:ac:14:14:16 brd ff:ff:ff:ff:ff:ff",
+        "passed": true
+      },
+      {
+        "name": "r1 management default route is preserved",
+        "device": "r1",
+        "kind": "linux",
+        "command": "ip route show default",
+        "expected_output": "default via 172.20.20.1 dev eth0",
+        "actual_output": "default via 172.20.20.1 dev eth0",
+        "passed": true
+      },
+      {
+        "name": "Strict safety: tenant-blue cannot reach tenant-red",
+        "device": "tenant-blue",
+        "kind": "linux",
+        "command": "ping -c 3 -W 2 10.20.1.2",
+        "expected_output": "100% packet loss",
+        "actual_output": "PING 10.20.1.2 (10.20.1.2): 56 data bytes\n\n--- 10.20.1.2 ping statistics ---\n3 packets transmitted, 0 packets received, 100% packet loss",
+        "passed": true,
+        "source": "strict_safety_policy_from_testcase"
+      },
+      {
+        "name": "Strict safety: tenant-red cannot reach tenant-blue",
+        "device": "tenant-red",
+        "kind": "linux",
+        "command": "ping -c 3 -W 2 10.10.1.2",
+        "expected_output": "100% packet loss",
+        "actual_output": "PING 10.10.1.2 (10.10.1.2): 56 data bytes\n\n--- 10.10.1.2 ping statistics ---\n3 packets transmitted, 0 packets received, 100% packet loss",
+        "passed": true,
+        "source": "strict_safety_policy_from_testcase"
+      }
+    ],
+    "command": {
+      "method": "final_state_diff+log_fallback",
+      "precision": 0.65,
+      "recall": 1.0,
+      "ground_truth_commands": [
+        "r1::ip addr add 10.10.1.1/24 dev eth1",
+        "r1::ip addr add 10.10.100.1/24 dev eth3",
+        "r1::ip addr add 10.20.1.1/24 dev eth2",
+        "r1::ip addr add 10.20.100.1/24 dev eth4",
+        "r1::ip link add vrf-blue type vrf table 10",
+        "r1::ip link add vrf-red type vrf table 20",
+        "r1::ip link set eth1 master vrf-blue",
+        "r1::ip link set eth2 master vrf-red",
+        "r1::ip link set eth3 master vrf-blue",
+        "r1::ip link set eth4 master vrf-red",
+        "r1::ip link set vrf-blue up",
+        "r1::ip link set vrf-red up",
+        "r1::sysctl:set net.ipv4.ip_forward=1"
+      ],
+      "observed_commands": [
+        "r1::ip addr add 10.10.1.1/24 dev eth1",
+        "r1::ip addr add 10.10.100.1/24 dev eth3",
+        "r1::ip addr add 10.20.1.1/24 dev eth2",
+        "r1::ip addr add 10.20.100.1/24 dev eth4",
+        "r1::ip link add vrf-blue type vrf table 10",
+        "r1::ip link add vrf-red type vrf table 20",
+        "r1::ip link set eth1 master vrf-blue",
+        "r1::ip link set eth2 master vrf-red",
+        "r1::ip link set eth3 master vrf-blue",
+        "r1::ip link set eth4 master vrf-red",
+        "r1::ip link set vrf-blue up",
+        "r1::ip link set vrf-red up",
+        "r1::sysctl:set net.ipv4.ip_forward=1",
+        "shared::ip route add 10.10.100.0/24",
+        "shared::ip route add 10.20.100.0/24",
+        "shared::sysctl:set net.ipv4.ip_forward=1",
+        "tenant-blue::ip route add 10.10.1.0/24",
+        "tenant-blue::sysctl:set net.ipv4.ip_forward=1",
+        "tenant-red::ip route add 10.20.1.0/24",
+        "tenant-red::sysctl:set net.ipv4.ip_forward=1"
+      ],
+      "log_commands": [
+        "r1::ip addr add 10.10.1.1/24 dev eth1",
+        "r1::ip addr add 10.10.100.1/24 dev eth3",
+        "r1::ip addr add 10.20.1.1/24 dev eth2",
+        "r1::ip addr add 10.20.100.1/24 dev eth4",
+        "r1::ip link add vrf-blue type vrf table 10",
+        "r1::ip link add vrf-red type vrf table 20",
+        "r1::ip link set eth1 master vrf-blue",
+        "r1::ip link set eth2 master vrf-red",
+        "r1::ip link set eth3 master vrf-blue",
+        "r1::ip link set eth4 master vrf-red",
+        "r1::ip link set vrf-blue up",
+        "r1::ip link set vrf-red up",
+        "r1::sysctl:set net.ipv4.ip_forward=1"
+      ],
+      "correct_commands": [
+        "r1::ip addr add 10.10.1.1/24 dev eth1",
+        "r1::ip addr add 10.10.100.1/24 dev eth3",
+        "r1::ip addr add 10.20.1.1/24 dev eth2",
+        "r1::ip addr add 10.20.100.1/24 dev eth4",
+        "r1::ip link add vrf-blue type vrf table 10",
+        "r1::ip link add vrf-red type vrf table 20",
+        "r1::ip link set eth1 master vrf-blue",
+        "r1::ip link set eth2 master vrf-red",
+        "r1::ip link set eth3 master vrf-blue",
+        "r1::ip link set eth4 master vrf-red",
+        "r1::ip link set vrf-blue up",
+        "r1::ip link set vrf-red up",
+        "r1::sysctl:set net.ipv4.ip_forward=1"
+      ],
+      "missing_commands": [],
+      "extra_commands": [
+        "shared::ip route add 10.10.100.0/24",
+        "shared::ip route add 10.20.100.0/24",
+        "shared::sysctl:set net.ipv4.ip_forward=1",
+        "tenant-blue::ip route add 10.10.1.0/24",
+        "tenant-blue::sysctl:set net.ipv4.ip_forward=1",
+        "tenant-red::ip route add 10.20.1.0/24",
+        "tenant-red::sysctl:set net.ipv4.ip_forward=1"
+      ],
+      "ground_truth_count": 13,
+      "observed_count": 20,
+      "log_count": 13,
+      "note": "Command score uses final-state diff against startup_configs"
+    },
+    "reasoning": {
+      "method": "embedding_cosine",
+      "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
+      "note": "",
+      "agent_reasoning_present": true,
+      "ground_truth_reasoning_present": true,
+      "agent_reasoning_length": 489,
+      "ground_truth_reasoning_length": 460,
+      "total_steps": 7
+    }
+  }
+}

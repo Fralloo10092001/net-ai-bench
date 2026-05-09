@@ -1,0 +1,1 @@
+pc1 can reach pc2 over the linear topology via r1, and r1 has 10.0.1.1/24 on eth1, 10.0.2.1/24 on eth2, and IPv4 forwarding enabled. No further changes are needed.

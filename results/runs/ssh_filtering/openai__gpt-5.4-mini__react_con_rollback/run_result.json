@@ -1,0 +1,15 @@
+{
+  "mode": "react",
+  "final_reasoning": "Inspected fw running config shows nftables forward chain with policy drop and explicit allows for client eth1 -> server eth2 TCP dport 22 and 2222, plus reverse established rules for both ports. Management connectivity via eth0 remains untouched. No additional changes are required, and the requested SSH-like forwarding behavior is already configured.",
+  "history_length": 9,
+  "total_tokens": 32219,
+  "estimated_cost_usd": 0.02832675,
+  "provider": "openai",
+  "model": "gpt-5.4-mini",
+  "usage_breakdown": {},
+  "metadata": {
+    "rollback_enabled": true,
+    "rollback_calls": 0,
+    "rollback_status_calls": 0
+  }
+}

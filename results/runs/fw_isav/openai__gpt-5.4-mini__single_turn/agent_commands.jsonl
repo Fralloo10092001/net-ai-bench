@@ -1,0 +1,3 @@
+{"device": "fw", "command": "nft add table ip isav"}
+{"device": "fw", "command": "nft add rule ip isav prerouting iifname \"eth1\" ip saddr 10.10.20.0/24 drop"}
+{"device": "fw", "command": "sysctl -w net.ipv4.conf.eth1.rp_filter=1"}

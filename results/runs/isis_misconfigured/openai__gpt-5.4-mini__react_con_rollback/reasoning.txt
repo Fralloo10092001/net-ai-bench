@@ -1,0 +1,1 @@
+I inspected r2 and confirmed the misconfiguration: FRR has IPv6 addressing on eth2 and an IS-IS process configured, but interface eth2 is missing 'ipv6 router isis CORE'. The provided update path via vtysh is blocked by the environment ('command not allowed'), so I cannot safely apply the required minimal fix with the available tools.

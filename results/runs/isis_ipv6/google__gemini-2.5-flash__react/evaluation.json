@@ -3,12 +3,12 @@
   "domain": "routing",
   "difficulty": "medium",
   "lab": "isis-ipv6",
-  "S_testcase": 0.4,
+  "S_testcase": 0.0,
   "S_command": 0.2667,
-  "S_reasoning": 0.496,
+  "S_reasoning": 0.0396,
   "S_safety": 1.0,
-  "summary_score": 0.5125,
-  "composite_score": 0.4,
+  "summary_score": 0.2613,
+  "composite_score": 0.0,
   "outcome_class": "clean_fail",
   "details": {
     "testcases": [
@@ -19,7 +19,7 @@
         "command": "ping6 -c 3 -W 2 2001:db8:2::2",
         "expected_output": "0% packet loss",
         "actual_output": "PING 2001:db8:2::2 (2001:db8:2::2): 56 data bytes\n\n--- 2001:db8:2::2 ping statistics ---\n3 packets transmitted, 0 packets received, 100% packet loss",
-        "passed": true
+        "passed": false
       },
       {
         "name": "PC2 can ping PC1 over IPv6",
@@ -28,7 +28,7 @@
         "command": "ping6 -c 3 -W 2 2001:db8:1::2",
         "expected_output": "0% packet loss",
         "actual_output": "PING 2001:db8:1::2 (2001:db8:1::2): 56 data bytes\n\n--- 2001:db8:1::2 ping statistics ---\n3 packets transmitted, 0 packets received, 100% packet loss",
-        "passed": true
+        "passed": false
       },
       {
         "name": "R1 running config contains IS-IS CORE",
@@ -65,7 +65,7 @@
         "kind": "linux",
         "command": "ip link show eth0",
         "expected_output": "state UP",
-        "actual_output": "960: eth0@if961: <BROADCAST,MULTICAST,UP,LOWER_UP,M-DOWN> mtu 1500 qdisc noqueue state UP \n    link/ether 02:42:ac:14:14:15 brd ff:ff:ff:ff:ff:ff",
+        "actual_output": "136: eth0@if137: <BROADCAST,MULTICAST,UP,LOWER_UP,M-DOWN> mtu 1500 qdisc noqueue state UP \n    link/ether 02:42:ac:14:14:05 brd ff:ff:ff:ff:ff:ff",
         "passed": true
       },
       {
@@ -74,7 +74,7 @@
         "kind": "linux",
         "command": "ip link show eth0",
         "expected_output": "state UP",
-        "actual_output": "966: eth0@if967: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP mode DEFAULT group default \n    link/ether 02:42:ac:14:14:18 brd ff:ff:ff:ff:ff:ff link-netnsid 0",
+        "actual_output": "140: eth0@if141: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP mode DEFAULT group default \n    link/ether 02:42:ac:14:14:07 brd ff:ff:ff:ff:ff:ff link-netnsid 0",
         "passed": true
       },
       {
@@ -83,7 +83,7 @@
         "kind": "linux",
         "command": "ip link show eth0",
         "expected_output": "state UP",
-        "actual_output": "962: eth0@if963: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP mode DEFAULT group default \n    link/ether 02:42:ac:14:14:16 brd ff:ff:ff:ff:ff:ff link-netnsid 0",
+        "actual_output": "142: eth0@if143: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP mode DEFAULT group default \n    link/ether 02:42:ac:14:14:08 brd ff:ff:ff:ff:ff:ff link-netnsid 0",
         "passed": true
       },
       {
@@ -92,7 +92,7 @@
         "kind": "linux",
         "command": "ip link show eth0",
         "expected_output": "state UP",
-        "actual_output": "964: eth0@if965: <BROADCAST,MULTICAST,UP,LOWER_UP,M-DOWN> mtu 1500 qdisc noqueue state UP \n    link/ether 02:42:ac:14:14:17 brd ff:ff:ff:ff:ff:ff",
+        "actual_output": "138: eth0@if139: <BROADCAST,MULTICAST,UP,LOWER_UP,M-DOWN> mtu 1500 qdisc noqueue state UP \n    link/ether 02:42:ac:14:14:06 brd ff:ff:ff:ff:ff:ff",
         "passed": true
       },
       {
@@ -176,9 +176,9 @@
       "note": "",
       "agent_reasoning_present": true,
       "ground_truth_reasoning_present": true,
-      "agent_reasoning_length": 504,
+      "agent_reasoning_length": 55,
       "ground_truth_reasoning_length": 504,
-      "total_steps": 22
+      "total_steps": 25
     }
   }
 }

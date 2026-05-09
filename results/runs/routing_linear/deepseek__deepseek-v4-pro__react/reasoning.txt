@@ -1,0 +1,1 @@
+All task requirements have been satisfied: pc1 and pc2 already had correct addresses and routes. r1 was configured with 10.0.1.1/24 on eth1 and 10.0.2.1/24 on eth2. IPv4 forwarding is enabled. Connectivity validated: pc1 can reach pc2 (ping 10.0.2.2 - 3/3 success). Management connectivity on eth0 remains untouched.

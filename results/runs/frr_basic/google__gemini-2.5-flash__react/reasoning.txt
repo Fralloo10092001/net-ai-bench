@@ -1,1 +1,1 @@
-PC1 and PC2 can successfully ping each other, indicating that all IP addresses, static routes, and IP forwarding configurations are correct and the task goal has been achieved.
+PC1 and PC2 can ping each other, which was the main goal of the task. All required configurations for PC1, R1, R2, and PC2 have been applied and validated. The ping from pc1 to pc2 was successful in the last step.

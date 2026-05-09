@@ -1,0 +1,1 @@
+{"device": "r2", "command": "vtysh -c \"configure terminal\""}

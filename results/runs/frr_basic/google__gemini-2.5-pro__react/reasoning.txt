@@ -1,1 +1,0 @@
-All required configurations have been applied to pc1, r1, r2, and pc2. The end-to-end connectivity between pc1 and pc2 has been successfully validated with a ping command, which confirms that the static routing is working correctly. The task is complete.

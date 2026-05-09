@@ -162,6 +162,20 @@ def exec_in_container(
     return stderr
 
 
+# Confronta expected e actual evitando falsi positivi sui ping.
+def output_matches_expected(expected_output: str, actual_output: str) -> bool:
+    expected_output = str(expected_output).strip()
+    actual_output = str(actual_output)
+
+    packet_loss_match = re.fullmatch(r"(\d+(?:\.\d+)?)%\s+packet\s+loss", expected_output)
+    if packet_loss_match:
+        expected_loss = float(packet_loss_match.group(1))
+        actual_losses = re.findall(r"(\d+(?:\.\d+)?)%\s+packet\s+loss", actual_output)
+        return any(float(loss) == expected_loss for loss in actual_losses)
+
+    return expected_output in actual_output
+
+
 # Carica il YAML del lab indicato dal task.
 def load_lab_yaml_from_task(task: dict) -> dict:
     project_root = Path(__file__).resolve().parents[1]
@@ -212,7 +226,7 @@ def run_testcases(task: dict[str, Any], lab: str) -> tuple[float, list[dict[str,
         kind = node_kinds.get(device, "linux")
         actual_output = exec_in_container(lab, device, command, kind=kind)
 
-        ok = expected_output in actual_output
+        ok = output_matches_expected(expected_output, actual_output)
         if ok:
             passed += 1
 
@@ -250,7 +264,7 @@ def evaluate_baseline_invariants(task: dict[str, Any], lab: str) -> tuple[float 
         kind = node_kinds.get(device, "linux")
         actual_output = exec_in_container(lab, device, command, kind=kind)
 
-        ok = expected_output in actual_output
+        ok = output_matches_expected(expected_output, actual_output)
         if ok:
             passed += 1
 

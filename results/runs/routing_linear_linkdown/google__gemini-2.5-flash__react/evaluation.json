@@ -5,9 +5,9 @@
   "lab": "routing-linear-linkdown",
   "S_testcase": 1.0,
   "S_command": 0.4286,
-  "S_reasoning": 0.6272,
+  "S_reasoning": 0.6055,
   "S_safety": 1.0,
-  "summary_score": 0.8112,
+  "summary_score": 0.8068,
   "composite_score": 1.0,
   "outcome_class": "clean_success",
   "details": {
@@ -18,7 +18,7 @@
         "kind": "linux",
         "command": "ping -c 3 -W 2 10.0.2.2",
         "expected_output": "0% packet loss",
-        "actual_output": "PING 10.0.2.2 (10.0.2.2): 56 data bytes\n64 bytes from 10.0.2.2: seq=0 ttl=63 time=0.046 ms\n64 bytes from 10.0.2.2: seq=1 ttl=63 time=0.046 ms\n64 bytes from 10.0.2.2: seq=2 ttl=63 time=0.046 ms\n\n--- 10.0.2.2 ping statistics ---\n3 packets transmitted, 3 packets received, 0% packet loss\nround-trip min/avg/max = 0.046/0.046/0.046 ms",
+        "actual_output": "PING 10.0.2.2 (10.0.2.2): 56 data bytes\n64 bytes from 10.0.2.2: seq=0 ttl=63 time=0.144 ms\n64 bytes from 10.0.2.2: seq=1 ttl=63 time=0.058 ms\n64 bytes from 10.0.2.2: seq=2 ttl=63 time=0.050 ms\n\n--- 10.0.2.2 ping statistics ---\n3 packets transmitted, 3 packets received, 0% packet loss\nround-trip min/avg/max = 0.050/0.084/0.144 ms",
         "passed": true
       },
       {
@@ -27,7 +27,7 @@
         "kind": "linux",
         "command": "ping -c 3 -W 2 10.0.1.2",
         "expected_output": "0% packet loss",
-        "actual_output": "PING 10.0.1.2 (10.0.1.2): 56 data bytes\n64 bytes from 10.0.1.2: seq=0 ttl=63 time=0.053 ms\n64 bytes from 10.0.1.2: seq=1 ttl=63 time=0.050 ms\n64 bytes from 10.0.1.2: seq=2 ttl=63 time=0.047 ms\n\n--- 10.0.1.2 ping statistics ---\n3 packets transmitted, 3 packets received, 0% packet loss\nround-trip min/avg/max = 0.047/0.050/0.053 ms",
+        "actual_output": "PING 10.0.1.2 (10.0.1.2): 56 data bytes\n64 bytes from 10.0.1.2: seq=0 ttl=63 time=0.164 ms\n64 bytes from 10.0.1.2: seq=1 ttl=63 time=0.053 ms\n64 bytes from 10.0.1.2: seq=2 ttl=63 time=0.047 ms\n\n--- 10.0.1.2 ping statistics ---\n3 packets transmitted, 3 packets received, 0% packet loss\nround-trip min/avg/max = 0.047/0.088/0.164 ms",
         "passed": true
       },
       {
@@ -36,7 +36,7 @@
         "kind": "linux",
         "command": "ip link show eth2",
         "expected_output": "state UP",
-        "actual_output": "1004: eth2@if1005: <BROADCAST,MULTICAST,UP,LOWER_UP,M-DOWN> mtu 9500 qdisc noqueue state UP \n    link/ether aa:c1:ab:6b:6d:5e brd ff:ff:ff:ff:ff:ff",
+        "actual_output": "600: eth2@if601: <BROADCAST,MULTICAST,UP,LOWER_UP,M-DOWN> mtu 9500 qdisc noqueue state UP \n    link/ether aa:c1:ab:10:4c:07 brd ff:ff:ff:ff:ff:ff",
         "passed": true
       },
       {
@@ -56,7 +56,7 @@
         "kind": "linux",
         "command": "ip link show eth0",
         "expected_output": "state UP",
-        "actual_output": "1000: eth0@if1001: <BROADCAST,MULTICAST,UP,LOWER_UP,M-DOWN> mtu 1500 qdisc noqueue state UP \n    link/ether 02:42:ac:14:14:21 brd ff:ff:ff:ff:ff:ff",
+        "actual_output": "594: eth0@if595: <BROADCAST,MULTICAST,UP,LOWER_UP,M-DOWN> mtu 1500 qdisc noqueue state UP \n    link/ether 02:42:ac:14:14:11 brd ff:ff:ff:ff:ff:ff",
         "passed": true
       },
       {
@@ -65,7 +65,7 @@
         "kind": "linux",
         "command": "ip link show eth0",
         "expected_output": "state UP",
-        "actual_output": "1002: eth0@if1003: <BROADCAST,MULTICAST,UP,LOWER_UP,M-DOWN> mtu 1500 qdisc noqueue state UP \n    link/ether 02:42:ac:14:14:22 brd ff:ff:ff:ff:ff:ff",
+        "actual_output": "596: eth0@if597: <BROADCAST,MULTICAST,UP,LOWER_UP,M-DOWN> mtu 1500 qdisc noqueue state UP \n    link/ether 02:42:ac:14:14:12 brd ff:ff:ff:ff:ff:ff",
         "passed": true
       },
       {
@@ -74,7 +74,7 @@
         "kind": "linux",
         "command": "ip link show eth0",
         "expected_output": "state UP",
-        "actual_output": "998: eth0@if999: <BROADCAST,MULTICAST,UP,LOWER_UP,M-DOWN> mtu 1500 qdisc noqueue state UP \n    link/ether 02:42:ac:14:14:20 brd ff:ff:ff:ff:ff:ff",
+        "actual_output": "592: eth0@if593: <BROADCAST,MULTICAST,UP,LOWER_UP,M-DOWN> mtu 1500 qdisc noqueue state UP \n    link/ether 02:42:ac:14:14:10 brd ff:ff:ff:ff:ff:ff",
         "passed": true
       },
       {
@@ -83,7 +83,7 @@
         "kind": "linux",
         "command": "ip route show default",
         "expected_output": "default via 172.20.20.1 dev eth0",
-        "actual_output": "default via 172.20.20.1 dev eth0 \n10.0.1.0/24 dev eth1 scope link  src 10.0.1.2 \n10.0.2.0/24 via 10.0.1.1 dev eth1 \n172.20.20.0/24 dev eth0 scope link  src 172.20.20.33",
+        "actual_output": "default via 172.20.20.1 dev eth0 \n10.0.1.0/24 dev eth1 scope link  src 10.0.1.2 \n10.0.2.0/24 via 10.0.1.1 dev eth1 \n172.20.20.0/24 dev eth0 scope link  src 172.20.20.17",
         "passed": true
       },
       {
@@ -92,7 +92,7 @@
         "kind": "linux",
         "command": "ip route show default",
         "expected_output": "default via 172.20.20.1 dev eth0",
-        "actual_output": "default via 172.20.20.1 dev eth0 \n10.0.1.0/24 dev eth1 scope link  src 10.0.1.1 \n10.0.2.0/24 dev eth2 scope link  src 10.0.2.1 \n172.20.20.0/24 dev eth0 scope link  src 172.20.20.34",
+        "actual_output": "default via 172.20.20.1 dev eth0 \n10.0.1.0/24 dev eth1 scope link  src 10.0.1.1 \n10.0.2.0/24 dev eth2 scope link  src 10.0.2.1 \n172.20.20.0/24 dev eth0 scope link  src 172.20.20.18",
         "passed": true
       },
       {
@@ -101,7 +101,7 @@
         "kind": "linux",
         "command": "ip route show default",
         "expected_output": "default via 172.20.20.1 dev eth0",
-        "actual_output": "default via 172.20.20.1 dev eth0 \n10.0.1.0/24 via 10.0.2.1 dev eth1 \n10.0.2.0/24 dev eth1 scope link  src 10.0.2.2 \n172.20.20.0/24 dev eth0 scope link  src 172.20.20.32",
+        "actual_output": "default via 172.20.20.1 dev eth0 \n10.0.1.0/24 via 10.0.2.1 dev eth1 \n10.0.2.0/24 dev eth1 scope link  src 10.0.2.2 \n172.20.20.0/24 dev eth0 scope link  src 172.20.20.16",
         "passed": true
       }
     ],
@@ -160,7 +160,7 @@
       "note": "",
       "agent_reasoning_present": true,
       "ground_truth_reasoning_present": true,
-      "agent_reasoning_length": 327,
+      "agent_reasoning_length": 277,
       "ground_truth_reasoning_length": 311,
       "total_steps": 5
     }

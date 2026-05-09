@@ -292,7 +292,7 @@ Provider supportati da `agent/model_registry.py`:
 | `deepseek` | `DEEPSEEK_API_KEY` | Usa endpoint OpenAI-compatible DeepSeek |
 | `nvidia` | `NVIDIA_API_KEY`, `NVIDIA_KIMI_API_KEY` | Usa endpoint NVIDIA OpenAI-compatible con `ChatOpenAI` |
 
-I prezzi usati per stimare `estimated_cost_usd` sono definiti in `agent/usage_utils.py`. Per DeepSeek viene usata una stima basata sul prezzo input cache-miss scontato, perché il benchmark non separa i token input cache-hit da quelli cache-miss.
+I prezzi usati per stimare `estimated_cost_usd` sono definiti in `agent/usage_utils.py`.
 
 ---
 

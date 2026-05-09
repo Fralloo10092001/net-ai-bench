@@ -1,0 +1,1 @@
+r1 eth2 is down and lacks an IP, and eth1 has no IPv4 address. I assigned the correct IPs to both interfaces, brought eth2 up, and enabled IPv4 forwarding (already 1, but explicitly set). pc1 and pc2 already have correct addresses and static routes; connectivity will be restored once r1's interfaces are up and forwarding.

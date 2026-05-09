@@ -1,1 +1,0 @@
-Successfully configured all devices and validated bidirectional connectivity between PC1 and PC2.

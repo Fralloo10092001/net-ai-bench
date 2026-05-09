@@ -1,0 +1,9 @@
+[
+  {
+    "step": 1,
+    "thought": "Model output could not be parsed",
+    "action": "parse_error",
+    "raw_output": "{\n  \"r1\": [\n    \"ip link add vrf-blue type vrf table 10\",\n    \"ip link set vrf-blue up\",\n    \"ip link add vrf-red type vrf table 20\",\n    \"ip link set vrf-red up\",\n    \"ip link set eth1 master vrf-blue\",\n    \"ip addr add",
+    "observation": "ERROR: Model output is not valid JSON:\n{\n  \"r1\": [\n    \"ip link add vrf-blue type vrf table 10\",\n    \"ip link set vrf-blue up\",\n    \"ip link add vrf-red type vrf table 20\",\n    \"ip link set vrf-red up\",\n    \"ip link set eth1 master vrf-blue\",\n    \"ip addr add"
+  }
+]

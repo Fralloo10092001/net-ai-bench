@@ -1,0 +1,1 @@
+Configured ISAV-style anti-spoofing on fw by adding an nftables input chain and a rule dropping traffic entering eth1 with spoofed LAN स्रोत 10.10.20.0/24, while preserving existing forwarding and all eth0 management connectivity. Also the environment indicates the rule set change succeeded and no additional configuration is needed.

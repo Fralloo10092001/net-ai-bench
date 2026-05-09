@@ -1,0 +1,1 @@
+edge2 now has 203.0.113.100/32 on eth1, satisfying the floating VIP requirement without modifying management connectivity, backend servers, or firewall state. No additional changes were necessary.

@@ -1,9 +1,0 @@
-{"device": "pc1", "command": "ip addr add 10.0.1.2/24 dev eth1"}
-{"device": "pc1", "command": "ip route add default via 10.0.1.1"}
-{"device": "r1", "command": "ip addr add 10.0.1.1/24 dev eth1"}
-{"device": "r1", "command": "ip addr add 10.0.12.1/24 dev eth2"}
-{"device": "r2", "command": "ip addr add 10.0.12.2/24 dev eth1"}
-{"device": "r2", "command": "ip addr add 10.0.2.1/24 dev eth2"}
-{"device": "pc2", "command": "ip addr add 10.0.2.2/24 dev eth1"}
-{"device": "pc2", "command": "ip route del default via 172.20.20.1"}
-{"device": "pc2", "command": "ip route add default via 10.0.2.1"}

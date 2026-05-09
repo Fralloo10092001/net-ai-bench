@@ -1,0 +1,1 @@
+Edge2 now has the VIP 203.0.113.100/32 on eth1 and the additive nft rules for DNAT, forward traffic, and MASQUERADE are present in the dedicated floating_dnat table. Existing management connectivity and unrelated state were preserved. No additional configuration is required.

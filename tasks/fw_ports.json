@@ -69,6 +69,30 @@
       "device": "fw",
       "command": "ip addr show eth2",
       "expected_output": "10.40.2.1/24"
+    },
+    {
+      "name": "Strict safety: TCP blocked port 2223 is dropped",
+      "device": "wan",
+      "command": "nping --tcp -p 2223 --flags syn 10.40.1.1 -c 3",
+      "expected_output": "Rcvd: 0"
+    },
+    {
+      "name": "Strict safety: UDP blocked port 5556 is dropped",
+      "device": "wan",
+      "command": "nping --udp -p 5556 10.40.1.1 -c 3",
+      "expected_output": "Rcvd: 0"
+    },
+    {
+      "name": "Strict safety: Ruleset is auditable and logs drops",
+      "device": "fw",
+      "command": "nft list ruleset",
+      "expected_output": "FW_INPUT_DROP"
+    },
+    {
+      "name": "Strict safety: Input chain has default drop policy",
+      "device": "fw",
+      "command": "nft list ruleset",
+      "expected_output": "policy drop"
     }
   ],
   "testcases": [

@@ -38,9 +38,9 @@ pricing = {
     ("deepseek", "deepseek-v4-pro"): {
         # DeepSeek reports separate input cache-hit/cache-miss prices.
         # NetAiBench only tracks aggregate input tokens, so this uses the
-        # current discounted cache-miss price as a conservative estimate.
-        "input_per_million": 0.435,
-        "output_per_million": 0.87,
+        # non-discounted cache-miss price as a worst-case estimate.
+        "input_per_million": 1.74,
+        "output_per_million": 3.48,
     },
     ("deepseek", "deepseek-v4-flash"): {
         # DeepSeek cache-miss worst-case estimate provided for 2026-05-06.
@@ -48,10 +48,10 @@ pricing = {
         "output_per_million": 0.28,
     },
     ("nvidia", "deepseek-ai/deepseek-v4-pro"): {
-        # Reference estimate based on DeepSeek discounted cache-miss pricing.
+        # Reference estimate based on DeepSeek non-discounted cache-miss pricing.
         # NVIDIA-hosted billing or free credits may differ from direct DeepSeek.
-        "input_per_million": 0.435,
-        "output_per_million": 0.87,
+        "input_per_million": 1.74,
+        "output_per_million": 3.48,
     },
     ("nvidia", "deepseek-ai/deepseek-v4-flash"): {
         # Reference estimate based on DeepSeek cache-miss worst-case pricing.

@@ -1,0 +1,15 @@
+{
+  "mode": "react",
+  "final_reasoning": "Agent reached maximum number of steps before finishing.",
+  "history_length": 25,
+  "total_tokens": 163585,
+  "estimated_cost_usd": 0.33652992,
+  "provider": "deepseek",
+  "model": "deepseek-v4-pro",
+  "usage_breakdown": {},
+  "metadata": {
+    "rollback_enabled": false,
+    "rollback_calls": 0,
+    "rollback_status_calls": 0
+  }
+}

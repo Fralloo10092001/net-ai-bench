@@ -1,0 +1,15 @@
+{
+  "mode": "react",
+  "final_reasoning": "Validated on fw with nft list table inet fw_input. The active ruleset shows chain input hooked to the input path with policy drop and the required accept rules plus log/drop rule prefix FW_INPUT_DROP. Management on eth0 and existing routes were left untouched.",
+  "history_length": 22,
+  "total_tokens": 116702,
+  "estimated_cost_usd": 0.10430775,
+  "provider": "openai",
+  "model": "gpt-5.4-mini",
+  "usage_breakdown": {},
+  "metadata": {
+    "rollback_enabled": true,
+    "rollback_calls": 0,
+    "rollback_status_calls": 0
+  }
+}

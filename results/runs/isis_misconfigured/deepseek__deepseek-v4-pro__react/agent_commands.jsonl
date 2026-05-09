@@ -1,0 +1,1 @@
+{"device": "r2", "command": "vtysh -c \"conf t\" -c \"interface eth2\" -c \"ipv6 router isis CORE\" -c \"isis network point-to-point\""}

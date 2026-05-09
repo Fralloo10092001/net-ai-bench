@@ -1,0 +1,6 @@
+{"device": "r1", "command": "ip -6 addr add 2001:db8:1::1/64 dev eth1"}
+{"device": "r1", "command": "ip -6 addr add 2001:db8:12::1/64 dev eth2"}
+{"device": "r1", "command": "sysctl -w net.ipv6.conf.all.forwarding=1"}
+{"device": "r1", "command": "vtysh -c \"configure terminal\""}
+{"device": "r1", "command": "vtysh -c \"configure terminal\""}
+{"device": "r1", "command": "vtysh -c \"configure terminal\""}

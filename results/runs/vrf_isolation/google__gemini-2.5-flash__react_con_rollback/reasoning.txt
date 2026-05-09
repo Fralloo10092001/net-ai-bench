@@ -1,0 +1,1 @@
+All connectivity requirements have been validated. tenant-blue can reach its shared segment, tenant-red can reach its shared segment, and tenant-blue and tenant-red are isolated from each other. The task is complete.

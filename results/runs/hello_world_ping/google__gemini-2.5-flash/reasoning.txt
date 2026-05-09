@@ -1,1 +1,0 @@
-PC1 successfully pinged PC2, which was the main objective of the task. All necessary configurations were applied and validated.

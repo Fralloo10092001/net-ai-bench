@@ -1,0 +1,18 @@
+{"device": "r1", "command": "ip link add vrf-blue type vrf table 10"}
+{"device": "r1", "command": "ip link set vrf-blue up"}
+{"device": "r1", "command": "ip link add vrf-red type vrf table 20"}
+{"device": "r1", "command": "ip link set vrf-red up"}
+{"device": "r1", "command": "ip link set dev eth1 master vrf-blue"}
+{"device": "r1", "command": "ip link set dev eth1 up"}
+{"device": "r1", "command": "ip link set dev eth3 master vrf-blue"}
+{"device": "r1", "command": "ip link set dev eth3 up"}
+{"device": "r1", "command": "ip link set dev eth2 master vrf-red"}
+{"device": "r1", "command": "ip link set dev eth2 up"}
+{"device": "r1", "command": "ip link set dev eth4 master vrf-red"}
+{"device": "r1", "command": "ip link set dev eth4 up"}
+{"device": "r1", "command": "ip addr add 10.10.1.1/24 dev eth1 vrf vrf-blue"}
+{"device": "r1", "command": "ip addr add 10.10.1.1/24 dev eth1"}
+{"device": "r1", "command": "ip addr add 10.10.100.1/24 dev eth3"}
+{"device": "r1", "command": "ip addr add 10.20.1.1/24 dev eth2"}
+{"device": "r1", "command": "ip addr add 10.20.100.1/24 dev eth4"}
+{"device": "r1", "command": "sysctl -w net.ipv4.ip_forward=1"}

@@ -1,1 +1,1 @@
-The task requires configuring dynamic IPv6 reachability with FRRouting IS-IS. All attempts to configure FRR using `vtysh -c "..."` commands on both r1 and r2 have failed with the error 'command not allowed'. This indicates that the necessary tool for configuring FRR is not available or permitted in this environment. Therefore, the core requirement of the task cannot be fulfilled. IPv6 forwarding has been enabled on both routers, but without IS-IS configuration, dynamic routing cannot be established.
+Agent reached maximum number of steps before finishing.

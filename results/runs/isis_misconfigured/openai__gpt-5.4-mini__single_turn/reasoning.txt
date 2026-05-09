@@ -1,0 +1,1 @@
+r1 is already correctly running ISIS on the core-facing link, while r2 is missing ISIS activation on eth2. The fix is to add ipv6 router isis CORE under r2's eth2 interface and save the configuration. This preserves the existing addressing plan and management connectivity on eth0 while allowing the r1-r2 IPv6 IS-IS adjacency to form and exchange LAN prefixes.

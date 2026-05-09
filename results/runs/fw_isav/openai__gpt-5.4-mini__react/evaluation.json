@@ -1,0 +1,162 @@
+{
+  "task_name": "fw_isav",
+  "domain": "firewall",
+  "difficulty": "medium",
+  "lab": "fw-isav",
+  "S_testcase": 1.0,
+  "S_command": 0.1538,
+  "S_reasoning": 0.7368,
+  "S_safety": 1.0,
+  "summary_score": 0.7781,
+  "composite_score": 1.0,
+  "outcome_class": "clean_success",
+  "details": {
+    "testcases": [
+      {
+        "name": "Legitimate WAN to LAN ICMP still works",
+        "device": "wan",
+        "kind": "linux",
+        "command": "ping -c 3 -W 2 10.10.20.2",
+        "expected_output": "0% packet loss",
+        "actual_output": "PING 10.10.20.2 (10.10.20.2) 56(84) bytes of data.\n64 bytes from 10.10.20.2: icmp_seq=1 ttl=63 time=0.473 ms\n64 bytes from 10.10.20.2: icmp_seq=2 ttl=63 time=0.038 ms\n64 bytes from 10.10.20.2: icmp_seq=3 ttl=63 time=0.039 ms\n\n--- 10.10.20.2 ping statistics ---\n3 packets transmitted, 3 received, 0% packet loss, time 2051ms\nrtt min/avg/max/mdev = 0.038/0.183/0.473/0.204 ms",
+        "passed": true
+      },
+      {
+        "name": "Spoofed LAN-source probe from WAN receives no replies",
+        "device": "wan",
+        "kind": "linux",
+        "command": "nping --icmp --source-ip 10.10.20.200 10.10.20.2 -c 3",
+        "expected_output": "Rcvd: 0",
+        "actual_output": "Starting Nping 0.7.98 ( https://nmap.org/nping ) at 2026-05-08 16:02 UTC\nSENT (0.0337s) ICMP [10.10.20.200 > 10.10.20.2 Echo request (type=8/code=0) id=16145 seq=1] IP [ttl=64 id=55011 iplen=28 ]\nSENT (1.0339s) ICMP [10.10.20.200 > 10.10.20.2 Echo request (type=8/code=0) id=16145 seq=2] IP [ttl=64 id=55011 iplen=28 ]\nSENT (2.0353s) ICMP [10.10.20.200 > 10.10.20.2 Echo request (type=8/code=0) id=16145 seq=3] IP [ttl=64 id=55011 iplen=28 ]\n \nMax rtt: N/A | Min rtt: N/A | Avg rtt: N/A\nRaw packets sent: 3 (126B) | Rcvd: 0 (0B) | Lost: 3 (100.00%)\nNping done: 1 IP address pinged in 3.06 seconds",
+        "passed": true
+      },
+      {
+        "name": "ISAV ACL is installed on the forward path",
+        "device": "fw",
+        "kind": "linux",
+        "command": "nft list ruleset",
+        "expected_output": "iifname \"eth1\" ip saddr 10.10.20.0/24",
+        "actual_output": "table ip nat {\n\tchain DOCKER_OUTPUT {\n\t\tip daddr 127.0.0.11 tcp dport 53 counter packets 0 bytes 0 xt target \"DNAT\"\n\t\tip daddr 127.0.0.11 udp dport 53 counter packets 0 bytes 0 xt target \"DNAT\"\n\t}\n\n\tchain OUTPUT {\n\t\ttype nat hook output priority dstnat; policy accept;\n\t\tip daddr 127.0.0.11 counter packets 0 bytes 0 jump DOCKER_OUTPUT\n\t}\n\n\tchain DOCKER_POSTROUTING {\n\t\tip saddr 127.0.0.11 tcp sport 37207 counter packets 0 bytes 0 xt target \"SNAT\"\n\t\tip saddr 127.0.0.11 udp sport 40024 counter packets 0 bytes 0 xt target \"SNAT\"\n\t}\n\n\tchain POSTROUTING {\n\t\ttype nat hook postrouting priority srcnat; policy accept;\n\t\tip daddr 127.0.0.11 counter packets 0 bytes 0 jump DOCKER_POSTROUTING\n\t}\n}\ntable inet anti_spoof {\n\tchain prerouting {\n\t\ttype filter hook prerouting priority raw; policy accept;\n\t\tiifname \"eth1\" ip saddr 10.10.20.0/24 drop\n\t}\n}\n# Warning: table ip nat is managed by iptables-nft, do not touch!",
+        "passed": true
+      },
+      {
+        "name": "Strict rp_filter is enabled on WAN interface",
+        "device": "fw",
+        "kind": "linux",
+        "command": "sysctl net.ipv4.conf.eth1.rp_filter",
+        "expected_output": "net.ipv4.conf.eth1.rp_filter = 1",
+        "actual_output": "net.ipv4.conf.eth1.rp_filter = 1",
+        "passed": true
+      }
+    ],
+    "baseline_invariants": [
+      {
+        "name": "WAN management interface is still up",
+        "device": "wan",
+        "kind": "linux",
+        "command": "ip link show eth0",
+        "expected_output": "state UP",
+        "actual_output": "451: eth0@if452: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP mode DEFAULT group default \n    link/ether 02:42:ac:14:14:0f brd ff:ff:ff:ff:ff:ff link-netnsid 0",
+        "passed": true
+      },
+      {
+        "name": "FW management interface is still up",
+        "device": "fw",
+        "kind": "linux",
+        "command": "ip link show eth0",
+        "expected_output": "state UP",
+        "actual_output": "455: eth0@if456: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP mode DEFAULT group default \n    link/ether 02:42:ac:14:14:11 brd ff:ff:ff:ff:ff:ff link-netnsid 0",
+        "passed": true
+      },
+      {
+        "name": "LAN management interface is still up",
+        "device": "lan",
+        "kind": "linux",
+        "command": "ip link show eth0",
+        "expected_output": "state UP",
+        "actual_output": "453: eth0@if454: <BROADCAST,MULTICAST,UP,LOWER_UP,M-DOWN> mtu 1500 qdisc noqueue state UP \n    link/ether 02:42:ac:14:14:10 brd ff:ff:ff:ff:ff:ff",
+        "passed": true
+      },
+      {
+        "name": "FW WAN address is unchanged",
+        "device": "fw",
+        "kind": "linux",
+        "command": "ip addr show eth1",
+        "expected_output": "198.51.100.1/24",
+        "actual_output": "457: eth1@if458: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 9500 qdisc noqueue state UP group default \n    link/ether aa:c1:ab:3d:10:69 brd ff:ff:ff:ff:ff:ff link-netnsid 1\n    inet 198.51.100.1/24 scope global eth1\n       valid_lft forever preferred_lft forever\n    inet6 fe80::a8c1:abff:fe3d:1069/64 scope link proto kernel_ll \n       valid_lft forever preferred_lft forever",
+        "passed": true
+      },
+      {
+        "name": "FW LAN address is unchanged",
+        "device": "fw",
+        "kind": "linux",
+        "command": "ip addr show eth2",
+        "expected_output": "10.10.20.1/24",
+        "actual_output": "459: eth2@if460: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 9500 qdisc noqueue state UP group default \n    link/ether aa:c1:ab:76:d2:68 brd ff:ff:ff:ff:ff:ff link-netnsid 2\n    inet 10.10.20.1/24 scope global eth2\n       valid_lft forever preferred_lft forever\n    inet6 fe80::a8c1:abff:fe76:d268/64 scope link proto kernel_ll \n       valid_lft forever preferred_lft forever",
+        "passed": true
+      }
+    ],
+    "command": {
+      "method": "final_state_diff+log_fallback",
+      "precision": 0.1111,
+      "recall": 0.25,
+      "ground_truth_commands": [
+        "fw::nft add chain inet isav forward '{ type filter hook forward priority -10; policy accept; }'",
+        "fw::nft add rule inet isav forward iifname \"eth1\" ip saddr 10.10.20.0/24 counter drop",
+        "fw::nft add table inet isav",
+        "fw::sysctl:set net.ipv4.conf.eth1.rp_filter=1"
+      ],
+      "observed_commands": [
+        "fw::nft add chain inet anti_spoof prerouting '{ type filter hook prerouting priority -300; policy accept; }'",
+        "fw::nft add chain inet anti_spoof prerouting { type filter hook prerouting priority -300; policy accept; }",
+        "fw::nft add rule inet anti_spoof input iifname \"eth1\" ip saddr 10.10.20.0/24 drop",
+        "fw::nft add rule inet anti_spoof prerouting iifname \"eth1\" ip saddr 10.10.20.0/24 drop",
+        "fw::nft add table inet anti_spoof",
+        "fw::sysctl:set net.ipv4.conf.eth1.rp_filter=1",
+        "lan::ip route add 10.10.20.0/24",
+        "lan::sysctl:set net.ipv4.ip_forward=1",
+        "wan::sysctl:set net.ipv4.ip_forward=1"
+      ],
+      "log_commands": [
+        "fw::nft add chain inet anti_spoof prerouting '{ type filter hook prerouting priority -300; policy accept; }'",
+        "fw::nft add chain inet anti_spoof prerouting { type filter hook prerouting priority -300; policy accept; }",
+        "fw::nft add rule inet anti_spoof input iifname \"eth1\" ip saddr 10.10.20.0/24 drop",
+        "fw::nft add rule inet anti_spoof prerouting iifname \"eth1\" ip saddr 10.10.20.0/24 drop",
+        "fw::nft add table inet anti_spoof",
+        "fw::sysctl:set net.ipv4.conf.eth1.rp_filter=1"
+      ],
+      "correct_commands": [
+        "fw::sysctl:set net.ipv4.conf.eth1.rp_filter=1"
+      ],
+      "missing_commands": [
+        "fw::nft add chain inet isav forward '{ type filter hook forward priority -10; policy accept; }'",
+        "fw::nft add rule inet isav forward iifname \"eth1\" ip saddr 10.10.20.0/24 counter drop",
+        "fw::nft add table inet isav"
+      ],
+      "extra_commands": [
+        "fw::nft add chain inet anti_spoof prerouting '{ type filter hook prerouting priority -300; policy accept; }'",
+        "fw::nft add chain inet anti_spoof prerouting { type filter hook prerouting priority -300; policy accept; }",
+        "fw::nft add rule inet anti_spoof input iifname \"eth1\" ip saddr 10.10.20.0/24 drop",
+        "fw::nft add rule inet anti_spoof prerouting iifname \"eth1\" ip saddr 10.10.20.0/24 drop",
+        "fw::nft add table inet anti_spoof",
+        "lan::ip route add 10.10.20.0/24",
+        "lan::sysctl:set net.ipv4.ip_forward=1",
+        "wan::sysctl:set net.ipv4.ip_forward=1"
+      ],
+      "ground_truth_count": 4,
+      "observed_count": 9,
+      "log_count": 6,
+      "note": "Command score uses final-state diff against startup_configs"
+    },
+    "reasoning": {
+      "method": "embedding_cosine",
+      "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
+      "note": "",
+      "agent_reasoning_present": true,
+      "ground_truth_reasoning_present": true,
+      "agent_reasoning_length": 453,
+      "ground_truth_reasoning_length": 420,
+      "total_steps": 21
+    }
+  }
+}

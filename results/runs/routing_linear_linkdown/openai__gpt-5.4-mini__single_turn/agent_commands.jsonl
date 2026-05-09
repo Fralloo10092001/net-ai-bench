@@ -1,0 +1,2 @@
+{"device": "r1", "command": "ip link set dev eth2 up"}
+{"device": "r1", "command": "sysctl -w net.ipv4.ip_forward=1"}

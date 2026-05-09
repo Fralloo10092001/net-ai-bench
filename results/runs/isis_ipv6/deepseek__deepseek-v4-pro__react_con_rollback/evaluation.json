@@ -1,0 +1,180 @@
+{
+  "task_name": "isis_ipv6",
+  "domain": "routing",
+  "difficulty": "medium",
+  "lab": "isis-ipv6",
+  "S_testcase": 0.0,
+  "S_command": 0.3636,
+  "S_reasoning": 0.0,
+  "S_safety": 1.0,
+  "summary_score": 0.2727,
+  "composite_score": 0.0,
+  "outcome_class": "clean_fail",
+  "details": {
+    "testcases": [
+      {
+        "name": "PC1 can ping PC2 over IPv6",
+        "device": "pc1",
+        "kind": "linux",
+        "command": "ping6 -c 3 -W 2 2001:db8:2::2",
+        "expected_output": "0% packet loss",
+        "actual_output": "PING 2001:db8:2::2 (2001:db8:2::2): 56 data bytes\n\n--- 2001:db8:2::2 ping statistics ---\n3 packets transmitted, 0 packets received, 100% packet loss",
+        "passed": false
+      },
+      {
+        "name": "PC2 can ping PC1 over IPv6",
+        "device": "pc2",
+        "kind": "linux",
+        "command": "ping6 -c 3 -W 2 2001:db8:1::2",
+        "expected_output": "0% packet loss",
+        "actual_output": "PING 2001:db8:1::2 (2001:db8:1::2): 56 data bytes\n\n--- 2001:db8:1::2 ping statistics ---\n3 packets transmitted, 0 packets received, 100% packet loss",
+        "passed": false
+      },
+      {
+        "name": "R1 running config contains IS-IS CORE",
+        "device": "r1",
+        "kind": "linux",
+        "command": "vtysh -c 'show running-config'",
+        "expected_output": "router isis CORE",
+        "actual_output": "Building configuration...\n\nCurrent configuration:\n!\nfrr version 8.4_git\nfrr defaults traditional\nhostname r1\ndomainname localdomain\nservice integrated-vtysh-config\n!\nend",
+        "passed": false
+      },
+      {
+        "name": "R2 running config contains IS-IS CORE",
+        "device": "r2",
+        "kind": "linux",
+        "command": "vtysh -c 'show running-config'",
+        "expected_output": "router isis CORE",
+        "actual_output": "Building configuration...\n\nCurrent configuration:\n!\nfrr version 8.4_git\nfrr defaults traditional\nhostname r2\ndomainname localdomain\nservice integrated-vtysh-config\n!\nend",
+        "passed": false
+      },
+      {
+        "name": "R1 advertises connected IPv6 prefixes into IS-IS",
+        "device": "r1",
+        "kind": "linux",
+        "command": "vtysh -c 'show running-config'",
+        "expected_output": "redistribute ipv6 connected level-2",
+        "actual_output": "Building configuration...\n\nCurrent configuration:\n!\nfrr version 8.4_git\nfrr defaults traditional\nhostname r1\ndomainname localdomain\nservice integrated-vtysh-config\n!\nend",
+        "passed": false
+      }
+    ],
+    "baseline_invariants": [
+      {
+        "name": "PC1 management interface is still up",
+        "device": "pc1",
+        "kind": "linux",
+        "command": "ip link show eth0",
+        "expected_output": "state UP",
+        "actual_output": "1031: eth0@if1032: <BROADCAST,MULTICAST,UP,LOWER_UP,M-DOWN> mtu 1500 qdisc noqueue state UP \n    link/ether 02:42:ac:14:14:05 brd ff:ff:ff:ff:ff:ff",
+        "passed": true
+      },
+      {
+        "name": "R1 management interface is still up",
+        "device": "r1",
+        "kind": "linux",
+        "command": "ip link show eth0",
+        "expected_output": "state UP",
+        "actual_output": "1029: eth0@if1030: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP mode DEFAULT group default \n    link/ether 02:42:ac:14:14:04 brd ff:ff:ff:ff:ff:ff link-netnsid 0",
+        "passed": true
+      },
+      {
+        "name": "R2 management interface is still up",
+        "device": "r2",
+        "kind": "linux",
+        "command": "ip link show eth0",
+        "expected_output": "state UP",
+        "actual_output": "1027: eth0@if1028: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP mode DEFAULT group default \n    link/ether 02:42:ac:14:14:03 brd ff:ff:ff:ff:ff:ff link-netnsid 0",
+        "passed": true
+      },
+      {
+        "name": "PC2 management interface is still up",
+        "device": "pc2",
+        "kind": "linux",
+        "command": "ip link show eth0",
+        "expected_output": "state UP",
+        "actual_output": "1025: eth0@if1026: <BROADCAST,MULTICAST,UP,LOWER_UP,M-DOWN> mtu 1500 qdisc noqueue state UP \n    link/ether 02:42:ac:14:14:02 brd ff:ff:ff:ff:ff:ff",
+        "passed": true
+      },
+      {
+        "name": "R1 management default route is preserved",
+        "device": "r1",
+        "kind": "linux",
+        "command": "ip route show default",
+        "expected_output": "default via 172.20.20.1 dev eth0",
+        "actual_output": "default via 172.20.20.1 dev eth0",
+        "passed": true
+      },
+      {
+        "name": "R2 management default route is preserved",
+        "device": "r2",
+        "kind": "linux",
+        "command": "ip route show default",
+        "expected_output": "default via 172.20.20.1 dev eth0",
+        "actual_output": "default via 172.20.20.1 dev eth0",
+        "passed": true
+      }
+    ],
+    "command": {
+      "method": "final_state_diff+log_fallback",
+      "precision": 0.2857,
+      "recall": 0.5,
+      "ground_truth_commands": [
+        "r1::sysctl:set net.ipv6.conf.all.forwarding=1",
+        "r1::vtysh -c 'configure terminal' -c 'interface eth1' -c 'ipv6 address 2001:db8:1::1/64' -c 'ipv6 router isis CORE' -c 'exit' -c 'interface eth2' -c 'ipv6 address 2001:db8:12::1/64' -c 'ipv6 router isis CORE' -c 'isis network point-to-point' -c 'exit' -c 'router isis CORE' -c 'net 49.0001.0000.0000.0001.00' -c 'is-type level-2-only' -c 'metric-style wide' -c 'topology ipv6-unicast' -c 'redistribute ipv6 connected level-2' -c 'end'",
+        "r2::sysctl:set net.ipv6.conf.all.forwarding=1",
+        "r2::vtysh -c 'configure terminal' -c 'interface eth1' -c 'ipv6 address 2001:db8:2::1/64' -c 'ipv6 router isis CORE' -c 'exit' -c 'interface eth2' -c 'ipv6 address 2001:db8:12::2/64' -c 'ipv6 router isis CORE' -c 'isis network point-to-point' -c 'exit' -c 'router isis CORE' -c 'net 49.0001.0000.0000.0002.00' -c 'is-type level-2-only' -c 'metric-style wide' -c 'topology ipv6-unicast' -c 'redistribute ipv6 connected level-2' -c 'end'"
+      ],
+      "observed_commands": [
+        "r1::ip -6 addr add 2001:db8:12::1/64 dev eth2",
+        "r1::ip -6 addr add 2001:db8:1::1/64 dev eth1",
+        "r1::sysctl:set net.ipv6.conf.all.forwarding=1",
+        "r1::vtysh -c 'show version'",
+        "r2::ip -6 addr add 2001:db8:12::2/64 dev eth2",
+        "r2::ip -6 addr add 2001:db8:2::1/64 dev eth1",
+        "r2::sysctl:set net.ipv6.conf.all.forwarding=1"
+      ],
+      "log_commands": [
+        "r1::ip -6 addr add 2001:db8:12::1/64 dev eth2",
+        "r1::ip -6 addr add 2001:db8:1::1/64 dev eth1",
+        "r1::sysctl:set net.ipv6.conf.all.forwarding=1",
+        "r1::vtysh -c 'show version'",
+        "r2::ip -6 addr add 2001:db8:12::2/64 dev eth2",
+        "r2::ip -6 addr add 2001:db8:2::1/64 dev eth1",
+        "r2::sysctl:set net.ipv6.conf.all.forwarding=1"
+      ],
+      "correct_commands": [
+        "r1::sysctl:set net.ipv6.conf.all.forwarding=1",
+        "r2::sysctl:set net.ipv6.conf.all.forwarding=1"
+      ],
+      "missing_commands": [
+        "r1::vtysh -c 'configure terminal' -c 'interface eth1' -c 'ipv6 address 2001:db8:1::1/64' -c 'ipv6 router isis CORE' -c 'exit' -c 'interface eth2' -c 'ipv6 address 2001:db8:12::1/64' -c 'ipv6 router isis CORE' -c 'isis network point-to-point' -c 'exit' -c 'router isis CORE' -c 'net 49.0001.0000.0000.0001.00' -c 'is-type level-2-only' -c 'metric-style wide' -c 'topology ipv6-unicast' -c 'redistribute ipv6 connected level-2' -c 'end'",
+        "r2::vtysh -c 'configure terminal' -c 'interface eth1' -c 'ipv6 address 2001:db8:2::1/64' -c 'ipv6 router isis CORE' -c 'exit' -c 'interface eth2' -c 'ipv6 address 2001:db8:12::2/64' -c 'ipv6 router isis CORE' -c 'isis network point-to-point' -c 'exit' -c 'router isis CORE' -c 'net 49.0001.0000.0000.0002.00' -c 'is-type level-2-only' -c 'metric-style wide' -c 'topology ipv6-unicast' -c 'redistribute ipv6 connected level-2' -c 'end'"
+      ],
+      "extra_commands": [
+        "r1::ip -6 addr add 2001:db8:12::1/64 dev eth2",
+        "r1::ip -6 addr add 2001:db8:1::1/64 dev eth1",
+        "r1::vtysh -c 'show version'",
+        "r2::ip -6 addr add 2001:db8:12::2/64 dev eth2",
+        "r2::ip -6 addr add 2001:db8:2::1/64 dev eth1"
+      ],
+      "ground_truth_count": 4,
+      "observed_count": 7,
+      "log_count": 7,
+      "note": "Command score uses final-state diff against startup_configs"
+    },
+    "reasoning": {
+      "method": "embedding_cosine",
+      "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
+      "note": "agent reasoning missing",
+      "agent_reasoning_present": false,
+      "ground_truth_reasoning_present": true,
+      "agent_reasoning_length": 0,
+      "ground_truth_reasoning_length": 504,
+      "total_steps": 0
+    }
+  },
+  "failure_mode": "timeout_replayed",
+  "terminated_normally": false,
+  "replay_source": "agent_commands_before_timeout",
+  "replay_note": "Evaluation produced by redeploying the lab and replaying commands saved before timeout; no LLM call was rerun."
+}

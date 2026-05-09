@@ -1,0 +1,3 @@
+{"device": "r1", "command": "vtysh -c 'show isis neighbor'"}
+{"device": "r2", "command": "vtysh -c 'show isis neighbor'"}
+{"device": "r2", "command": "vtysh -c 'configure terminal' -c 'router isis CORE' -c 'metric-style wide' -c 'end' -c 'write memory'"}

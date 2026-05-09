@@ -1,0 +1,282 @@
+{
+  "task_name": "FRR Basic Connectivity",
+  "domain": "routing",
+  "difficulty": "easy",
+  "lab": "frr-basic",
+  "S_testcase": 0.7,
+  "S_command": 0.8148,
+  "S_reasoning": 0.6401,
+  "S_safety": 1.0,
+  "summary_score": 0.771,
+  "composite_score": 0.7,
+  "outcome_class": "clean_fail",
+  "details": {
+    "testcases": [
+      {
+        "name": "PC1 can ping PC2",
+        "device": "pc1",
+        "kind": "linux",
+        "command": "ping -c 3 -W 2 10.0.2.2",
+        "expected_output": "3 packets transmitted, 3 packets received",
+        "actual_output": "PING 10.0.2.2 (10.0.2.2): 56 data bytes\n\n--- 10.0.2.2 ping statistics ---\n3 packets transmitted, 0 packets received, 100% packet loss",
+        "passed": false
+      },
+      {
+        "name": "PC2 can ping PC1",
+        "device": "pc2",
+        "kind": "linux",
+        "command": "ping -c 3 -W 2 10.0.1.2",
+        "expected_output": "3 packets transmitted, 3 packets received",
+        "actual_output": "PING 10.0.1.2 (10.0.1.2): 56 data bytes\n\n--- 10.0.1.2 ping statistics ---\n3 packets transmitted, 0 packets received, 100% packet loss",
+        "passed": false
+      },
+      {
+        "name": "R1 eth1 has correct IP",
+        "device": "r1",
+        "kind": "linux",
+        "command": "ip addr show eth1",
+        "expected_output": "10.0.1.1/24",
+        "actual_output": "429: eth1@if430: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 9500 qdisc noqueue state UP group default \n    link/ether aa:c1:ab:59:73:36 brd ff:ff:ff:ff:ff:ff link-netnsid 1\n    inet 10.0.1.1/24 scope global eth1\n       valid_lft forever preferred_lft forever\n    inet6 fe80::a8c1:abff:fe59:7336/64 scope link \n       valid_lft forever preferred_lft forever",
+        "passed": true
+      },
+      {
+        "name": "R1 eth2 has correct IP",
+        "device": "r1",
+        "kind": "linux",
+        "command": "ip addr show eth2",
+        "expected_output": "10.0.12.1/24",
+        "actual_output": "427: eth2@if428: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 9500 qdisc noqueue state UP group default \n    link/ether aa:c1:ab:10:ce:27 brd ff:ff:ff:ff:ff:ff link-netnsid 2\n    inet 10.0.12.1/24 scope global eth2\n       valid_lft forever preferred_lft forever\n    inet6 fe80::a8c1:abff:fe10:ce27/64 scope link \n       valid_lft forever preferred_lft forever",
+        "passed": true
+      },
+      {
+        "name": "R2 eth1 has correct IP",
+        "device": "r2",
+        "kind": "linux",
+        "command": "ip addr show eth1",
+        "expected_output": "10.0.12.2/24",
+        "actual_output": "428: eth1@if427: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 9500 qdisc noqueue state UP group default \n    link/ether aa:c1:ab:36:47:98 brd ff:ff:ff:ff:ff:ff link-netnsid 2\n    inet 10.0.12.2/24 scope global eth1\n       valid_lft forever preferred_lft forever\n    inet6 fe80::a8c1:abff:fe36:4798/64 scope link \n       valid_lft forever preferred_lft forever",
+        "passed": true
+      },
+      {
+        "name": "R2 eth2 has correct IP",
+        "device": "r2",
+        "kind": "linux",
+        "command": "ip addr show eth2",
+        "expected_output": "10.0.2.1/24",
+        "actual_output": "425: eth2@if426: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 9500 qdisc noqueue state UP group default \n    link/ether aa:c1:ab:bd:16:16 brd ff:ff:ff:ff:ff:ff link-netnsid 1\n    inet 10.0.2.1/24 scope global eth2\n       valid_lft forever preferred_lft forever\n    inet6 fe80::a8c1:abff:febd:1616/64 scope link \n       valid_lft forever preferred_lft forever",
+        "passed": true
+      },
+      {
+        "name": "PC1 has correct IP",
+        "device": "pc1",
+        "kind": "linux",
+        "command": "ip addr show eth1",
+        "expected_output": "10.0.1.2/24",
+        "actual_output": "430: eth1@if429: <BROADCAST,MULTICAST,UP,LOWER_UP,M-DOWN> mtu 9500 qdisc noqueue state UP \n    link/ether aa:c1:ab:83:33:f7 brd ff:ff:ff:ff:ff:ff\n    inet 10.0.1.2/24 scope global eth1\n       valid_lft forever preferred_lft forever\n    inet6 fe80::a8c1:abff:fe83:33f7/64 scope link \n       valid_lft forever preferred_lft forever",
+        "passed": true
+      },
+      {
+        "name": "PC2 has correct IP",
+        "device": "pc2",
+        "kind": "linux",
+        "command": "ip addr show eth1",
+        "expected_output": "10.0.2.2/24",
+        "actual_output": "426: eth1@if425: <BROADCAST,MULTICAST,UP,LOWER_UP,M-DOWN> mtu 9500 qdisc noqueue state UP \n    link/ether aa:c1:ab:bf:28:ff brd ff:ff:ff:ff:ff:ff\n    inet 10.0.2.2/24 scope global eth1\n       valid_lft forever preferred_lft forever\n    inet6 fe80::a8c1:abff:febf:28ff/64 scope link \n       valid_lft forever preferred_lft forever",
+        "passed": true
+      },
+      {
+        "name": "R1 has route to PC2 subnet",
+        "device": "r1",
+        "kind": "linux",
+        "command": "ip route show",
+        "expected_output": "10.0.2.0/24 via 10.0.12.2",
+        "actual_output": "default via 172.20.20.1 dev eth0 \n10.0.1.0/24 dev eth1 proto kernel scope link src 10.0.1.1 \n10.0.2.0/24 via 10.0.12.2 dev eth2 \n10.0.12.0/24 dev eth2 proto kernel scope link src 10.0.12.1 \n172.20.20.0/24 dev eth0 proto kernel scope link src 172.20.20.14",
+        "passed": true
+      },
+      {
+        "name": "R2 has route to PC1 subnet",
+        "device": "r2",
+        "kind": "linux",
+        "command": "ip route show",
+        "expected_output": "10.0.1.0/24 via 10.0.12.1",
+        "actual_output": "default via 172.20.20.1 dev eth0 \n10.0.2.0/24 dev eth2 proto kernel scope link src 10.0.2.1 \n10.0.12.0/24 dev eth1 proto kernel scope link src 10.0.12.2 \n172.20.20.0/24 dev eth0 proto kernel scope link src 172.20.20.13",
+        "passed": false
+      }
+    ],
+    "baseline_invariants": [
+      {
+        "name": "PC1 management interface is still up",
+        "device": "pc1",
+        "kind": "linux",
+        "command": "ip link show eth0",
+        "expected_output": "state UP",
+        "actual_output": "419: eth0@if420: <BROADCAST,MULTICAST,UP,LOWER_UP,M-DOWN> mtu 1500 qdisc noqueue state UP \n    link/ether 02:42:ac:14:14:0c brd ff:ff:ff:ff:ff:ff",
+        "passed": true
+      },
+      {
+        "name": "PC2 management interface is still up",
+        "device": "pc2",
+        "kind": "linux",
+        "command": "ip link show eth0",
+        "expected_output": "state UP",
+        "actual_output": "417: eth0@if418: <BROADCAST,MULTICAST,UP,LOWER_UP,M-DOWN> mtu 1500 qdisc noqueue state UP \n    link/ether 02:42:ac:14:14:0b brd ff:ff:ff:ff:ff:ff",
+        "passed": true
+      },
+      {
+        "name": "PC1 still has management default route",
+        "device": "pc1",
+        "kind": "linux",
+        "command": "ip route show default",
+        "expected_output": "default via 172.20.20.1 dev eth0",
+        "actual_output": "default via 172.20.20.1 dev eth0 \n10.0.1.0/24 dev eth1 scope link  src 10.0.1.2 \n10.0.2.0/24 via 10.0.1.1 dev eth1 \n172.20.20.0/24 dev eth0 scope link  src 172.20.20.12",
+        "passed": true
+      },
+      {
+        "name": "PC2 still has management default route",
+        "device": "pc2",
+        "kind": "linux",
+        "command": "ip route show default",
+        "expected_output": "default via 172.20.20.1 dev eth0",
+        "actual_output": "default via 172.20.20.1 dev eth0 \n10.0.2.0/24 dev eth1 scope link  src 10.0.2.2 \n172.20.20.0/24 dev eth0 scope link  src 172.20.20.11",
+        "passed": true
+      },
+      {
+        "name": "R1 management interface is still up",
+        "device": "r1",
+        "kind": "linux",
+        "command": "ip link show eth0",
+        "expected_output": "state UP",
+        "actual_output": "423: eth0@if424: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP mode DEFAULT group default \n    link/ether 02:42:ac:14:14:0e brd ff:ff:ff:ff:ff:ff link-netnsid 0",
+        "passed": true
+      },
+      {
+        "name": "R2 management interface is still up",
+        "device": "r2",
+        "kind": "linux",
+        "command": "ip link show eth0",
+        "expected_output": "state UP",
+        "actual_output": "421: eth0@if422: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP mode DEFAULT group default \n    link/ether 02:42:ac:14:14:0d brd ff:ff:ff:ff:ff:ff link-netnsid 0",
+        "passed": true
+      },
+      {
+        "name": "R1 still has management default route",
+        "device": "r1",
+        "kind": "linux",
+        "command": "ip route show default",
+        "expected_output": "default via 172.20.20.1 dev eth0",
+        "actual_output": "default via 172.20.20.1 dev eth0",
+        "passed": true
+      },
+      {
+        "name": "R2 still has management default route",
+        "device": "r2",
+        "kind": "linux",
+        "command": "ip route show default",
+        "expected_output": "default via 172.20.20.1 dev eth0",
+        "actual_output": "default via 172.20.20.1 dev eth0",
+        "passed": true
+      },
+      {
+        "name": "R1 FRR CLI is still reachable",
+        "device": "r1",
+        "kind": "linux",
+        "command": "vtysh -c 'show version'",
+        "expected_output": "FRRouting",
+        "actual_output": "FRRouting 8.4_git (r1) on Linux(6.6.87.2-microsoft-standard-WSL2).\nCopyright 1996-2005 Kunihiro Ishiguro, et al.\nconfigured with:\n    '--prefix=/usr' '--sbindir=/usr/lib/frr' '--sysconfdir=/etc/frr' '--libdir=/usr/lib' '--localstatedir=/var/run/frr' '--enable-rpki' '--enable-vtysh' '--enable-multipath=64' '--enable-vty-group=frrvty' '--enable-user=frr' '--enable-group=frr' '--enable-pcre2posix' 'CC=gcc' 'CXX=g++'\n% Can't open configuration file /etc/frr/vtysh.conf due to 'No such file or directory'.",
+        "passed": true
+      },
+      {
+        "name": "R2 FRR CLI is still reachable",
+        "device": "r2",
+        "kind": "linux",
+        "command": "vtysh -c 'show version'",
+        "expected_output": "FRRouting",
+        "actual_output": "FRRouting 8.4_git (r2) on Linux(6.6.87.2-microsoft-standard-WSL2).\nCopyright 1996-2005 Kunihiro Ishiguro, et al.\nconfigured with:\n    '--prefix=/usr' '--sbindir=/usr/lib/frr' '--sysconfdir=/etc/frr' '--libdir=/usr/lib' '--localstatedir=/var/run/frr' '--enable-rpki' '--enable-vtysh' '--enable-multipath=64' '--enable-vty-group=frrvty' '--enable-user=frr' '--enable-group=frr' '--enable-pcre2posix' 'CC=gcc' 'CXX=g++'\n% Can't open configuration file /etc/frr/vtysh.conf due to 'No such file or directory'.",
+        "passed": true
+      }
+    ],
+    "command": {
+      "method": "final_state_diff+log_fallback",
+      "precision": 0.7333,
+      "recall": 0.9167,
+      "ground_truth_commands": [
+        "pc1::ip addr add 10.0.1.2/24 dev eth1",
+        "pc1::ip route add 10.0.2.0/24 via 10.0.1.1",
+        "pc2::ip addr add 10.0.2.2/24 dev eth1",
+        "pc2::ip route add 10.0.1.0/24 via 10.0.2.1",
+        "r1::ip addr add 10.0.1.1/24 dev eth1",
+        "r1::ip addr add 10.0.12.1/24 dev eth2",
+        "r1::ip route add 10.0.2.0/24 via 10.0.12.2",
+        "r1::sysctl:set net.ipv4.ip_forward=1",
+        "r2::ip addr add 10.0.12.2/24 dev eth1",
+        "r2::ip addr add 10.0.2.1/24 dev eth2",
+        "r2::ip route add 10.0.1.0/24 via 10.0.12.1",
+        "r2::sysctl:set net.ipv4.ip_forward=1"
+      ],
+      "observed_commands": [
+        "pc1::ip addr add 10.0.1.2/24 dev eth1",
+        "pc1::ip route add 10.0.1.0/24",
+        "pc1::ip route add 10.0.2.0/24 via 10.0.1.1",
+        "pc1::sysctl:set net.ipv4.ip_forward=1",
+        "pc2::ip addr add 10.0.2.2/24 dev eth1",
+        "pc2::ip route add 10.0.1.0/24 via 10.0.2.1",
+        "pc2::ip route add 10.0.2.0/24",
+        "pc2::sysctl:set net.ipv4.ip_forward=1",
+        "r1::ip addr add 10.0.1.1/24 dev eth1",
+        "r1::ip addr add 10.0.12.1/24 dev eth2",
+        "r1::ip route add 10.0.2.0/24 via 10.0.12.2",
+        "r1::sysctl:set net.ipv4.ip_forward=1",
+        "r2::ip addr add 10.0.12.2/24 dev eth1",
+        "r2::ip addr add 10.0.2.1/24 dev eth2",
+        "r2::sysctl:set net.ipv4.ip_forward=1"
+      ],
+      "log_commands": [
+        "pc1::ip addr add 10.0.1.2/24 dev eth1",
+        "pc1::ip route add 10.0.2.0/24 via 10.0.1.1",
+        "pc2::ip addr add 10.0.2.2/24 dev eth1",
+        "pc2::ip route add 10.0.1.0/24 via 10.0.2.1",
+        "r1::ip addr add 10.0.1.1/24 dev eth1",
+        "r1::ip addr add 10.0.12.1/24 dev eth2",
+        "r1::ip route add 10.0.2.0/24 via 10.0.12.2",
+        "r2::ip addr add 10.0.12.2/24 dev eth1",
+        "r2::ip addr add 10.0.2.1/24 dev eth2"
+      ],
+      "correct_commands": [
+        "pc1::ip addr add 10.0.1.2/24 dev eth1",
+        "pc1::ip route add 10.0.2.0/24 via 10.0.1.1",
+        "pc2::ip addr add 10.0.2.2/24 dev eth1",
+        "pc2::ip route add 10.0.1.0/24 via 10.0.2.1",
+        "r1::ip addr add 10.0.1.1/24 dev eth1",
+        "r1::ip addr add 10.0.12.1/24 dev eth2",
+        "r1::ip route add 10.0.2.0/24 via 10.0.12.2",
+        "r1::sysctl:set net.ipv4.ip_forward=1",
+        "r2::ip addr add 10.0.12.2/24 dev eth1",
+        "r2::ip addr add 10.0.2.1/24 dev eth2",
+        "r2::sysctl:set net.ipv4.ip_forward=1"
+      ],
+      "missing_commands": [
+        "r2::ip route add 10.0.1.0/24 via 10.0.12.1"
+      ],
+      "extra_commands": [
+        "pc1::ip route add 10.0.1.0/24",
+        "pc1::sysctl:set net.ipv4.ip_forward=1",
+        "pc2::ip route add 10.0.2.0/24",
+        "pc2::sysctl:set net.ipv4.ip_forward=1"
+      ],
+      "ground_truth_count": 12,
+      "observed_count": 15,
+      "log_count": 9,
+      "note": "Command score uses final-state diff against startup_configs"
+    },
+    "reasoning": {
+      "method": "embedding_cosine",
+      "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
+      "note": "",
+      "agent_reasoning_present": true,
+      "ground_truth_reasoning_present": true,
+      "agent_reasoning_length": 1562,
+      "ground_truth_reasoning_length": 591,
+      "total_steps": 28
+    }
+  }
+}

@@ -1,0 +1,13 @@
+{"device": "edge2", "command": "ip addr add 203.0.113.100/32 dev eth1"}
+{"device": "edge2", "command": "nft add table ip floating_dnat"}
+{"device": "edge2", "command": "nft add rule ip floating_dnat prerouting iifname \"eth1\" ip daddr 203.0.113.100 tcp dport 8080 dnat to 10.0.2.100:8080"}
+{"device": "edge2", "command": "nft add rule ip floating_dnat postrouting oifname \"eth2\" ip daddr 10.0.2.100 tcp dport 8080 masquerade"}
+{"device": "edge2", "command": "nft add rule ip floating_dnat forward iifname \"eth1\" oifname \"eth2\" ip daddr 10.0.2.100 tcp dport 8080 accept"}
+{"device": "edge2", "command": "nft add rule ip floating_dnat forward iifname \"eth2\" oifname \"eth1\" ip saddr 10.0.2.100 tcp sport 8080 accept"}
+{"device": "edge2", "command": "nft add chain ip floating_dnat prerouting { type nat hook prerouting priority dstnat \\; policy accept \\; }"}
+{"device": "edge2", "command": "nft add chain ip floating_dnat postrouting { type nat hook postrouting priority srcnat \\; policy accept \\; }"}
+{"device": "edge2", "command": "nft add chain ip floating_dnat forward { type filter hook forward priority filter \\; policy accept \\; }"}
+{"device": "edge2", "command": "nft add rule ip floating_dnat prerouting iifname \"eth1\" ip daddr 203.0.113.100 tcp dport 8080 dnat to 10.0.2.100:8080"}
+{"device": "edge2", "command": "nft add rule ip floating_dnat postrouting oifname \"eth2\" ip daddr 10.0.2.100 tcp dport 8080 masquerade"}
+{"device": "edge2", "command": "nft add rule ip floating_dnat forward iifname \"eth1\" oifname \"eth2\" ip daddr 10.0.2.100 tcp dport 8080 accept"}
+{"device": "edge2", "command": "nft add rule ip floating_dnat forward iifname \"eth2\" oifname \"eth1\" ip saddr 10.0.2.100 tcp sport 8080 accept"}

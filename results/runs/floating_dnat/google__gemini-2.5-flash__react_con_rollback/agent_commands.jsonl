@@ -1,0 +1,5 @@
+{"device": "edge2", "command": "ip addr add 203.0.113.100/32 dev eth1"}
+{"device": "edge2", "command": "iptables -t nat -A PREROUTING -i eth1 -p tcp --dport 8080 -d 203.0.113.100 -j DNAT --to-destination 10.0.2.100:8080"}
+{"device": "edge2", "command": "iptables -t nat -A POSTROUTING -o eth2 -p tcp -s 10.0.2.100 --sport 8080 -d 203.0.113.100 -j MASQUERADE"}
+{"device": "edge2", "command": "iptables -A FORWARD -i eth1 -o eth2 -p tcp --dport 8080 -d 10.0.2.100 -m state --state NEW,ESTABLISHED,RELATED -j ACCEPT"}
+{"device": "edge2", "command": "iptables -A FORWARD -i eth2 -o eth1 -p tcp --sport 8080 -s 10.0.2.100 -m state --state ESTABLISHED,RELATED -j ACCEPT"}

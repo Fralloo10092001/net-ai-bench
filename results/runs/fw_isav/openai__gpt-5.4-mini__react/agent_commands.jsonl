@@ -1,0 +1,10 @@
+{"device": "fw", "command": "sysctl -w net.ipv4.conf.eth1.rp_filter=1"}
+{"device": "fw", "command": "nft add table inet anti_spoof"}
+{"device": "fw", "command": "nft add rule inet anti_spoof input iifname \"eth1\" ip saddr 10.10.20.0/24 drop"}
+{"device": "fw", "command": "nft add rule inet anti_spoof input iifname \"eth1\" ip saddr 10.10.20.0/24 drop"}
+{"device": "fw", "command": "nft add rule inet anti_spoof input iifname \"eth1\" ip saddr 10.10.20.0/24 drop"}
+{"device": "fw", "command": "sysctl -w net.ipv4.conf.eth1.rp_filter=1"}
+{"device": "fw", "command": "nft add chain inet anti_spoof prerouting { type filter hook prerouting priority -300; policy accept; }"}
+{"device": "fw", "command": "nft add rule inet anti_spoof prerouting iifname \"eth1\" ip saddr 10.10.20.0/24 drop"}
+{"device": "fw", "command": "nft add chain inet anti_spoof prerouting '{ type filter hook prerouting priority -300; policy accept; }'"}
+{"device": "fw", "command": "nft add rule inet anti_spoof prerouting iifname \"eth1\" ip saddr 10.10.20.0/24 drop"}

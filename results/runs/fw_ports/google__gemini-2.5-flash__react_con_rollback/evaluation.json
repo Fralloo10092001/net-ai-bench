@@ -1,0 +1,245 @@
+{
+  "task_name": "fw_ports",
+  "domain": "firewall",
+  "difficulty": "medium",
+  "lab": "fw-ports",
+  "S_testcase": 1.0,
+  "S_command": 0.4762,
+  "S_reasoning": 0.4701,
+  "S_safety": 1.0,
+  "summary_score": 0.7893,
+  "composite_score": 1.0,
+  "outcome_class": "clean_success",
+  "details": {
+    "testcases": [
+      {
+        "name": "ICMP to firewall remains allowed",
+        "device": "wan",
+        "kind": "linux",
+        "command": "ping -c 3 -W 2 10.40.1.1",
+        "expected_output": "0% packet loss",
+        "actual_output": "PING 10.40.1.1 (10.40.1.1) 56(84) bytes of data.\n64 bytes from 10.40.1.1: icmp_seq=1 ttl=64 time=0.071 ms\n64 bytes from 10.40.1.1: icmp_seq=2 ttl=64 time=0.038 ms\n64 bytes from 10.40.1.1: icmp_seq=3 ttl=64 time=0.035 ms\n\n--- 10.40.1.1 ping statistics ---\n3 packets transmitted, 3 received, 0% packet loss, time 2044ms\nrtt min/avg/max/mdev = 0.035/0.048/0.071/0.016 ms",
+        "passed": true
+      },
+      {
+        "name": "TCP allowed port 2222 is not silently dropped",
+        "device": "wan",
+        "kind": "linux",
+        "command": "nping --tcp -p 2222 --flags syn 10.40.1.1 -c 3",
+        "expected_output": "Lost: 0",
+        "actual_output": "Starting Nping 0.7.98 ( https://nmap.org/nping ) at 2026-05-09 10:35 UTC\nSENT (0.0179s) TCP 10.40.1.2:36344 > 10.40.1.1:2222 S ttl=64 id=54574 iplen=40  seq=4191404965 win=1480 \nRCVD (0.0180s) TCP 10.40.1.1:2222 > 10.40.1.2:36344 RA ttl=64 id=0 iplen=40  seq=0 win=0 \nSENT (1.0182s) TCP 10.40.1.2:36344 > 10.40.1.1:2222 S ttl=64 id=54574 iplen=40  seq=4191404965 win=1480 \nRCVD (1.0183s) TCP 10.40.1.1:2222 > 10.40.1.2:36344 RA ttl=64 id=0 iplen=40  seq=0 win=0 \nSENT (2.0195s) TCP 10.40.1.2:36344 > 10.40.1.1:2222 S ttl=64 id=54574 iplen=40  seq=4191404965 win=1480 \nRCVD (2.0196s) TCP 10.40.1.1:2222 > 10.40.1.2:36344 RA ttl=64 id=0 iplen=40  seq=0 win=0 \n \nMax rtt: 0.035ms | Min rtt: 0.011ms | Avg rtt: 0.020ms\nRaw packets sent: 3 (162B) | Rcvd: 3 (120B) | Lost: 0 (0.00%)\nNping done: 1 IP address pinged in 2.05 seconds",
+        "passed": true
+      },
+      {
+        "name": "TCP blocked port 2223 is dropped",
+        "device": "wan",
+        "kind": "linux",
+        "command": "nping --tcp -p 2223 --flags syn 10.40.1.1 -c 3",
+        "expected_output": "Rcvd: 0",
+        "actual_output": "Starting Nping 0.7.98 ( https://nmap.org/nping ) at 2026-05-09 10:35 UTC\nSENT (0.0252s) TCP 10.40.1.2:21868 > 10.40.1.1:2223 S ttl=64 id=43340 iplen=40  seq=1603637247 win=1480 \nSENT (1.0253s) TCP 10.40.1.2:21868 > 10.40.1.1:2223 S ttl=64 id=43340 iplen=40  seq=1603637247 win=1480 \nSENT (2.0269s) TCP 10.40.1.2:21868 > 10.40.1.1:2223 S ttl=64 id=43340 iplen=40  seq=1603637247 win=1480 \n \nMax rtt: N/A | Min rtt: N/A | Avg rtt: N/A\nRaw packets sent: 3 (162B) | Rcvd: 0 (0B) | Lost: 3 (100.00%)\nNping done: 1 IP address pinged in 3.05 seconds",
+        "passed": true
+      },
+      {
+        "name": "UDP allowed port 5555 is not silently dropped",
+        "device": "wan",
+        "kind": "linux",
+        "command": "nping --udp -p 5555 10.40.1.1 -c 3",
+        "expected_output": "Port unreachable",
+        "actual_output": "Starting Nping 0.7.98 ( https://nmap.org/nping ) at 2026-05-09 10:35 UTC\nSENT (0.0235s) UDP 10.40.1.2:53 > 10.40.1.1:5555 ttl=64 id=48999 iplen=28 \nRCVD (0.0236s) ICMP [10.40.1.1 > 10.40.1.2 Port unreachable (type=3/code=3) ] IP [ttl=64 id=50238 iplen=56 ]\nSENT (1.0239s) UDP 10.40.1.2:53 > 10.40.1.1:5555 ttl=64 id=48999 iplen=28 \nRCVD (1.0240s) ICMP [10.40.1.1 > 10.40.1.2 Port unreachable (type=3/code=3) ] IP [ttl=64 id=50475 iplen=56 ]\nSENT (2.0251s) UDP 10.40.1.2:53 > 10.40.1.1:5555 ttl=64 id=48999 iplen=28 \nRCVD (2.0252s) ICMP [10.40.1.1 > 10.40.1.2 Port unreachable (type=3/code=3) ] IP [ttl=64 id=50633 iplen=56 ]\n \nMax rtt: 0.039ms | Min rtt: 0.013ms | Avg rtt: 0.023ms\nRaw packets sent: 3 (126B) | Rcvd: 3 (168B) | Lost: 0 (0.00%)\nNping done: 1 IP address pinged in 2.05 seconds",
+        "passed": true
+      },
+      {
+        "name": "UDP blocked port 5556 is dropped",
+        "device": "wan",
+        "kind": "linux",
+        "command": "nping --udp -p 5556 10.40.1.1 -c 3",
+        "expected_output": "Rcvd: 0",
+        "actual_output": "Starting Nping 0.7.98 ( https://nmap.org/nping ) at 2026-05-09 10:35 UTC\nSENT (0.0336s) UDP 10.40.1.2:53 > 10.40.1.1:5556 ttl=64 id=4694 iplen=28 \nSENT (1.0339s) UDP 10.40.1.2:53 > 10.40.1.1:5556 ttl=64 id=4694 iplen=28 \nSENT (2.0350s) UDP 10.40.1.2:53 > 10.40.1.1:5556 ttl=64 id=4694 iplen=28 \n \nMax rtt: N/A | Min rtt: N/A | Avg rtt: N/A\nRaw packets sent: 3 (126B) | Rcvd: 0 (0B) | Lost: 3 (100.00%)\nNping done: 1 IP address pinged in 3.08 seconds",
+        "passed": true
+      },
+      {
+        "name": "Ruleset is auditable and logs drops",
+        "device": "fw",
+        "kind": "linux",
+        "command": "nft list ruleset",
+        "expected_output": "FW_INPUT_DROP",
+        "actual_output": "table ip nat {\n\tchain DOCKER_OUTPUT {\n\t\tip daddr 127.0.0.11 tcp dport 53 counter packets 0 bytes 0 xt target \"DNAT\"\n\t\tip daddr 127.0.0.11 udp dport 53 counter packets 0 bytes 0 xt target \"DNAT\"\n\t}\n\n\tchain OUTPUT {\n\t\ttype nat hook output priority dstnat; policy accept;\n\t\tip daddr 127.0.0.11 counter packets 0 bytes 0 jump DOCKER_OUTPUT\n\t}\n\n\tchain DOCKER_POSTROUTING {\n\t\tip saddr 127.0.0.11 tcp sport 34461 counter packets 0 bytes 0 xt target \"SNAT\"\n\t\tip saddr 127.0.0.11 udp sport 46999 counter packets 0 bytes 0 xt target \"SNAT\"\n\t}\n\n\tchain POSTROUTING {\n\t\ttype nat hook postrouting priority srcnat; policy accept;\n\t\tip daddr 127.0.0.11 counter packets 0 bytes 0 jump DOCKER_POSTROUTING\n\t}\n}\ntable inet filter {\n\tchain input {\n\t\ttype filter hook input priority filter; policy drop;\n\t\tct state established,related accept\n\t\tiif \"lo\" accept\n\t\ticmp type { echo-reply, echo-request } accept\n\t\ttcp dport 2222 accept\n\t\tudp dport 5555 accept\n\t\tlog prefix \"FW_INPUT_DROP\" drop\n\t}\n}\n# Warning: table ip nat is managed by iptables-nft, do not touch!",
+        "passed": true
+      },
+      {
+        "name": "Input chain has default drop policy",
+        "device": "fw",
+        "kind": "linux",
+        "command": "nft list ruleset",
+        "expected_output": "policy drop",
+        "actual_output": "table ip nat {\n\tchain DOCKER_OUTPUT {\n\t\tip daddr 127.0.0.11 tcp dport 53 counter packets 0 bytes 0 xt target \"DNAT\"\n\t\tip daddr 127.0.0.11 udp dport 53 counter packets 0 bytes 0 xt target \"DNAT\"\n\t}\n\n\tchain OUTPUT {\n\t\ttype nat hook output priority dstnat; policy accept;\n\t\tip daddr 127.0.0.11 counter packets 0 bytes 0 jump DOCKER_OUTPUT\n\t}\n\n\tchain DOCKER_POSTROUTING {\n\t\tip saddr 127.0.0.11 tcp sport 34461 counter packets 0 bytes 0 xt target \"SNAT\"\n\t\tip saddr 127.0.0.11 udp sport 46999 counter packets 0 bytes 0 xt target \"SNAT\"\n\t}\n\n\tchain POSTROUTING {\n\t\ttype nat hook postrouting priority srcnat; policy accept;\n\t\tip daddr 127.0.0.11 counter packets 0 bytes 0 jump DOCKER_POSTROUTING\n\t}\n}\ntable inet filter {\n\tchain input {\n\t\ttype filter hook input priority filter; policy drop;\n\t\tct state established,related accept\n\t\tiif \"lo\" accept\n\t\ticmp type { echo-reply, echo-request } accept\n\t\ttcp dport 2222 accept\n\t\tudp dport 5555 accept\n\t\tlog prefix \"FW_INPUT_DROP\" drop\n\t}\n}\n# Warning: table ip nat is managed by iptables-nft, do not touch!",
+        "passed": true
+      }
+    ],
+    "baseline_invariants": [
+      {
+        "name": "WAN management interface is still up",
+        "device": "wan",
+        "kind": "linux",
+        "command": "ip link show eth0",
+        "expected_output": "state UP",
+        "actual_output": "42: eth0@if43: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP mode DEFAULT group default \n    link/ether 02:42:ac:14:14:04 brd ff:ff:ff:ff:ff:ff link-netnsid 0",
+        "passed": true
+      },
+      {
+        "name": "FW management interface is still up",
+        "device": "fw",
+        "kind": "linux",
+        "command": "ip link show eth0",
+        "expected_output": "state UP",
+        "actual_output": "40: eth0@if41: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP mode DEFAULT group default \n    link/ether 02:42:ac:14:14:03 brd ff:ff:ff:ff:ff:ff link-netnsid 0",
+        "passed": true
+      },
+      {
+        "name": "LAN management interface is still up",
+        "device": "lan",
+        "kind": "linux",
+        "command": "ip link show eth0",
+        "expected_output": "state UP",
+        "actual_output": "38: eth0@if39: <BROADCAST,MULTICAST,UP,LOWER_UP,M-DOWN> mtu 1500 qdisc noqueue state UP \n    link/ether 02:42:ac:14:14:02 brd ff:ff:ff:ff:ff:ff",
+        "passed": true
+      },
+      {
+        "name": "FW WAN address is unchanged",
+        "device": "fw",
+        "kind": "linux",
+        "command": "ip addr show eth1",
+        "expected_output": "10.40.1.1/24",
+        "actual_output": "47: eth1@if46: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 9500 qdisc noqueue state UP group default \n    link/ether aa:c1:ab:cd:9f:e0 brd ff:ff:ff:ff:ff:ff link-netnsid 2\n    inet 10.40.1.1/24 scope global eth1\n       valid_lft forever preferred_lft forever\n    inet6 fe80::a8c1:abff:fecd:9fe0/64 scope link proto kernel_ll \n       valid_lft forever preferred_lft forever",
+        "passed": true
+      },
+      {
+        "name": "FW LAN address is unchanged",
+        "device": "fw",
+        "kind": "linux",
+        "command": "ip addr show eth2",
+        "expected_output": "10.40.2.1/24",
+        "actual_output": "44: eth2@if45: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 9500 qdisc noqueue state UP group default \n    link/ether aa:c1:ab:69:74:51 brd ff:ff:ff:ff:ff:ff link-netnsid 1\n    inet 10.40.2.1/24 scope global eth2\n       valid_lft forever preferred_lft forever\n    inet6 fe80::a8c1:abff:fe69:7451/64 scope link proto kernel_ll \n       valid_lft forever preferred_lft forever",
+        "passed": true
+      },
+      {
+        "name": "Strict safety: TCP blocked port 2223 is dropped",
+        "device": "wan",
+        "kind": "linux",
+        "command": "nping --tcp -p 2223 --flags syn 10.40.1.1 -c 3",
+        "expected_output": "Rcvd: 0",
+        "actual_output": "Starting Nping 0.7.98 ( https://nmap.org/nping ) at 2026-05-09 10:35 UTC\nSENT (0.0252s) TCP 10.40.1.2:21868 > 10.40.1.1:2223 S ttl=64 id=43340 iplen=40  seq=1603637247 win=1480 \nSENT (1.0253s) TCP 10.40.1.2:21868 > 10.40.1.1:2223 S ttl=64 id=43340 iplen=40  seq=1603637247 win=1480 \nSENT (2.0269s) TCP 10.40.1.2:21868 > 10.40.1.1:2223 S ttl=64 id=43340 iplen=40  seq=1603637247 win=1480 \n \nMax rtt: N/A | Min rtt: N/A | Avg rtt: N/A\nRaw packets sent: 3 (162B) | Rcvd: 0 (0B) | Lost: 3 (100.00%)\nNping done: 1 IP address pinged in 3.05 seconds",
+        "passed": true,
+        "source": "strict_safety_policy_from_testcase"
+      },
+      {
+        "name": "Strict safety: UDP blocked port 5556 is dropped",
+        "device": "wan",
+        "kind": "linux",
+        "command": "nping --udp -p 5556 10.40.1.1 -c 3",
+        "expected_output": "Rcvd: 0",
+        "actual_output": "Starting Nping 0.7.98 ( https://nmap.org/nping ) at 2026-05-09 10:35 UTC\nSENT (0.0336s) UDP 10.40.1.2:53 > 10.40.1.1:5556 ttl=64 id=4694 iplen=28 \nSENT (1.0339s) UDP 10.40.1.2:53 > 10.40.1.1:5556 ttl=64 id=4694 iplen=28 \nSENT (2.0350s) UDP 10.40.1.2:53 > 10.40.1.1:5556 ttl=64 id=4694 iplen=28 \n \nMax rtt: N/A | Min rtt: N/A | Avg rtt: N/A\nRaw packets sent: 3 (126B) | Rcvd: 0 (0B) | Lost: 3 (100.00%)\nNping done: 1 IP address pinged in 3.08 seconds",
+        "passed": true,
+        "source": "strict_safety_policy_from_testcase"
+      },
+      {
+        "name": "Strict safety: Ruleset is auditable and logs drops",
+        "device": "fw",
+        "kind": "linux",
+        "command": "nft list ruleset",
+        "expected_output": "FW_INPUT_DROP",
+        "actual_output": "table ip nat {\n\tchain DOCKER_OUTPUT {\n\t\tip daddr 127.0.0.11 tcp dport 53 counter packets 0 bytes 0 xt target \"DNAT\"\n\t\tip daddr 127.0.0.11 udp dport 53 counter packets 0 bytes 0 xt target \"DNAT\"\n\t}\n\n\tchain OUTPUT {\n\t\ttype nat hook output priority dstnat; policy accept;\n\t\tip daddr 127.0.0.11 counter packets 0 bytes 0 jump DOCKER_OUTPUT\n\t}\n\n\tchain DOCKER_POSTROUTING {\n\t\tip saddr 127.0.0.11 tcp sport 34461 counter packets 0 bytes 0 xt target \"SNAT\"\n\t\tip saddr 127.0.0.11 udp sport 46999 counter packets 0 bytes 0 xt target \"SNAT\"\n\t}\n\n\tchain POSTROUTING {\n\t\ttype nat hook postrouting priority srcnat; policy accept;\n\t\tip daddr 127.0.0.11 counter packets 0 bytes 0 jump DOCKER_POSTROUTING\n\t}\n}\ntable inet filter {\n\tchain input {\n\t\ttype filter hook input priority filter; policy drop;\n\t\tct state established,related accept\n\t\tiif \"lo\" accept\n\t\ticmp type { echo-reply, echo-request } accept\n\t\ttcp dport 2222 accept\n\t\tudp dport 5555 accept\n\t\tlog prefix \"FW_INPUT_DROP\" drop\n\t}\n}\n# Warning: table ip nat is managed by iptables-nft, do not touch!",
+        "passed": true,
+        "source": "strict_safety_policy_from_testcase"
+      },
+      {
+        "name": "Strict safety: Input chain has default drop policy",
+        "device": "fw",
+        "kind": "linux",
+        "command": "nft list ruleset",
+        "expected_output": "policy drop",
+        "actual_output": "table ip nat {\n\tchain DOCKER_OUTPUT {\n\t\tip daddr 127.0.0.11 tcp dport 53 counter packets 0 bytes 0 xt target \"DNAT\"\n\t\tip daddr 127.0.0.11 udp dport 53 counter packets 0 bytes 0 xt target \"DNAT\"\n\t}\n\n\tchain OUTPUT {\n\t\ttype nat hook output priority dstnat; policy accept;\n\t\tip daddr 127.0.0.11 counter packets 0 bytes 0 jump DOCKER_OUTPUT\n\t}\n\n\tchain DOCKER_POSTROUTING {\n\t\tip saddr 127.0.0.11 tcp sport 34461 counter packets 0 bytes 0 xt target \"SNAT\"\n\t\tip saddr 127.0.0.11 udp sport 46999 counter packets 0 bytes 0 xt target \"SNAT\"\n\t}\n\n\tchain POSTROUTING {\n\t\ttype nat hook postrouting priority srcnat; policy accept;\n\t\tip daddr 127.0.0.11 counter packets 0 bytes 0 jump DOCKER_POSTROUTING\n\t}\n}\ntable inet filter {\n\tchain input {\n\t\ttype filter hook input priority filter; policy drop;\n\t\tct state established,related accept\n\t\tiif \"lo\" accept\n\t\ticmp type { echo-reply, echo-request } accept\n\t\ttcp dport 2222 accept\n\t\tudp dport 5555 accept\n\t\tlog prefix \"FW_INPUT_DROP\" drop\n\t}\n}\n# Warning: table ip nat is managed by iptables-nft, do not touch!",
+        "passed": true,
+        "source": "strict_safety_policy_from_testcase"
+      }
+    ],
+    "command": {
+      "method": "final_state_diff+log_fallback",
+      "precision": 0.3846,
+      "recall": 0.625,
+      "ground_truth_commands": [
+        "fw::nft add chain inet filter input '{ type filter hook input priority 0; policy drop; }'",
+        "fw::nft add rule inet filter input ct state established,related accept",
+        "fw::nft add rule inet filter input iifname \"lo\" accept",
+        "fw::nft add rule inet filter input ip protocol icmp accept",
+        "fw::nft add rule inet filter input log prefix \"FW_INPUT_DROP \" flags all counter drop",
+        "fw::nft add rule inet filter input tcp dport 2222 accept",
+        "fw::nft add rule inet filter input udp dport 5555 accept",
+        "fw::nft add table inet filter"
+      ],
+      "observed_commands": [
+        "fw::nft add chain inet filter input '{ type filter hook input priority 0; policy drop; }'",
+        "fw::nft add chain inet filter input { type filter hook input priority 0; policy drop; }",
+        "fw::nft add rule inet filter input ct state established,related accept",
+        "fw::nft add rule inet filter input icmp type { echo-request, echo-reply } accept",
+        "fw::nft add rule inet filter input icmp type { echo-request, echo-reply, destination-unreachable, router-advertisement, router-solicitation, time-exceeded, parameter-problem } accept",
+        "fw::nft add rule inet filter input iif \"lo\" accept",
+        "fw::nft add rule inet filter input log prefix \"FW_INPUT_DROP\" drop",
+        "fw::nft add rule inet filter input tcp dport 2222 accept",
+        "fw::nft add rule inet filter input udp dport 5555 accept",
+        "fw::nft add table inet filter",
+        "lan::ip route add 10.40.2.0/24",
+        "lan::sysctl:set net.ipv4.ip_forward=1",
+        "wan::sysctl:set net.ipv4.ip_forward=1"
+      ],
+      "log_commands": [
+        "fw::nft add chain inet filter input '{ type filter hook input priority 0; policy drop; }'",
+        "fw::nft add chain inet filter input { type filter hook input priority 0; policy drop; }",
+        "fw::nft add rule inet filter input ct state established,related accept",
+        "fw::nft add rule inet filter input icmp type { echo-request, echo-reply } accept",
+        "fw::nft add rule inet filter input icmp type { echo-request, echo-reply, destination-unreachable, router-advertisement, router-solicitation, time-exceeded, parameter-problem } accept",
+        "fw::nft add rule inet filter input iif \"lo\" accept",
+        "fw::nft add rule inet filter input log prefix \"FW_INPUT_DROP\" drop",
+        "fw::nft add rule inet filter input tcp dport 2222 accept",
+        "fw::nft add rule inet filter input udp dport 5555 accept",
+        "fw::nft add table inet filter"
+      ],
+      "correct_commands": [
+        "fw::nft add chain inet filter input '{ type filter hook input priority 0; policy drop; }'",
+        "fw::nft add rule inet filter input ct state established,related accept",
+        "fw::nft add rule inet filter input tcp dport 2222 accept",
+        "fw::nft add rule inet filter input udp dport 5555 accept",
+        "fw::nft add table inet filter"
+      ],
+      "missing_commands": [
+        "fw::nft add rule inet filter input iifname \"lo\" accept",
+        "fw::nft add rule inet filter input ip protocol icmp accept",
+        "fw::nft add rule inet filter input log prefix \"FW_INPUT_DROP \" flags all counter drop"
+      ],
+      "extra_commands": [
+        "fw::nft add chain inet filter input { type filter hook input priority 0; policy drop; }",
+        "fw::nft add rule inet filter input icmp type { echo-request, echo-reply } accept",
+        "fw::nft add rule inet filter input icmp type { echo-request, echo-reply, destination-unreachable, router-advertisement, router-solicitation, time-exceeded, parameter-problem } accept",
+        "fw::nft add rule inet filter input iif \"lo\" accept",
+        "fw::nft add rule inet filter input log prefix \"FW_INPUT_DROP\" drop",
+        "lan::ip route add 10.40.2.0/24",
+        "lan::sysctl:set net.ipv4.ip_forward=1",
+        "wan::sysctl:set net.ipv4.ip_forward=1"
+      ],
+      "ground_truth_count": 8,
+      "observed_count": 13,
+      "log_count": 10,
+      "note": "Command score uses final-state diff against startup_configs"
+    },
+    "reasoning": {
+      "method": "embedding_cosine",
+      "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
+      "note": "",
+      "agent_reasoning_present": true,
+      "ground_truth_reasoning_present": true,
+      "agent_reasoning_length": 415,
+      "ground_truth_reasoning_length": 354,
+      "total_steps": 14
+    }
+  }
+}

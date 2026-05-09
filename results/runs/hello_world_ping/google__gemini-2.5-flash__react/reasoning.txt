@@ -1,1 +1,0 @@
-PC1 and PC2 can successfully ping each other, as validated by the previous `execute_validation` steps. This means the router is correctly configured with the specified IP addresses on its interfaces and IP forwarding is enabled, fulfilling all task requirements.

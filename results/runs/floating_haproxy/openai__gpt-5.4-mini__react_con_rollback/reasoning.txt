@@ -1,0 +1,1 @@
+Validated the floating VIP 203.0.113.100/32 is active on edge2 eth1 by successful client reachability. Existing HAProxy and management state were preserved, and no backend or firewall changes were made.

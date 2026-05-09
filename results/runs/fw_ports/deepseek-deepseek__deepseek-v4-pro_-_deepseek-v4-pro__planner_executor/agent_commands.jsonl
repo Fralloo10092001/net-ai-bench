@@ -1,0 +1,17 @@
+{"device": "fw", "command": "nft add table ip filter"}
+{"device": "fw", "command": "nft add chain ip filter input { type filter hook input priority 0; policy accept; }"}
+{"device": "fw", "command": "nft add rule ip filter input iif lo accept"}
+{"device": "fw", "command": "nft add rule ip filter input iif eth0 accept"}
+{"device": "fw", "command": "nft add rule ip filter input iif { eth1, eth2 } ct state established,related accept"}
+{"device": "fw", "command": "nft add rule ip filter input iif { eth1, eth2 } ip protocol icmp accept"}
+{"device": "fw", "command": "nft add rule ip filter input iif { eth1, eth2 } tcp dport 2222 accept"}
+{"device": "fw", "command": "nft add rule ip filter input iif { eth1, eth2 } udp dport 5555 accept"}
+{"device": "fw", "command": "nft add rule ip filter input iif { eth1, eth2 } log prefix \"FW_INPUT_DROP\" drop"}
+{"device": "fw", "command": "nft add chain ip filter input '{ type filter hook input priority 0; policy accept; }'"}
+{"device": "fw", "command": "nft add rule ip filter input 'iif lo accept'"}
+{"device": "fw", "command": "nft add rule ip filter input 'iif eth0 accept'"}
+{"device": "fw", "command": "nft add rule ip filter input 'iif { eth1, eth2 } ct state established,related accept'"}
+{"device": "fw", "command": "nft add rule ip filter input 'iif { eth1, eth2 } ip protocol icmp accept'"}
+{"device": "fw", "command": "nft add rule ip filter input 'iif { eth1, eth2 } tcp dport 2222 accept'"}
+{"device": "fw", "command": "nft add rule ip filter input 'iif { eth1, eth2 } udp dport 5555 accept'"}
+{"device": "fw", "command": "nft add rule ip filter input 'iif { eth1, eth2 } log prefix \"FW_INPUT_DROP\" drop'"}

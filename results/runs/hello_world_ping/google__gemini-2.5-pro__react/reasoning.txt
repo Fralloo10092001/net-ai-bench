@@ -1,1 +1,0 @@
-The task was to enable communication between PC1 and PC2. I inspected the topology and the router's configuration, then configured the necessary IP addresses on the router's interfaces. The final validation step confirmed that PC1 can successfully ping PC2, so the objective is met.

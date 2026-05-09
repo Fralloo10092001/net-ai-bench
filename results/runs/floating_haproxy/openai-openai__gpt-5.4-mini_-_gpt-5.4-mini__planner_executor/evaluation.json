@@ -1,0 +1,178 @@
+{
+  "task_name": "floating_haproxy",
+  "domain": "firewall",
+  "difficulty": "hard",
+  "lab": "floating-haproxy",
+  "S_testcase": 1.0,
+  "S_command": 0.1333,
+  "S_reasoning": 0.7813,
+  "S_safety": 1.0,
+  "summary_score": 0.7829,
+  "composite_score": 1.0,
+  "outcome_class": "clean_success",
+  "details": {
+    "testcases": [
+      {
+        "name": "edge2 owns the floating VIP",
+        "device": "edge2",
+        "kind": "linux",
+        "command": "ip addr show eth1",
+        "expected_output": "203.0.113.100/32",
+        "actual_output": "254: eth1@if253: <BROADCAST,MULTICAST,UP,LOWER_UP,M-DOWN> mtu 9500 qdisc noqueue state UP \n    link/ether aa:c1:ab:b5:40:9d brd ff:ff:ff:ff:ff:ff\n    inet 203.0.113.2/24 scope global eth1\n       valid_lft forever preferred_lft forever\n    inet 203.0.113.100/32 scope global eth1\n       valid_lft forever preferred_lft forever\n    inet6 fe80::a8c1:abff:feb5:409d/64 scope link \n       valid_lft forever preferred_lft forever",
+        "passed": true
+      },
+      {
+        "name": "HAProxy configuration on edge2 is valid",
+        "device": "edge2",
+        "kind": "linux",
+        "command": "sh -c \"haproxy -c -f /usr/local/etc/haproxy/haproxy.cfg >/dev/null 2>&1 && echo haproxy-valid\"",
+        "expected_output": "haproxy-valid",
+        "actual_output": "haproxy-valid",
+        "passed": true
+      },
+      {
+        "name": "Client reaches the HAProxy VIP",
+        "device": "client",
+        "kind": "linux",
+        "command": "curl -sS --max-time 3 http://203.0.113.100:8080/",
+        "expected_output": "backend-",
+        "actual_output": "backend-b",
+        "passed": true
+      },
+      {
+        "name": "Load balancing reaches backend-a",
+        "device": "client",
+        "kind": "linux",
+        "command": "sh -c \"for i in 1 2 3 4; do curl -sS --max-time 2 http://203.0.113.100:8080/; done\"",
+        "expected_output": "backend-a",
+        "actual_output": "backend-abackend-bbackend-abackend-b",
+        "passed": true
+      },
+      {
+        "name": "Load balancing reaches backend-b",
+        "device": "client",
+        "kind": "linux",
+        "command": "sh -c \"for i in 1 2 3 4; do curl -sS --max-time 2 http://203.0.113.100:8080/; done\"",
+        "expected_output": "backend-b",
+        "actual_output": "backend-abackend-bbackend-abackend-b",
+        "passed": true
+      }
+    ],
+    "baseline_invariants": [
+      {
+        "name": "client management interface is still up",
+        "device": "client",
+        "kind": "linux",
+        "command": "ip link show eth0",
+        "expected_output": "state UP",
+        "actual_output": "243: eth0@if244: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP mode DEFAULT group default \n    link/ether 02:42:ac:14:14:02 brd ff:ff:ff:ff:ff:ff link-netnsid 0",
+        "passed": true
+      },
+      {
+        "name": "edge1 management interface is still up",
+        "device": "edge1",
+        "kind": "linux",
+        "command": "ip link show eth0",
+        "expected_output": "state UP",
+        "actual_output": "245: eth0@if246: <BROADCAST,MULTICAST,UP,LOWER_UP,M-DOWN> mtu 1500 qdisc noqueue state UP \n    link/ether 02:42:ac:14:14:04 brd ff:ff:ff:ff:ff:ff",
+        "passed": true
+      },
+      {
+        "name": "edge2 management interface is still up",
+        "device": "edge2",
+        "kind": "linux",
+        "command": "ip link show eth0",
+        "expected_output": "state UP",
+        "actual_output": "251: eth0@if252: <BROADCAST,MULTICAST,UP,LOWER_UP,M-DOWN> mtu 1500 qdisc noqueue state UP \n    link/ether 02:42:ac:14:14:0a brd ff:ff:ff:ff:ff:ff",
+        "passed": true
+      },
+      {
+        "name": "backend-a management interface is still up",
+        "device": "backend-a",
+        "kind": "linux",
+        "command": "ip link show eth0",
+        "expected_output": "state UP",
+        "actual_output": "247: eth0@if248: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP mode DEFAULT group default \n    link/ether 02:42:ac:14:14:08 brd ff:ff:ff:ff:ff:ff link-netnsid 0",
+        "passed": true
+      },
+      {
+        "name": "backend-b management interface is still up",
+        "device": "backend-b",
+        "kind": "linux",
+        "command": "ip link show eth0",
+        "expected_output": "state UP",
+        "actual_output": "249: eth0@if250: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP mode DEFAULT group default \n    link/ether 02:42:ac:14:14:09 brd ff:ff:ff:ff:ff:ff link-netnsid 0",
+        "passed": true
+      },
+      {
+        "name": "edge2 base WAN address is unchanged",
+        "device": "edge2",
+        "kind": "linux",
+        "command": "ip addr show eth1",
+        "expected_output": "203.0.113.2/24",
+        "actual_output": "254: eth1@if253: <BROADCAST,MULTICAST,UP,LOWER_UP,M-DOWN> mtu 9500 qdisc noqueue state UP \n    link/ether aa:c1:ab:b5:40:9d brd ff:ff:ff:ff:ff:ff\n    inet 203.0.113.2/24 scope global eth1\n       valid_lft forever preferred_lft forever\n    inet 203.0.113.100/32 scope global eth1\n       valid_lft forever preferred_lft forever\n    inet6 fe80::a8c1:abff:feb5:409d/64 scope link \n       valid_lft forever preferred_lft forever",
+        "passed": true
+      }
+    ],
+    "command": {
+      "method": "final_state_diff+log_fallback",
+      "precision": 0.0714,
+      "recall": 1.0,
+      "ground_truth_commands": [
+        "edge2::ip addr add 203.0.113.100/32 dev eth1"
+      ],
+      "observed_commands": [
+        "backend-a::ip addr add 10.1.21.101/24 dev eth2",
+        "backend-a::sysctl:set net.ipv4.ip_forward=1",
+        "backend-b::ip addr add 10.1.22.102/24 dev eth2",
+        "backend-b::sysctl:set net.ipv4.ip_forward=1",
+        "client::ip route add 203.0.113.100 via 203.0.113.2",
+        "client::sysctl:set net.ipv4.ip_forward=1",
+        "edge1::ip route add 10.1.21.0/24",
+        "edge1::ip route add 10.1.22.0/24",
+        "edge1::sysctl:set net.ipv4.ip_forward=1",
+        "edge2::ip addr add 203.0.113.100/32 dev eth1",
+        "edge2::ip route add 10.2.21.0/24",
+        "edge2::ip route add 10.2.22.0/24",
+        "edge2::ip route add 203.0.113.0/24",
+        "edge2::sysctl:set net.ipv4.ip_forward=1"
+      ],
+      "log_commands": [
+        "edge2::ip addr add 203.0.113.100/32 dev eth1"
+      ],
+      "correct_commands": [
+        "edge2::ip addr add 203.0.113.100/32 dev eth1"
+      ],
+      "missing_commands": [],
+      "extra_commands": [
+        "backend-a::ip addr add 10.1.21.101/24 dev eth2",
+        "backend-a::sysctl:set net.ipv4.ip_forward=1",
+        "backend-b::ip addr add 10.1.22.102/24 dev eth2",
+        "backend-b::sysctl:set net.ipv4.ip_forward=1",
+        "client::ip route add 203.0.113.100 via 203.0.113.2",
+        "client::sysctl:set net.ipv4.ip_forward=1",
+        "edge1::ip route add 10.1.21.0/24",
+        "edge1::ip route add 10.1.22.0/24",
+        "edge1::sysctl:set net.ipv4.ip_forward=1",
+        "edge2::ip route add 10.2.21.0/24",
+        "edge2::ip route add 10.2.22.0/24",
+        "edge2::ip route add 203.0.113.0/24",
+        "edge2::sysctl:set net.ipv4.ip_forward=1"
+      ],
+      "ground_truth_count": 1,
+      "observed_count": 14,
+      "log_count": 1,
+      "note": "Command score uses final-state diff against startup_configs"
+    },
+    "reasoning": {
+      "method": "embedding_cosine",
+      "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
+      "note": "",
+      "agent_reasoning_present": true,
+      "ground_truth_reasoning_present": true,
+      "agent_reasoning_length": 1603,
+      "ground_truth_reasoning_length": 383,
+      "total_steps": 12
+    }
+  }
+}

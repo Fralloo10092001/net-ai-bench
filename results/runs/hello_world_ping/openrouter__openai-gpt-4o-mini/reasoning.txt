@@ -1,1 +1,0 @@
-Both PC1 and PC2 can ping each other successfully, validating the connectivity as specified in the task.

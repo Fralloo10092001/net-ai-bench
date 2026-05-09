@@ -1,0 +1,2 @@
+{"device": "fw", "command": "sysctl -w net.ipv4.conf.eth1.rp_filter=1"}
+{"device": "fw", "command": "iptables -A FORWARD -i eth1 -s 10.10.20.0/24 -j DROP"}

@@ -1,1 +1,0 @@
-The router was already correctly configured with the required IP addresses and IP forwarding enabled. The validation ping from pc1 to pc2 was successful, confirming end-to-end connectivity and satisfying the task's main objective.

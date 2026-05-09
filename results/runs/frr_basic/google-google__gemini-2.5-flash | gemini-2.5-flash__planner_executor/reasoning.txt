@@ -1,3 +1,0 @@
-Final validation completed.
-
-Final validation result: passed 8/10 testcases.

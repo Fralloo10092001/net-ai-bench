@@ -1,0 +1,135 @@
+{
+  "task_name": "ssh_filtering",
+  "domain": "troubleshooting",
+  "difficulty": "medium",
+  "lab": "ssh-filtering",
+  "S_testcase": 1.0,
+  "S_command": 0.0,
+  "S_reasoning": 0.0,
+  "S_safety": 1.0,
+  "summary_score": 0.6,
+  "composite_score": 1.0,
+  "outcome_class": "clean_success",
+  "details": {
+    "testcases": [
+      {
+        "name": "TCP port 22 responds after firewall repair",
+        "device": "client",
+        "kind": "linux",
+        "command": "nping --tcp -p 22 --flags syn 10.30.2.2 -c 3",
+        "expected_output": "Lost: 0",
+        "actual_output": "Starting Nping 0.7.98 ( https://nmap.org/nping ) at 2026-05-09 17:45 UTC\nSENT (0.0920s) TCP 10.30.1.2:17363 > 10.30.2.2:22 S ttl=64 id=45572 iplen=40  seq=2305355291 win=1480 \nRCVD (0.0923s) TCP 10.30.2.2:22 > 10.30.1.2:17363 SA ttl=63 id=0 iplen=44  seq=2290800006 win=56760 <mss 9460>\nSENT (1.0924s) TCP 10.30.1.2:17363 > 10.30.2.2:22 S ttl=64 id=45572 iplen=40  seq=2305355291 win=1480 \nRCVD (1.0925s) TCP 10.30.2.2:22 > 10.30.1.2:17363 SA ttl=63 id=0 iplen=44  seq=2306429404 win=56760 <mss 9460>\nSENT (2.0936s) TCP 10.30.1.2:17363 > 10.30.2.2:22 S ttl=64 id=45572 iplen=40  seq=2305355291 win=1480 \nRCVD (2.0937s) TCP 10.30.2.2:22 > 10.30.1.2:17363 SA ttl=63 id=0 iplen=44  seq=2322072778 win=56760 <mss 9460>\n \nMax rtt: 0.047ms | Min rtt: 0.024ms | Avg rtt: 0.033ms\nRaw packets sent: 3 (162B) | Rcvd: 3 (132B) | Lost: 0 (0.00%)\nNping done: 1 IP address pinged in 2.12 seconds",
+        "passed": true
+      },
+      {
+        "name": "Alternate TCP port 2222 still responds",
+        "device": "client",
+        "kind": "linux",
+        "command": "nping --tcp -p 2222 --flags syn 10.30.2.2 -c 3",
+        "expected_output": "Lost: 0",
+        "actual_output": "Starting Nping 0.7.98 ( https://nmap.org/nping ) at 2026-05-09 17:45 UTC\nSENT (0.0527s) TCP 10.30.1.2:17864 > 10.30.2.2:2222 S ttl=64 id=15389 iplen=40  seq=2264298865 win=1480 \nRCVD (0.0530s) TCP 10.30.2.2:2222 > 10.30.1.2:17864 SA ttl=63 id=0 iplen=44  seq=3865022136 win=56760 <mss 9460>\nSENT (1.0531s) TCP 10.30.1.2:17864 > 10.30.2.2:2222 S ttl=64 id=15389 iplen=40  seq=2264298865 win=1480 \nRCVD (1.0533s) TCP 10.30.2.2:2222 > 10.30.1.2:17864 SA ttl=63 id=0 iplen=44  seq=3880652668 win=56760 <mss 9460>\nSENT (2.0543s) TCP 10.30.1.2:17864 > 10.30.2.2:2222 S ttl=64 id=15389 iplen=40  seq=2264298865 win=1480 \nRCVD (2.0545s) TCP 10.30.2.2:2222 > 10.30.1.2:17864 SA ttl=63 id=0 iplen=44  seq=3896296207 win=56760 <mss 9460>\n \nMax rtt: 0.047ms | Min rtt: 0.013ms | Avg rtt: 0.026ms\nRaw packets sent: 3 (162B) | Rcvd: 3 (132B) | Lost: 0 (0.00%)\nNping done: 1 IP address pinged in 2.08 seconds",
+        "passed": true
+      },
+      {
+        "name": "Unrelated TCP port 23 remains blocked",
+        "device": "client",
+        "kind": "linux",
+        "command": "nping --tcp -p 23 --flags syn 10.30.2.2 -c 3",
+        "expected_output": "Rcvd: 0",
+        "actual_output": "Starting Nping 0.7.98 ( https://nmap.org/nping ) at 2026-05-09 17:45 UTC\nSENT (0.0338s) TCP 10.30.1.2:17158 > 10.30.2.2:23 S ttl=64 id=16453 iplen=40  seq=3827855405 win=1480 \nSENT (1.0343s) TCP 10.30.1.2:17158 > 10.30.2.2:23 S ttl=64 id=16453 iplen=40  seq=3827855405 win=1480 \nSENT (2.0355s) TCP 10.30.1.2:17158 > 10.30.2.2:23 S ttl=64 id=16453 iplen=40  seq=3827855405 win=1480 \n \nMax rtt: N/A | Min rtt: N/A | Avg rtt: N/A\nRaw packets sent: 3 (162B) | Rcvd: 0 (0B) | Lost: 3 (100.00%)\nNping done: 1 IP address pinged in 3.07 seconds",
+        "passed": true
+      },
+      {
+        "name": "Firewall audit shows allow rule for SSH",
+        "device": "fw",
+        "kind": "linux",
+        "command": "nft list ruleset",
+        "expected_output": "tcp dport 22",
+        "actual_output": "table ip nat {\n\tchain DOCKER_OUTPUT {\n\t\tip daddr 127.0.0.11 tcp dport 53 counter packets 0 bytes 0 xt target \"DNAT\"\n\t\tip daddr 127.0.0.11 udp dport 53 counter packets 0 bytes 0 xt target \"DNAT\"\n\t}\n\n\tchain OUTPUT {\n\t\ttype nat hook output priority dstnat; policy accept;\n\t\tip daddr 127.0.0.11 counter packets 0 bytes 0 jump DOCKER_OUTPUT\n\t}\n\n\tchain DOCKER_POSTROUTING {\n\t\tip saddr 127.0.0.11 tcp sport 45875 counter packets 0 bytes 0 xt target \"SNAT\"\n\t\tip saddr 127.0.0.11 udp sport 38486 counter packets 0 bytes 0 xt target \"SNAT\"\n\t}\n\n\tchain POSTROUTING {\n\t\ttype nat hook postrouting priority srcnat; policy accept;\n\t\tip daddr 127.0.0.11 counter packets 0 bytes 0 jump DOCKER_POSTROUTING\n\t}\n}\ntable inet filter {\n\tchain forward {\n\t\ttype filter hook forward priority filter; policy drop;\n\t\tiifname \"eth1\" oifname \"eth2\" tcp dport 2222 ct state established,new accept\n\t\tiifname \"eth2\" oifname \"eth1\" tcp sport 2222 ct state established accept\n\t\tiifname \"eth1\" oifname \"eth2\" tcp dport 22 ct state established,new accept\n\t\tiifname \"eth2\" oifname \"eth1\" tcp sport 22 ct state established accept\n\t}\n}\n# Warning: table ip nat is managed by iptables-nft, do not touch!",
+        "passed": true
+      }
+    ],
+    "baseline_invariants": [
+      {
+        "name": "client management interface is still up",
+        "device": "client",
+        "kind": "linux",
+        "command": "ip link show eth0",
+        "expected_output": "state UP",
+        "actual_output": "1066: eth0@if1067: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP mode DEFAULT group default \n    link/ether 02:42:ac:14:14:02 brd ff:ff:ff:ff:ff:ff link-netnsid 0",
+        "passed": true
+      },
+      {
+        "name": "fw management interface is still up",
+        "device": "fw",
+        "kind": "linux",
+        "command": "ip link show eth0",
+        "expected_output": "state UP",
+        "actual_output": "1068: eth0@if1069: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP mode DEFAULT group default \n    link/ether 02:42:ac:14:14:03 brd ff:ff:ff:ff:ff:ff link-netnsid 0",
+        "passed": true
+      },
+      {
+        "name": "server management interface is still up",
+        "device": "server",
+        "kind": "linux",
+        "command": "ip link show eth0",
+        "expected_output": "state UP",
+        "actual_output": "1070: eth0@if1071: <BROADCAST,MULTICAST,UP,LOWER_UP,M-DOWN> mtu 1500 qdisc noqueue state UP \n    link/ether 02:42:ac:14:14:04 brd ff:ff:ff:ff:ff:ff",
+        "passed": true
+      },
+      {
+        "name": "fw data-plane forwarding remains enabled",
+        "device": "fw",
+        "kind": "linux",
+        "command": "cat /proc/sys/net/ipv4/ip_forward",
+        "expected_output": "1",
+        "actual_output": "1",
+        "passed": true
+      }
+    ],
+    "command": {
+      "method": "final_state_diff+log_fallback",
+      "precision": 0.0,
+      "recall": 0.0,
+      "ground_truth_commands": [
+        "fw::nft add rule inet filter forward iifname \"eth1\" oifname \"eth2\" tcp dport 22 ct state new,established accept",
+        "fw::nft add rule inet filter forward iifname \"eth2\" oifname \"eth1\" tcp sport 22 ct state established accept"
+      ],
+      "observed_commands": [
+        "fw::nft add rule inet filter forward iifname eth1 oifname eth2 tcp dport 22 ct state established,new accept",
+        "fw::nft add rule inet filter forward iifname eth2 oifname eth1 tcp sport 22 ct state established accept"
+      ],
+      "log_commands": [
+        "fw::nft add rule inet filter forward iifname eth1 oifname eth2 tcp dport 22 ct state established,new accept",
+        "fw::nft add rule inet filter forward iifname eth2 oifname eth1 tcp sport 22 ct state established accept"
+      ],
+      "correct_commands": [],
+      "missing_commands": [
+        "fw::nft add rule inet filter forward iifname \"eth1\" oifname \"eth2\" tcp dport 22 ct state new,established accept",
+        "fw::nft add rule inet filter forward iifname \"eth2\" oifname \"eth1\" tcp sport 22 ct state established accept"
+      ],
+      "extra_commands": [
+        "fw::nft add rule inet filter forward iifname eth1 oifname eth2 tcp dport 22 ct state established,new accept",
+        "fw::nft add rule inet filter forward iifname eth2 oifname eth1 tcp sport 22 ct state established accept"
+      ],
+      "ground_truth_count": 2,
+      "observed_count": 2,
+      "log_count": 2,
+      "note": "Command score uses final-state diff against startup_configs"
+    },
+    "reasoning": {
+      "method": "embedding_cosine",
+      "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
+      "note": "agent reasoning missing",
+      "agent_reasoning_present": false,
+      "ground_truth_reasoning_present": true,
+      "agent_reasoning_length": 0,
+      "ground_truth_reasoning_length": 376,
+      "total_steps": 0
+    }
+  },
+  "failure_mode": "timeout_replayed",
+  "terminated_normally": false,
+  "replay_source": "agent_commands_before_timeout",
+  "replay_note": "Evaluation produced by redeploying the lab and replaying commands saved before timeout; no LLM call was rerun."
+}

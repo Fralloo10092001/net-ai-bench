@@ -1,0 +1,1 @@
+Validated end-to-end connectivity from pc1 to pc2 with a bounded ping (3/3 success). The task is complete and no additional configuration is necessary.

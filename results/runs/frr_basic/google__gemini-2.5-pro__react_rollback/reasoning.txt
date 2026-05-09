@@ -1,1 +1,0 @@
-The configuration of all devices has been completed according to the task requirements. The primary validation test, pinging pc2 from pc1, was successful, confirming end-to-end connectivity. Therefore, the task is complete.

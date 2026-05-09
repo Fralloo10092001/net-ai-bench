@@ -1,0 +1,15 @@
+{
+  "mode": "react",
+  "final_reasoning": "All connectivity requirements have been validated. tenant-blue can reach its shared segment, tenant-red can reach its shared segment, and tenant-blue and tenant-red are isolated from each other. The task is complete.",
+  "history_length": 13,
+  "total_tokens": 72415,
+  "estimated_cost_usd": 0.0394015,
+  "provider": "google",
+  "model": "gemini-2.5-flash",
+  "usage_breakdown": {},
+  "metadata": {
+    "rollback_enabled": true,
+    "rollback_calls": 0,
+    "rollback_status_calls": 0
+  }
+}

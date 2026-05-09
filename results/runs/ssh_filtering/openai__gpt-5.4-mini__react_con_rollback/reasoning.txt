@@ -1,0 +1,1 @@
+Inspected fw running config shows nftables forward chain with policy drop and explicit allows for client eth1 -> server eth2 TCP dport 22 and 2222, plus reverse established rules for both ports. Management connectivity via eth0 remains untouched. No additional changes are required, and the requested SSH-like forwarding behavior is already configured.

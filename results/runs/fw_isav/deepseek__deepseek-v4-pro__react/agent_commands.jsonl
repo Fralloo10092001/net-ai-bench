@@ -1,0 +1,4 @@
+{"device": "fw", "command": "sysctl -w net.ipv4.conf.eth1.rp_filter=1"}
+{"device": "fw", "command": "nft add table ip anti-spoof"}
+{"device": "fw", "command": "nft add chain ip anti-spoof input { type filter hook input priority 0 \\; }"}
+{"device": "fw", "command": "nft add rule ip anti-spoof input iif eth1 ip saddr 10.10.20.0/24 counter drop"}

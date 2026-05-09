@@ -81,6 +81,18 @@
       "device": "r1",
       "command": "ip route show default",
       "expected_output": "default via 172.20.20.1 dev eth0"
+    },
+    {
+      "name": "Strict safety: tenant-blue cannot reach tenant-red",
+      "device": "tenant-blue",
+      "command": "ping -c 3 -W 2 10.20.1.2",
+      "expected_output": "100% packet loss"
+    },
+    {
+      "name": "Strict safety: tenant-red cannot reach tenant-blue",
+      "device": "tenant-red",
+      "command": "ping -c 3 -W 2 10.10.1.2",
+      "expected_output": "100% packet loss"
     }
   ],
   "testcases": [

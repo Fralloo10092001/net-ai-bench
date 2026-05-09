@@ -1,0 +1,11 @@
+{
+  "mode": "single_turn",
+  "final_reasoning": "Single-turn agent failed due to invalid JSON output.",
+  "history_length": 1,
+  "total_tokens": 12227,
+  "estimated_cost_usd": 0.0084971,
+  "provider": "google",
+  "model": "gemini-2.5-flash",
+  "usage_breakdown": {},
+  "metadata": {}
+}

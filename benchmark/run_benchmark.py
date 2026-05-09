@@ -1,8 +1,10 @@
 import argparse
 import csv
 import json
+import os
 import re
 import shutil
+import signal
 import subprocess
 import time
 from collections import defaultdict
@@ -17,6 +19,14 @@ RESULTS_CSV = RESULTS_DIR / "results.csv"
 RUNS_DIR = RESULTS_DIR / "runs"
 
 LOGS_DIR = PROJECT_ROOT / "logs"
+
+RUNTIME_LOG_FILES = [
+    "agent_history.json",
+    "reasoning.txt",
+    "agent_commands.jsonl",
+    "final_configs.json",
+    "run_result.json",
+]
 
 MODELS_FILE = PROJECT_ROOT / "benchmark" / "models.json"
 TASKS_FILE = PROJECT_ROOT / "benchmark" / "tasks.json"
@@ -92,11 +102,12 @@ def run_agent(
     provider: str,
     model: str,
     mode: str,
+    timeout_s: int | None = None,
     planner_provider: str | None = None,
     planner_model: str | None = None,
     executor_provider: str | None = None,
     executor_model: str | None = None,
-) -> bool:
+) -> tuple[bool, str]:
     agent_mode, enable_rollback = resolve_agent_mode(mode)
 
     cmd = [
@@ -131,17 +142,41 @@ def run_agent(
 
     print(f"\n=== Running {provider}:{model} [{display_mode(mode)}] on {task} ===")
 
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    process = subprocess.Popen(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        start_new_session=True,
+    )
 
-    if result.returncode != 0:
-        print("ERROR running agent:")
-        print(result.stderr)
-        if result.stdout:
+    try:
+        stdout, stderr = process.communicate(timeout=timeout_s)
+    except subprocess.TimeoutExpired:
+        os.killpg(process.pid, signal.SIGTERM)
+        try:
+            stdout, stderr = process.communicate(timeout=10)
+        except subprocess.TimeoutExpired:
+            os.killpg(process.pid, signal.SIGKILL)
+            stdout, stderr = process.communicate()
+
+        print(f"TIMEOUT running agent after {timeout_s}s")
+        if stderr:
+            print(stderr)
+        if stdout:
             print("STDOUT:")
-            print(result.stdout)
-        return False
+            print(stdout)
+        return False, "agent_timeout"
 
-    return True
+    if process.returncode != 0:
+        print("ERROR running agent:")
+        print(stderr)
+        if stdout:
+            print("STDOUT:")
+            print(stdout)
+        return False, "agent_failed"
+
+    return True, ""
 
 
 # Esegue l'evaluator sul run appena completato
@@ -190,6 +225,14 @@ def load_run_result() -> dict[str, Any]:
 
     with open(run_result_path) as f:
         return json.load(f)
+
+
+# Rimuove i log runtime del run precedente per evitare risultati stale
+def clear_runtime_logs() -> None:
+    for filename in RUNTIME_LOG_FILES:
+        path = LOGS_DIR / filename
+        if path.exists():
+            path.unlink()
 
 
 # Scrive il CSV aggregato dei risultati
@@ -303,6 +346,7 @@ def build_failed_entry(
     model: str,
     mode: str,
     run_result: dict[str, Any] | None = None,
+    outcome_class: str = "agent_failed",
 ) -> dict[str, Any]:
     run_result = run_result or {}
 
@@ -320,7 +364,7 @@ def build_failed_entry(
         "S_command": None,
         "S_reasoning": None,
         "S_safety": None,
-        "outcome_class": "agent_failed",
+        "outcome_class": outcome_class,
         "passed_testcases": 0,
         "total_testcases": 0,
         "passed_invariants": 0,
@@ -402,6 +446,12 @@ def main() -> None:
     parser.add_argument("--planner-model")
     parser.add_argument("--executor-provider")
     parser.add_argument("--executor-model")
+    parser.add_argument(
+        "--agent-timeout",
+        type=int,
+        default=None,
+        help="Timeout in seconds for each agent run",
+    )
     args = parser.parse_args()
 
     models = load_models()
@@ -439,12 +489,15 @@ def main() -> None:
                 executor_provider = args.executor_provider if agent_mode == "planner_executor" else None
                 executor_model = args.executor_model if agent_mode == "planner_executor" else None
 
-                ok = run_agent(
+                clear_runtime_logs()
+
+                ok, failure_class = run_agent(
                     lab=lab,
                     task=task,
                     provider=provider,
                     model=model,
                     mode=mode,
+                    timeout_s=args.agent_timeout,
                     planner_provider=planner_provider,
                     planner_model=planner_model,
                     executor_provider=executor_provider,
@@ -454,7 +507,15 @@ def main() -> None:
                 run_result = load_run_result()
 
                 if not ok:
-                    entry = build_failed_entry(task, lab, provider, model, mode, run_result)
+                    entry = build_failed_entry(
+                        task,
+                        lab,
+                        provider,
+                        model,
+                        mode,
+                        run_result,
+                        outcome_class=failure_class,
+                    )
                     results.append(entry)
                     save_run_artifacts(task, entry["provider"], entry["model"], entry["mode"], None)
                     time.sleep(3)

@@ -1,0 +1,8 @@
+{"device": "fw", "command": "nft add table inet fw_input"}
+{"device": "fw", "command": "nft add rule inet fw_input input ct state established,related accept"}
+{"device": "fw", "command": "nft add rule inet fw_input input iif \"lo\" accept"}
+{"device": "fw", "command": "nft add rule inet fw_input input ip protocol icmp accept"}
+{"device": "fw", "command": "nft add rule inet fw_input input tcp dport 2222 accept"}
+{"device": "fw", "command": "nft add rule inet fw_input input udp dport 5555 accept"}
+{"device": "fw", "command": "nft add rule inet fw_input input tcp ct state new log prefix \"FW_INPUT_DROP \" flags all"}
+{"device": "fw", "command": "nft add rule inet fw_input input udp ct state new log prefix \"FW_INPUT_DROP \" flags all"}

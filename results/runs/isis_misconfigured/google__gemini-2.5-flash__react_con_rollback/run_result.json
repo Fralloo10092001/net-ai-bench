@@ -1,0 +1,15 @@
+{
+  "mode": "react",
+  "final_reasoning": "Agent reached maximum number of steps before finishing.",
+  "history_length": 25,
+  "total_tokens": 133591,
+  "estimated_cost_usd": 0.0893507,
+  "provider": "google",
+  "model": "gemini-2.5-flash",
+  "usage_breakdown": {},
+  "metadata": {
+    "rollback_enabled": true,
+    "rollback_calls": 0,
+    "rollback_status_calls": 0
+  }
+}

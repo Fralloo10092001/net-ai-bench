@@ -2,17 +2,23 @@
 {"device": "fw", "command": "nft add chain ip filter input { type filter hook input priority 0; policy drop; }"}
 {"device": "fw", "command": "nft add rule ip filter input ct state established,related accept"}
 {"device": "fw", "command": "nft add rule ip filter input iif \"lo\" accept"}
-{"device": "fw", "command": "nft add rule ip filter input ip protocol icmp accept"}
-{"device": "fw", "command": "nft add rule ip filter input proto tcp dport 2222 accept"}
-{"device": "fw", "command": "nft add rule ip filter input proto udp dport 5555 accept"}
+{"device": "fw", "command": "nft add rule ip filter input icmp type { echo-request, echo-reply, destination-unreachable, router-advertisement, router-solicitation, time-exceeded, parameter-problem } accept"}
+{"device": "fw", "command": "nft add rule ip filter input tcp dport 2222 accept"}
+{"device": "fw", "command": "nft add rule ip filter input udp dport 5555 accept"}
 {"device": "fw", "command": "nft add rule ip filter input log prefix \"FW_INPUT_DROP\" drop"}
+{"device": "fw", "command": "nft add table ip filter"}
+{"device": "fw", "command": "nft add chain ip filter input \\{ type filter hook input priority 0; policy drop; \\}"}
+{"device": "fw", "command": "nft add rule ip filter input ct state established,related accept"}
+{"device": "fw", "command": "nft add rule ip filter input iif lo accept"}
+{"device": "fw", "command": "nft add rule ip filter input icmp type { echo-request, echo-reply, destination-unreachable, time-exceeded, parameter-problem } accept"}
+{"device": "fw", "command": "nft add rule ip filter input tcp dport 2222 accept"}
+{"device": "fw", "command": "nft add rule ip filter input udp dport 5555 accept"}
+{"device": "fw", "command": "nft add rule ip filter input log prefix \\\"FW_INPUT_DROP\\\" drop"}
 {"device": "fw", "command": "nft add table ip filter"}
 {"device": "fw", "command": "nft add chain ip filter input '{ type filter hook input priority 0; policy drop; }'"}
 {"device": "fw", "command": "nft add rule ip filter input ct state established,related accept"}
-{"device": "fw", "command": "nft add rule ip filter input iif \"lo\" accept"}
-{"device": "fw", "command": "nft add rule ip filter input ip protocol icmp accept"}
-{"device": "fw", "command": "nft add rule ip filter input proto tcp dport 2222 accept"}
-{"device": "fw", "command": "nft add rule ip filter input proto udp dport 5555 accept"}
-{"device": "fw", "command": "nft add rule ip filter input log prefix \"FW_INPUT_DROP\" drop"}
+{"device": "fw", "command": "nft add rule ip filter input iif lo accept"}
+{"device": "fw", "command": "nft add rule ip filter input icmp type { echo-request, echo-reply, destination-unreachable, time-exceeded, parameter-problem } accept"}
 {"device": "fw", "command": "nft add rule ip filter input tcp dport 2222 accept"}
 {"device": "fw", "command": "nft add rule ip filter input udp dport 5555 accept"}
+{"device": "fw", "command": "nft add rule ip filter input log prefix \"FW_INPUT_DROP\" drop"}
