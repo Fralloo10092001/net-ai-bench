@@ -63,7 +63,7 @@ isis_ipv6.json,isis-ipv6,routing,medium,google,gemini-2.5-flash,react,0.2613,0.0
 isis_ipv6.json,isis-ipv6,routing,medium,deepseek,deepseek-v4-pro,react,0.705,0.8,0.8,0.25,0.675,1.0,clean_fail,4,5,6,6,0.1667,0.5,15,86687,0.17837956
 isis_ipv6.json,isis-ipv6,routing,medium,openai,gpt-5.4-mini,react,0.3556,0.0,0.0,0.2857,0.4925,1.0,clean_fail,0,5,6,6,0.2,0.5,13,64777,0.05731275
 isis_ipv6.json,isis-ipv6,routing,medium,google,gemini-2.5-flash,react con rollback,0.2413,0.0,0.0,0.1667,0.0396,1.0,clean_fail,0,5,6,6,0.125,0.25,25,143568,0.0925242
-isis_ipv6.json,isis-ipv6,,,deepseek,deepseek-v4-pro,react con rollback,0.2727,0.0,0.0,0.3636,0.0,1.0,clean_fail,0,5,6,6,0.2857,0.5,0,0,0.0
+isis_ipv6.json,isis-ipv6,routing,medium,deepseek,deepseek-v4-pro,react con rollback,0.2727,0.0,0.0,0.3636,0.0,1.0,clean_fail,0,5,6,6,0.2857,0.5,0,0,0.0
 isis_ipv6.json,isis-ipv6,routing,medium,openai,gpt-5.4-mini,react con rollback,0.3558,0.0,0.0,0.2857,0.4935,1.0,clean_fail,0,5,6,6,0.2,0.5,18,92450,0.08215875
 isis_ipv6.json,isis-ipv6,routing,medium,google,gemini-2.5-flash,single_turn,0.2,0.0,0.0,0.0,0.0,1.0,clean_fail,0,5,6,6,0.0,0.0,1,8365,0.0073407
 isis_ipv6.json,isis-ipv6,routing,medium,deepseek,deepseek-v4-pro,single_turn,0.5523,0.4,0.4,0.25,0.7115,1.0,clean_fail,2,5,6,6,0.1667,0.5,5,10031,0.0255258
@@ -72,7 +72,7 @@ isis_ipv6.json,isis-ipv6,routing,medium,google/google,gemini-2.5-flash | gemini-
 isis_ipv6.json,isis-ipv6,routing,medium,deepseek/deepseek,deepseek-v4-pro | deepseek-v4-pro,planner_executor,0.6966,0.8,0.8,0.25,0.6329,1.0,clean_fail,4,5,6,6,0.1667,0.5,29,149969,0.29593396
 isis_ipv6.json,isis-ipv6,routing,medium,openai/openai,gpt-5.4-mini | gpt-5.4-mini,planner_executor,0.4205,0.2,0.2,0.1429,0.5594,1.0,clean_fail,1,5,6,6,0.1,0.25,15,64626,0.057762
 isis_misconfigured.json,isis-misconfigured,troubleshooting,medium,google,gemini-2.5-flash,react,0.2223,0.0,0.0,0.0,0.1117,1.0,clean_fail,0,5,5,5,0.0,0.0,25,115809,0.0731393
-isis_misconfigured.json,isis-misconfigured,,,deepseek,deepseek-v4-pro,react,0.44,0.6,0.6,0.0,0.0,1.0,clean_fail,3,5,5,5,0.0,0.0,0,0,0.0
+isis_misconfigured.json,isis-misconfigured,troubleshooting,medium,deepseek,deepseek-v4-pro,react,0.44,0.6,0.6,0.0,0.0,1.0,clean_fail,3,5,5,5,0.0,0.0,0,0,0.0
 isis_misconfigured.json,isis-misconfigured,troubleshooting,medium,openai,gpt-5.4-mini,react,0.3306,0.0,0.0,0.0,0.6529,1.0,clean_fail,0,5,5,5,0.0,0.0,14,52099,0.04587675
 isis_misconfigured.json,isis-misconfigured,troubleshooting,medium,google,gemini-2.5-flash,react con rollback,0.2223,0.0,0.0,0.0,0.1117,1.0,clean_fail,0,5,5,5,0.0,0.0,25,133591,0.0893507
 isis_misconfigured.json,isis-misconfigured,troubleshooting,medium,deepseek,deepseek-v4-pro,react con rollback,0.2223,0.0,0.0,0.0,0.1117,1.0,clean_fail,0,5,5,5,0.0,0.0,18,96000,0.2064
@@ -108,10 +108,10 @@ routing_linear_linkdown.json,routing-linear-linkdown,routing,easy,google/google,
 routing_linear_linkdown.json,routing-linear-linkdown,routing,easy,deepseek/deepseek,deepseek-v4-pro | deepseek-v4-pro,planner_executor,0.7921,1.0,1.0,0.4286,0.532,1.0,clean_success,4,4,6,6,0.3,0.75,16,49517,0.09883896
 routing_linear_linkdown.json,routing-linear-linkdown,routing,easy,openai/openai,gpt-5.4-mini | gpt-5.4-mini,planner_executor,0.8351,1.0,1.0,0.5714,0.6042,1.0,clean_success,4,4,6,6,0.4,1.0,12,35198,0.03224475
 ssh_filtering.json,ssh-filtering,troubleshooting,medium,google,gemini-2.5-flash,react,0.731,1.0,1.0,0.5714,0.0838,1.0,clean_success,4,4,4,4,0.4,1.0,25,145919,0.0992553
-ssh_filtering.json,ssh-filtering,,,deepseek,deepseek-v4-pro,react,0.7,1.0,1.0,0.5,0.0,1.0,clean_success,4,4,4,4,0.5,0.5,0,0,0.0
+ssh_filtering.json,ssh-filtering,troubleshooting,medium,deepseek,deepseek-v4-pro,react,0.7,1.0,1.0,0.5,0.0,1.0,clean_success,4,4,4,4,0.5,0.5,0,0,0.0
 ssh_filtering.json,ssh-filtering,troubleshooting,medium,openai,gpt-5.4-mini,react,0.8394,1.0,1.0,0.5714,0.6253,1.0,clean_success,4,4,4,4,0.4,1.0,6,20798,0.018186
 ssh_filtering.json,ssh-filtering,troubleshooting,medium,google,gemini-2.5-flash,react con rollback,0.8559,1.0,1.0,0.5714,0.7079,1.0,clean_success,4,4,4,4,0.4,1.0,10,54779,0.0281487
-ssh_filtering.json,ssh-filtering,,,deepseek,deepseek-v4-pro,react con rollback,0.6,1.0,1.0,0.0,0.0,1.0,clean_success,4,4,4,4,0.0,0.0,0,0,0.0
+ssh_filtering.json,ssh-filtering,troubleshooting,medium,deepseek,deepseek-v4-pro,react con rollback,0.6,1.0,1.0,0.0,0.0,1.0,clean_success,4,4,4,4,0.0,0.0,0,0,0.0
 ssh_filtering.json,ssh-filtering,troubleshooting,medium,openai,gpt-5.4-mini,react con rollback,0.8599,1.0,1.0,0.5714,0.7281,1.0,clean_success,4,4,4,4,0.4,1.0,9,32219,0.02832675
 ssh_filtering.json,ssh-filtering,troubleshooting,medium,google,gemini-2.5-flash,single_turn,0.8435,1.0,1.0,0.5714,0.646,1.0,clean_success,4,4,4,4,0.4,1.0,4,7316,0.0042496
 ssh_filtering.json,ssh-filtering,troubleshooting,medium,deepseek,deepseek-v4-pro,single_turn,0.7879,1.0,1.0,0.2857,0.6536,1.0,clean_success,4,4,4,4,0.2,0.5,4,6365,0.01232788
@@ -120,8 +120,8 @@ ssh_filtering.json,ssh-filtering,troubleshooting,medium,google/google,gemini-2.5
 ssh_filtering.json,ssh-filtering,troubleshooting,medium,deepseek/deepseek,deepseek-v4-pro | deepseek-v4-pro,planner_executor,0.7859,1.0,1.0,0.2857,0.6437,1.0,clean_success,4,4,4,4,0.2,0.5,11,82737,0.17141956
 ssh_filtering.json,ssh-filtering,troubleshooting,medium,openai/openai,gpt-5.4-mini | gpt-5.4-mini,planner_executor,0.7839,1.0,1.0,0.2857,0.6337,1.0,clean_success,4,4,4,4,0.2,0.5,8,26168,0.024291
 vrf_isolation.json,vrf-isolation,routing,hard,google,gemini-2.5-flash,react,0.8535,1.0,1.0,0.7027,0.5647,1.0,clean_success,7,7,7,7,0.5417,1.0,14,72494,0.0362066
-vrf_isolation.json,vrf-isolation,,,deepseek,deepseek-v4-pro,react,0.792,1.0,1.0,0.96,0.0,1.0,clean_success,7,7,7,7,1.0,0.9231,0,0,0.0
-vrf_isolation.json,vrf-isolation,,,openai,gpt-5.4-mini,react,,,,,,,agent_failed,0,0,0,0,,,0,0,0.0
+vrf_isolation.json,vrf-isolation,routing,hard,deepseek,deepseek-v4-pro,react,0.792,1.0,1.0,0.96,0.0,1.0,clean_success,7,7,7,7,1.0,0.9231,0,0,0.0
+vrf_isolation.json,vrf-isolation,routing,hard,openai,gpt-5.4-mini,react,0.6757,1.0,1.0,0.3784,0.0,1.0,clean_success,7,7,7,7,0.2917,0.5385,0,0,0.0
 vrf_isolation.json,vrf-isolation,routing,hard,google,gemini-2.5-flash,react con rollback,0.8688,1.0,1.0,0.7429,0.6009,1.0,clean_success,7,7,7,7,0.5909,1.0,13,72415,0.0394015
 vrf_isolation.json,vrf-isolation,routing,hard,deepseek,deepseek-v4-pro,react con rollback,0.4614,0.4286,0.4286,0.25,0.2,1.0,clean_fail,3,7,7,7,0.3333,0.1538,16,105000,0.221
 vrf_isolation.json,vrf-isolation,routing,hard,openai,gpt-5.4-mini,react con rollback,0.8863,1.0,1.0,0.7879,0.6434,1.0,clean_success,7,7,7,7,0.65,1.0,7,27221,0.0239745

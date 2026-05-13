@@ -527,7 +527,26 @@ I driver non eseguono shell arbitraria. `LinuxDriver` applica allowlist e blocch
 
 - comandi ammessi per configurazione: subset di `ip`, `sysctl`, `nft`, `iptables`, `vtysh`, servizi necessari ai task;
 - comandi read-only per validazione: subset di `ip`, `ping`, `sysctl`, `nft list`, `iptables-save`, `vtysh show`, `curl --max-time`, `nping -c`, `haproxy -c`;
-- comandi distruttivi o troppo ampi sono bloccati (`rm`, package manager, flush firewall, `write memory`, modifiche `/etc`, ecc.).
+- comandi distruttivi o troppo ampi sono bloccati (`rm`, package manager, flush firewall, `write memory`, modifiche arbitrarie a `/etc`, ecc.).
+
+Le scritture su filesystem sono consentite solo per pochi file di configurazione allowlistati e solo tramite un formato esplicito:
+
+```bash
+printf %s <contenuto-base64-utf8> | base64 -d | tee <path> >/dev/null
+```
+
+I path attualmente scrivibili sono:
+
+```text
+/etc/frr/frr.conf
+/etc/frr/daemons
+/etc/frr/vtysh.conf
+/etc/haproxy/haproxy.cfg
+/usr/local/etc/haproxy/haproxy.cfg
+/etc/nftables.conf
+```
+
+Il driver decodifica internamente il contenuto, limita la dimensione a 64 KiB, rifiuta binari o target symlink e registra la scrittura in `logs/agent_commands.jsonl`. Questi file rientrano nei path coperti dal rollback filesystem.
 
 Questa scelta rende il benchmark più sicuro e riproducibile, ma obbliga gli agenti a usare un dialetto operativo controllato.
 

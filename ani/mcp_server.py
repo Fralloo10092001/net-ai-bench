@@ -253,6 +253,11 @@ def update_config(device: str, commands: list[str]) -> dict:
     """
     Applica una lista di comandi a un device.
     Prima della modifica viene catturato automaticamente uno snapshot di rollback.
+
+    Per scrivere file di configurazione allowlistati, usare il formato esatto:
+    printf %s <base64-utf8> | base64 -d | tee <path> >/dev/null
+    Path scrivibili: /etc/frr/frr.conf, /etc/frr/daemons, /etc/frr/vtysh.conf,
+    /etc/haproxy/haproxy.cfg, /usr/local/etc/haproxy/haproxy.cfg, /etc/nftables.conf.
     """
     driver = _driver_for(device)
     support_info = _rollback_support_info(device)

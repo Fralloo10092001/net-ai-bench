@@ -230,6 +230,17 @@ FILESYSTEM_ROLLBACK_EXCLUDES = [
     "/etc/resolv.conf",
 ]
 
+CONFIG_FILE_WRITE_PATHS = [
+    "/etc/frr/frr.conf",
+    "/etc/frr/daemons",
+    "/etc/frr/vtysh.conf",
+    "/etc/haproxy/haproxy.cfg",
+    "/usr/local/etc/haproxy/haproxy.cfg",
+    "/etc/nftables.conf",
+]
+
+CONFIG_FILE_WRITE_MAX_BYTES = 64 * 1024
+
 
 # Driver per nodi Linux-like eseguiti dentro container Containerlab
 class LinuxDriver(BaseDriver):
@@ -372,6 +383,101 @@ class LinuxDriver(BaseDriver):
         except Exception:
             return default
 
+    # Interpreta una scrittura file controllata senza esporre una shell arbitraria.
+    def _parse_config_file_write_command(self, cmd: str) -> dict[str, Any] | None:
+        try:
+            parts = shlex.split(cmd)
+        except ValueError:
+            return None
+
+        if len(parts) == 10 and parts[9] == ">/dev/null":
+            pass
+        elif len(parts) == 11 and parts[9:] == [">", "/dev/null"]:
+            pass
+        else:
+            return None
+
+        if parts[0:2] != ["printf", "%s"]:
+            return None
+        if parts[3] != "|" or parts[4] != "base64" or parts[5] not in {"-d", "--decode"} or parts[6] != "|":
+            return None
+        if parts[7] != "tee":
+            return None
+
+        target_path = self._normalize_filesystem_path(parts[8])
+        allowed_paths = {
+            self._normalize_filesystem_path(path)
+            for path in CONFIG_FILE_WRITE_PATHS
+        }
+        if target_path not in allowed_paths:
+            return None
+        if self._is_filesystem_path_excluded(target_path):
+            return None
+
+        try:
+            content = base64.b64decode(parts[2].encode("ascii"), validate=True)
+        except Exception:
+            return None
+
+        if len(content) > CONFIG_FILE_WRITE_MAX_BYTES:
+            return None
+        if b"\x00" in content:
+            return None
+        try:
+            content.decode("utf-8")
+        except UnicodeDecodeError:
+            return None
+
+        return {
+            "path": target_path,
+            "content": content,
+            "size": len(content),
+        }
+
+    # Scrive solo file di configurazione esplicitamente allowlistati e non symlink.
+    def _write_config_file(self, device: str, file_write: dict[str, Any]) -> str:
+        path = str(file_write["path"])
+        content = file_write["content"]
+        parent = path.rsplit("/", 1)[0] or "/"
+
+        quoted_path = shlex.quote(path)
+        quoted_parent = shlex.quote(parent)
+        validation = self._exec(
+            device,
+            (
+                f"if [ -L {quoted_path} ]; then printf target_symlink; "
+                f"elif [ -e {quoted_path} ] && [ ! -f {quoted_path} ]; then printf target_not_regular; "
+                f"elif [ ! -d {quoted_parent} ]; then printf parent_missing; "
+                f"elif [ -L {quoted_parent} ]; then printf parent_symlink; "
+                "else printf ok; fi"
+            ),
+            check=False,
+            timeout=5,
+        ).strip()
+
+        if validation != "ok":
+            raise RuntimeError(f"refusing to write {path}: {validation or 'target validation failed'}")
+
+        self._exec_stdin_binary(
+            device,
+            f"cat > {quoted_path}",
+            content,
+            check=True,
+            timeout=10,
+        )
+
+        actual_size = self._exec(
+            device,
+            f"wc -c < {quoted_path}",
+            check=False,
+            timeout=5,
+        ).strip()
+
+        if actual_size != str(len(content)):
+            raise RuntimeError(f"write verification failed for {path}: expected {len(content)} bytes, got {actual_size}")
+
+        return f"wrote {len(content)} bytes to {path}"
+
     def _allows_semicolon_for_nft_chain(self, cmd: str) -> bool:
         if ";" not in cmd:
             return True
@@ -414,6 +520,9 @@ class LinuxDriver(BaseDriver):
         # Block ';' except for nft chain definitions that require it
         if ";" in cmd and not self._allows_semicolon_for_nft_chain(cmd):
             return False
+
+        if self._parse_config_file_write_command(cmd) is not None:
+            return True
 
         if any(bad in cmd for bad in BLOCKED_SUBSTRINGS):
             return False
@@ -1766,7 +1875,11 @@ class LinuxDriver(BaseDriver):
                 f.write(json.dumps({"device": device, "command": cmd}) + "\n")
 
             try:
-                out = self._exec(device, cmd)
+                file_write = self._parse_config_file_write_command(cmd)
+                if file_write is not None:
+                    out = self._write_config_file(device, file_write)
+                else:
+                    out = self._exec(device, cmd)
                 results.append({
                     "command": cmd,
                     "status": "success",
@@ -1779,8 +1892,18 @@ class LinuxDriver(BaseDriver):
                     "output": "command timed out",
                 })
             except subprocess.CalledProcessError as e:
-                stderr = (e.stderr or "").strip()
-                stdout = (e.stdout or "").strip()
+                stderr_raw = e.stderr or ""
+                stdout_raw = e.stdout or ""
+                stderr = (
+                    stderr_raw.decode(errors="replace").strip()
+                    if isinstance(stderr_raw, bytes)
+                    else str(stderr_raw).strip()
+                )
+                stdout = (
+                    stdout_raw.decode(errors="replace").strip()
+                    if isinstance(stdout_raw, bytes)
+                    else str(stdout_raw).strip()
+                )
                 output = stderr or stdout or str(e)
                 results.append({
                     "command": cmd,
