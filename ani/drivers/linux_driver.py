@@ -1,3 +1,4 @@
+import base64
 import json
 import re
 import shlex
@@ -216,6 +217,19 @@ READ_ONLY_PREFIXES = [
     "iptables -t nat -S",
 ]
 
+FILESYSTEM_ROLLBACK_PATHS = [
+    "/etc",
+    "/usr/local/etc",
+    "/var/lib/frr",
+]
+
+FILESYSTEM_ROLLBACK_EXCLUDES = [
+    "/etc/hostname",
+    "/etc/hosts",
+    "/etc/mtab",
+    "/etc/resolv.conf",
+]
+
 
 # Driver per nodi Linux-like eseguiti dentro container Containerlab
 class LinuxDriver(BaseDriver):
@@ -263,6 +277,26 @@ class LinuxDriver(BaseDriver):
             return f"{stdout}\n{stderr}"
         return stdout
 
+    # Esegue un comando nel container mantenendo stdout binario, usato per tar.
+    def _exec_binary(
+        self,
+        node: str,
+        command: str,
+        check: bool = False,
+        timeout: int = 30,
+    ) -> subprocess.CompletedProcess[bytes]:
+        container_name = self._clab(node)
+
+        if not self._container_exists(container_name):
+            raise RuntimeError(f"Container not found: {container_name}")
+
+        return subprocess.run(
+            ["docker", "exec", "-u", "0", container_name, "sh", "-c", command],
+            capture_output=True,
+            check=check,
+            timeout=timeout,
+        )
+
     # Esegue un comando passando contenuto su stdin, usato solo dai restore interni.
     def _exec_stdin(
         self,
@@ -288,6 +322,37 @@ class LinuxDriver(BaseDriver):
 
         stdout = result.stdout.strip()
         stderr = result.stderr.strip()
+
+        if stderr and not stdout:
+            return stderr
+        if stdout and stderr:
+            return f"{stdout}\n{stderr}"
+        return stdout
+
+    # Esegue un comando con stdin binario, usato per ripristinare archivi tar.
+    def _exec_stdin_binary(
+        self,
+        node: str,
+        command: str,
+        data: bytes,
+        check: bool = False,
+        timeout: int = 30,
+    ) -> str:
+        container_name = self._clab(node)
+
+        if not self._container_exists(container_name):
+            raise RuntimeError(f"Container not found: {container_name}")
+
+        result = subprocess.run(
+            ["docker", "exec", "-i", "-u", "0", container_name, "sh", "-c", command],
+            input=data,
+            capture_output=True,
+            check=check,
+            timeout=timeout,
+        )
+
+        stdout = result.stdout.decode(errors="replace").strip()
+        stderr = result.stderr.decode(errors="replace").strip()
 
         if stderr and not stdout:
             return stderr
@@ -1186,6 +1251,222 @@ class LinuxDriver(BaseDriver):
 
             self._run_rollback_command(device, f"ip link del {shlex.quote(ifname)}", steps)
 
+    # Normalizza un path assoluto Linux evitando path traversal nei restore interni.
+    def _normalize_filesystem_path(self, path: str) -> str:
+        normalized = "/" + str(path).strip().lstrip("/")
+        parts = []
+
+        for part in normalized.split("/"):
+            if part in {"", "."}:
+                continue
+            if part == "..":
+                if parts:
+                    parts.pop()
+                continue
+            parts.append(part)
+
+        return "/" + "/".join(parts)
+
+    # Verifica che un path ricada dentro uno dei root tracciati dallo snapshot.
+    def _is_filesystem_path_tracked(self, path: str, roots: list[str]) -> bool:
+        normalized = self._normalize_filesystem_path(path)
+
+        for root in roots:
+            normalized_root = self._normalize_filesystem_path(root)
+            if normalized == normalized_root or normalized.startswith(normalized_root.rstrip("/") + "/"):
+                return True
+
+        return False
+
+    # Evita di toccare file gestiti direttamente da Docker o altri pseudo-file.
+    def _is_filesystem_path_excluded(self, path: str) -> bool:
+        normalized = self._normalize_filesystem_path(path)
+
+        for excluded in FILESYSTEM_ROLLBACK_EXCLUDES:
+            normalized_excluded = self._normalize_filesystem_path(excluded)
+            if normalized == normalized_excluded or normalized.startswith(normalized_excluded.rstrip("/") + "/"):
+                return True
+
+        return False
+
+    # Ritorna i path configurativi che esistono nel container al momento dello snapshot.
+    def _existing_filesystem_rollback_paths(self, device: str, paths: list[str]) -> list[str]:
+        existing = []
+
+        for path in paths:
+            normalized = self._normalize_filesystem_path(path)
+            out = self._exec(
+                device,
+                f"if [ -e {shlex.quote(normalized)} ]; then printf present; fi",
+                check=False,
+                timeout=5,
+            )
+            if out.strip() == "present":
+                existing.append(normalized)
+
+        return existing
+
+    # Cattura un manifest semplice dei path presenti sotto la superficie filesystem tracciata.
+    def _capture_filesystem_manifest(self, device: str, roots: list[str]) -> list[str]:
+        existing_roots = self._existing_filesystem_rollback_paths(device, roots)
+        if not existing_roots:
+            return []
+
+        quoted_roots = " ".join(shlex.quote(path) for path in existing_roots)
+        out = self._exec(
+            device,
+            f"find {quoted_roots} -print 2>/dev/null",
+            check=False,
+            timeout=20,
+        )
+
+        manifest = set()
+        for line in out.splitlines():
+            normalized = self._normalize_filesystem_path(line)
+            if not self._is_filesystem_path_tracked(normalized, roots):
+                continue
+            if self._is_filesystem_path_excluded(normalized):
+                continue
+            manifest.add(normalized)
+
+        return sorted(manifest)
+
+    # Cattura uno snapshot tar base64 dei file di configurazione persistenti.
+    def _capture_filesystem_snapshot(self, device: str) -> dict[str, Any]:
+        tracked_paths = [self._normalize_filesystem_path(path) for path in FILESYSTEM_ROLLBACK_PATHS]
+        archive_paths = self._existing_filesystem_rollback_paths(device, tracked_paths)
+        manifest = self._capture_filesystem_manifest(device, tracked_paths)
+
+        if not archive_paths:
+            return {
+                "available": True,
+                "strategy": "tar_config_paths",
+                "tracked_paths": tracked_paths,
+                "archived_paths": [],
+                "excluded_paths": FILESYSTEM_ROLLBACK_EXCLUDES,
+                "manifest": manifest,
+                "archive_b64": "",
+                "archive_size": 0,
+                "error": "",
+            }
+
+        exclude_args = " ".join(
+            f"--exclude={shlex.quote(self._normalize_filesystem_path(path).lstrip('/'))}"
+            for path in FILESYSTEM_ROLLBACK_EXCLUDES
+        )
+        relative_paths = " ".join(
+            shlex.quote(path.lstrip("/"))
+            for path in archive_paths
+        )
+
+        tar_cmd = f"tar -C / -cf - {exclude_args} {relative_paths}".strip()
+        result = self._exec_binary(device, tar_cmd, check=False, timeout=30)
+
+        stderr = result.stderr.decode(errors="replace").strip()
+        if result.returncode != 0 and not result.stdout:
+            return {
+                "available": False,
+                "strategy": "tar_config_paths",
+                "tracked_paths": tracked_paths,
+                "archived_paths": archive_paths,
+                "excluded_paths": FILESYSTEM_ROLLBACK_EXCLUDES,
+                "manifest": manifest,
+                "archive_b64": "",
+                "archive_size": 0,
+                "error": stderr or f"tar exited with rc={result.returncode}",
+            }
+
+        return {
+            "available": True,
+            "strategy": "tar_config_paths",
+            "tracked_paths": tracked_paths,
+            "archived_paths": archive_paths,
+            "excluded_paths": FILESYSTEM_ROLLBACK_EXCLUDES,
+            "manifest": manifest,
+            "archive_b64": base64.b64encode(result.stdout).decode("ascii"),
+            "archive_size": len(result.stdout),
+            "error": stderr if result.returncode != 0 else "",
+        }
+
+    # Ripristina i path configurativi e rimuove file creati dopo lo snapshot.
+    def _restore_filesystem_snapshot(
+        self,
+        device: str,
+        snapshot: dict[str, Any],
+        steps: list[dict[str, str]],
+        skipped: list[dict[str, str]],
+    ) -> None:
+        fs_state = snapshot.get("filesystem", {})
+
+        if not fs_state:
+            return
+
+        if not fs_state.get("available"):
+            skipped.append({
+                "step": "restore filesystem config archive",
+                "reason": fs_state.get("error", "filesystem snapshot unavailable"),
+            })
+            return
+
+        tracked_paths = [
+            self._normalize_filesystem_path(path)
+            for path in fs_state.get("tracked_paths", FILESYSTEM_ROLLBACK_PATHS)
+        ]
+
+        archive_b64 = str(fs_state.get("archive_b64", ""))
+        if archive_b64:
+            try:
+                archive = base64.b64decode(archive_b64.encode("ascii"))
+            except Exception as e:
+                skipped.append({
+                    "step": "restore filesystem config archive",
+                    "reason": f"invalid base64 archive: {e}",
+                })
+                archive = b""
+
+            if archive:
+                out = self._exec_stdin_binary(
+                    device,
+                    "tar -C / -xpf -",
+                    archive,
+                    check=False,
+                    timeout=45,
+                )
+                steps.append({
+                    "step": "restore filesystem config archive",
+                    "status": "ok",
+                    "output": out,
+                })
+
+        before_manifest = {
+            self._normalize_filesystem_path(path)
+            for path in fs_state.get("manifest", [])
+        }
+        current_manifest = set(self._capture_filesystem_manifest(device, tracked_paths))
+
+        created_paths = sorted(
+            current_manifest - before_manifest,
+            key=lambda path: (path.count("/"), len(path)),
+            reverse=True,
+        )
+
+        for path in created_paths:
+            if not self._is_filesystem_path_tracked(path, tracked_paths):
+                skipped.append({
+                    "step": f"rm -rf -- {path}",
+                    "reason": "path outside tracked filesystem rollback roots",
+                })
+                continue
+
+            if self._is_filesystem_path_excluded(path):
+                skipped.append({
+                    "step": f"rm -rf -- {path}",
+                    "reason": "excluded Docker/runtime-managed path",
+                })
+                continue
+
+            self._run_rollback_command(device, f"rm -rf -- {shlex.quote(path)}", steps)
+
     # Ricava uno snapshot esteso e read-only dello stato del nodo Linux
     def get_running_config(self, device: str) -> dict:
         sections = [
@@ -1257,6 +1538,7 @@ class LinuxDriver(BaseDriver):
                 "iptables-save",
                 timeout=15,
             ),
+            "filesystem": self._capture_filesystem_snapshot(device),
         }
 
     # Ripristina uno snapshot Linux usando una strategia a delta non distruttiva
@@ -1265,6 +1547,7 @@ class LinuxDriver(BaseDriver):
         skipped: list[dict[str, str]] = []
 
         try:
+            self._restore_filesystem_snapshot(device, snapshot, steps, skipped)
             self._restore_nft_ruleset(device, snapshot, steps)
             self._restore_iptables_rules(device, snapshot, steps)
             self._restore_frr_config(device, snapshot, steps, skipped)

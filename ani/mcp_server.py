@@ -173,6 +173,24 @@ def _push_snapshot(device: str) -> dict[str, Any]:
     return snapshot
 
 
+def _filesystem_snapshot_info(snapshot: dict[str, Any]) -> dict[str, Any]:
+    fs_state = snapshot.get("filesystem", {})
+    if not fs_state:
+        return {
+            "captured": False,
+        }
+
+    return {
+        "captured": bool(fs_state.get("available")),
+        "strategy": fs_state.get("strategy", ""),
+        "tracked_paths": fs_state.get("tracked_paths", []),
+        "archived_paths": fs_state.get("archived_paths", []),
+        "archive_size": fs_state.get("archive_size", 0),
+        "manifest_entries": len(fs_state.get("manifest", [])),
+        "error": fs_state.get("error", ""),
+    }
+
+
 # Ripristina l'ultimo snapshot disponibile per un device
 def _pop_and_restore_snapshot(device: str) -> dict[str, Any]:
     support_info = _rollback_support_info(device)
@@ -247,6 +265,7 @@ def update_config(device: str, commands: list[str]) -> dict:
             "device": device,
             "stack_depth": len(_rollback_stacks.get(device, [])),
             "snapshot_kind": snapshot.get("kind", support_info["driver_kind"]),
+            "filesystem": _filesystem_snapshot_info(snapshot),
             **support_info,
         }
     except Exception as e:

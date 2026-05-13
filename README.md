@@ -361,7 +361,7 @@ Solo ReAct:
 python benchmark/run_benchmark.py --mode react
 ```
 
-Tutte le modalità senza rollback:
+Tutte le modalità standard senza rollback (`react`, `single_turn`, `planner_executor`):
 
 ```bash
 python benchmark/run_benchmark.py --mode all
@@ -506,6 +506,18 @@ Il rollback è stack-based e agent-driven.
 - Il rollback non è automatico: il framework non ripara da solo i run falliti.
 
 Per i nodi Linux, lo snapshot include indirizzi, route, rule, link/VRF, firewall e, quando disponibile, running config FRR. Le configurazioni montate da `labs/lab-configs/` sono montate read-only e non vengono mutate dall'agente.
+
+Il rollback Linux include anche uno snapshot filesystem mirato dei path configurativi persistenti:
+
+```text
+/etc
+/usr/local/etc
+/var/lib/frr
+```
+
+Lo snapshot filesystem usa un archivio `tar` interno più un manifest dei path presenti prima della modifica. Durante il restore il driver ripristina l'archivio e rimuove i file nuovi creati nei path tracciati. Sono esclusi file gestiti dal runtime Docker come `/etc/hosts`, `/etc/hostname`, `/etc/resolv.conf` e `/etc/mtab`.
+
+Il rollback resta applicativo e mirato: non è uno snapshot completo del container e non ripristina processi arbitrari, `/tmp`, `/run`, socket o pseudo-filesystem come `/proc` e `/sys`.
 
 ---
 

@@ -1,4 +1,0 @@
-{"device": "r1", "command": "ip addr add 10.10.1.1/24 dev eth1"}
-{"device": "r1", "command": "ip addr add 10.10.100.1/24 dev eth3"}
-{"device": "r1", "command": "ip addr add 10.20.1.1/24 dev eth2"}
-{"device": "r1", "command": "ip addr add 10.20.100.1/24 dev eth4"}
