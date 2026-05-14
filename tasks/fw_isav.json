@@ -4,13 +4,12 @@
   "domain": "firewall",
   "difficulty": "medium",
   "intents": [
-    "Configure ISAV-style anti-spoofing on fw to block amplification/reflection traffic arriving from the WAN with a spoofed LAN source.",
-    "wan is connected to fw eth1 on 198.51.100.0/24.",
-    "lan is connected to fw eth2 on 10.10.20.0/24.",
-    "Keep legitimate forwarding from wan to lan working.",
-    "Drop traffic entering fw eth1 if its IPv4 source belongs to the protected LAN prefix 10.10.20.0/24.",
-    "Enable strict reverse-path filtering on fw eth1 as an additional anti-spoofing signal.",
-    "Do not modify IP addressing or management connectivity on eth0."
+    "Harden the firewall against spoofed traffic that could be used for reflection or amplification.",
+    "The WAN side reaches fw on eth1 in 198.51.100.0/24, while the protected LAN is behind eth2 in 10.10.20.0/24.",
+    "Traffic arriving from the WAN must not be accepted if it pretends to come from the protected LAN prefix 10.10.20.0/24.",
+    "Legitimate WAN-to-LAN forwarding that does not use a spoofed LAN source must keep working.",
+    "Use an explicit filtering rule and enable a strict reverse-path check on fw eth1 as an additional anti-spoofing control.",
+    "Do not change IP addressing or management connectivity on eth0."
   ],
   "startup_configs": {
     "wan": [

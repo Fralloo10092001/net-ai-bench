@@ -4,15 +4,12 @@
   "domain": "routing",
   "difficulty": "easy",
   "intents": [
-    "Configure the network using exactly the following addressing plan:",
-    "Set pc1 eth1 to 10.0.1.2/24 and route the PC2 subnet via 10.0.1.1.",
-    "Set r1 eth1 to 10.0.1.1/24.",
-    "Set r1 eth2 to 10.0.12.1/24.",
-    "Set r2 eth1 to 10.0.12.2/24.",
-    "Set r2 eth2 to 10.0.2.1/24.",
-    "Set pc2 eth1 to 10.0.2.2/24 and route the PC1 subnet via 10.0.2.1.",
-    "Enable IP forwarding on both routers if needed.",
-    "Configure static routes so that PC1 and PC2 can ping each other through R1 and R2."
+    "Build basic end-to-end IPv4 reachability across the pc1-r1-r2-pc2 topology.",
+    "pc1 belongs to 10.0.1.0/24 and pc2 belongs to 10.0.2.0/24; they must be able to ping each other through r1 and r2.",
+    "Use 10.0.12.0/24 as the transit network between r1 and r2.",
+    "Use r1 as pc1's gateway at 10.0.1.1/24 and r2 as pc2's gateway at 10.0.2.1/24.",
+    "Make sure both routers can forward IPv4 traffic and know how to reach the remote LAN.",
+    "Keep management connectivity unchanged while applying the addressing and routing plan."
   ],
   "ground_truth_configs": {
     "r1": [

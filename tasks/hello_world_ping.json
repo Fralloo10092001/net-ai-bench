@@ -4,10 +4,11 @@
   "domain": "routing",
   "difficulty": "easy",
   "intents": [
-    "Configure the router so that PC1 (10.0.1.2) and PC2 (10.0.2.2) can ping each other.",
-    "Assign IP 10.0.1.1/24 to the router interface connected to PC1.",
-    "Assign IP 10.0.2.1/24 to the router interface connected to PC2.",
-    "Enable IP forwarding on the router."
+    "Make the two PCs reachable through the router in this minimal IPv4 lab.",
+    "PC1 uses 10.0.1.2 and should use the router as the gateway for the PC2 side.",
+    "PC2 uses 10.0.2.2 and should use the router as the gateway for the PC1 side.",
+    "Give the router one address in each LAN, 10.0.1.1/24 toward PC1 and 10.0.2.1/24 toward PC2.",
+    "Enable IPv4 forwarding on the router so the two PCs can ping each other."
   ],
   "topology": {
     "nodes": [

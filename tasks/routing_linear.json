@@ -4,12 +4,12 @@
   "domain": "routing",
   "difficulty": "easy",
   "intents": [
-    "Configure the 3-node linear topology so that pc1 can reach pc2 through r1.",
-    "pc1 already uses 10.0.1.2/24 on eth1 and has a route to 10.0.2.0/24 via 10.0.1.1.",
-    "pc2 already uses 10.0.2.2/24 on eth1 and has a route to 10.0.1.0/24 via 10.0.2.1.",
-    "On r1, assign 10.0.1.1/24 to eth1 and 10.0.2.1/24 to eth2.",
+    "Finish the simple three-node line so pc1 and pc2 can reach each other through r1.",
+    "pc1 is already prepared on 10.0.1.2/24 and points traffic for pc2's subnet at 10.0.1.1.",
+    "pc2 is already prepared on 10.0.2.2/24 and points traffic for pc1's subnet at 10.0.2.1.",
+    "Configure r1 as the router between the two LANs, using 10.0.1.1/24 toward pc1 and 10.0.2.1/24 toward pc2.",
     "Enable IPv4 forwarding on r1.",
-    "Do not modify management connectivity on eth0."
+    "Leave eth0 management connectivity untouched."
   ],
   "startup_configs": {
     "pc1": [

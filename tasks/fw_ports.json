@@ -4,12 +4,11 @@
   "domain": "firewall",
   "difficulty": "medium",
   "intents": [
-    "Configure a default-deny inbound firewall policy on fw using nftables.",
-    "wan is connected to fw eth1 on 10.40.1.0/24.",
-    "lan is connected to fw eth2 on 10.40.2.0/24.",
-    "Permit established and related traffic, loopback traffic, diagnostic ICMP, TCP port 2222, and UDP port 5555 to fw.",
-    "Drop other inbound TCP/UDP ports and log/audit drops with prefix FW_INPUT_DROP.",
-    "Do not flush/reset firewall state and do not modify IP addressing or management connectivity on eth0."
+    "Lock down inbound access to fw with a default-deny nftables policy.",
+    "fw has a WAN side on eth1 in 10.40.1.0/24 and a LAN side on eth2 in 10.40.2.0/24.",
+    "Keep normal established/related replies, loopback traffic, diagnostic ICMP, TCP 2222, and UDP 5555 allowed to the firewall.",
+    "Other inbound TCP and UDP ports should be denied, and drops should be visible in the ruleset with the FW_INPUT_DROP audit prefix.",
+    "Do not reset the whole firewall ruleset and do not alter IP addressing or eth0 management access."
   ],
   "startup_configs": {
     "wan": [

@@ -4,14 +4,12 @@
   "domain": "routing",
   "difficulty": "medium",
   "intents": [
-    "Configure dynamic IPv6 reachability with FRRouting IS-IS between r1 and r2.",
-    "pc1 already uses 2001:db8:1::2/64 and reaches its router at 2001:db8:1::1.",
-    "pc2 already uses 2001:db8:2::2/64 and reaches its router at 2001:db8:2::1.",
-    "On r1, configure 2001:db8:1::1/64 on eth1 and 2001:db8:12::1/64 on eth2.",
-    "On r2, configure 2001:db8:12::2/64 on eth2 and 2001:db8:2::1/64 on eth1.",
-    "Enable IPv6 forwarding on r1 and r2.",
-    "Run IS-IS process CORE in FRR, enable it on the router interfaces, advertise the LAN prefixes, and use wide metrics.",
-    "Do not modify management connectivity on eth0."
+    "Bring up dynamic IPv6 routing between the two FRR routers so the two PCs can reach each other.",
+    "pc1 is in 2001:db8:1::/64 and should use r1 at 2001:db8:1::1; pc2 is in 2001:db8:2::/64 and should use r2 at 2001:db8:2::1.",
+    "Use 2001:db8:12::/64 as the IPv6 transit link between r1 and r2.",
+    "Enable IPv6 forwarding on both routers and run the FRR IS-IS process named CORE on the routed interfaces.",
+    "The routers should form an IS-IS adjacency, flood the LAN prefixes, and use wide metrics for IPv6 unicast reachability.",
+    "Do not disturb eth0 management connectivity."
   ],
   "startup_configs": {
     "pc1": [

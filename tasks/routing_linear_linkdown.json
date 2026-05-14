@@ -4,13 +4,12 @@
   "domain": "routing",
   "difficulty": "easy",
   "intents": [
-    "Troubleshoot the 3-node linear topology where pc1 cannot reach pc2 because the r1-to-pc2 link starts down.",
-    "pc1 already uses 10.0.1.2/24 on eth1 and has a route to 10.0.2.0/24 via 10.0.1.1.",
-    "pc2 already uses 10.0.2.2/24 on eth1 and has a route to 10.0.1.0/24 via 10.0.2.1.",
-    "Bring r1 eth2 back up.",
-    "On r1, assign 10.0.1.1/24 to eth1 and 10.0.2.1/24 to eth2.",
-    "Enable IPv4 forwarding on r1.",
-    "Do not modify management connectivity on eth0."
+    "Repair the three-node line so pc1 can reach pc2 even though the r1-to-pc2 side starts in a failed state.",
+    "pc1 and pc2 already have their endpoint addresses and static routes; the router in the middle still needs to be fixed.",
+    "Bring the r1 interface toward pc2 back into service and use it for the 10.0.2.0/24 side.",
+    "Configure r1 as the gateway between 10.0.1.0/24 and 10.0.2.0/24, with 10.0.1.1/24 toward pc1 and 10.0.2.1/24 toward pc2.",
+    "Enable IPv4 forwarding on r1 so traffic crosses the router.",
+    "Do not change eth0 management connectivity."
   ],
   "startup_configs": {
     "pc1": [

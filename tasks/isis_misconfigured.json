@@ -4,12 +4,12 @@
   "domain": "troubleshooting",
   "difficulty": "medium",
   "intents": [
-    "Troubleshoot an IPv6 IS-IS domain where pc1 cannot reach pc2 because the r1-r2 adjacency does not form.",
-    "The lab starts with FRR and IPv6 addressing already present on r1 and r2.",
-    "Inspect the IS-IS state, running config, and IPv6 routes to identify the misconfiguration.",
-    "Fix the missing IS-IS activation on r2 eth2, the core-facing interface toward r1.",
-    "After the fix, r1 and r2 must form an IS-IS adjacency and exchange the LAN IPv6 prefixes.",
-    "Do not replace the addressing plan and do not modify management connectivity on eth0."
+    "Troubleshoot the IPv6 IS-IS lab: pc1 cannot reach pc2 because the core routing adjacency is not coming up.",
+    "FRR and the IPv6 addressing plan are already present, so treat this as a control-plane repair rather than a full rebuild.",
+    "Inspect the IS-IS neighbor state, running configuration, and IPv6 routes to find the missing piece.",
+    "Repair the r1-r2 adjacency on the core-facing side, specifically the r2 interface toward r1.",
+    "When finished, r1 and r2 should be IS-IS neighbors and should exchange the two LAN IPv6 prefixes.",
+    "Keep the existing addressing plan and eth0 management connectivity intact."
   ],
   "startup_configs": {
     "pc1": [

@@ -4,12 +4,12 @@
   "domain": "firewall",
   "difficulty": "hard",
   "intents": [
-    "Activate the public floating VIP for the HAProxy load balancer on edge2.",
-    "edge1 and edge2 are frontier nodes; HAProxy is already installed and configured on both nodes from mounted lab configuration.",
-    "The final state must expose VIP 203.0.113.100/32 on edge2 eth1.",
-    "Traffic from client to http://203.0.113.100:8080/ must be balanced by HAProxy across backend-a and backend-b.",
-    "Preserve the existing HAProxy configuration, backend addressing, and management connectivity.",
-    "Do not modify backend servers and do not flush firewall state."
+    "Bring the HAProxy service online through the floating public address on the active frontier node.",
+    "edge1 and edge2 already have HAProxy installed and configured from the lab files; use edge2 as the node that owns the VIP in the final state.",
+    "Expose 203.0.113.100/32 on edge2's WAN interface so the client can browse http://203.0.113.100:8080/.",
+    "Traffic to the VIP must be served by HAProxy and distributed across backend-a and backend-b.",
+    "Keep the existing HAProxy configuration, backend IP addressing, and management access intact.",
+    "Do not modify the backend servers or reset unrelated firewall state."
   ],
   "startup_configs": {
     "client": [

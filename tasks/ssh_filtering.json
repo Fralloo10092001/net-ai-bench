@@ -4,12 +4,12 @@
   "domain": "troubleshooting",
   "difficulty": "medium",
   "intents": [
-    "Troubleshoot why the SSH-like TCP service on server port 22 does not respond from client.",
-    "The service is running on server, and an alternate TCP service on port 2222 is already reachable through fw.",
-    "The failure is caused by firewall filtering on fw, not by addressing or routing.",
-    "Add the minimal nftables forward-path rules required to allow TCP port 22 from client to server and its return traffic.",
-    "Keep TCP port 2222 working and keep unrelated ports such as TCP 23 blocked.",
-    "Do not flush/reset firewall state and do not modify management connectivity on eth0."
+    "Diagnose why the client cannot reach the SSH-like service on server TCP port 22.",
+    "The server process is already running, and TCP port 2222 proves that the basic path through fw can work.",
+    "Treat this as a firewall filtering issue on fw, not as an addressing or routing rebuild.",
+    "Allow the minimum forward-path traffic needed for client-to-server TCP 22 and the established return traffic.",
+    "Keep TCP 2222 reachable and keep unrelated ports, such as TCP 23, blocked.",
+    "Do not flush the firewall ruleset or change eth0 management connectivity."
   ],
   "startup_configs": {
     "client": [

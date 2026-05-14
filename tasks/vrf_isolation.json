@@ -4,15 +4,14 @@
   "domain": "routing",
   "difficulty": "hard",
   "intents": [
-    "Configure logical tenant separation on r1 using Linux VRF devices.",
-    "tenant-blue is connected to r1 eth1 on 10.10.1.0/24.",
-    "tenant-red is connected to r1 eth2 on 10.20.1.0/24.",
-    "shared is dual-attached: eth1 is the blue shared segment 10.10.100.0/24 and eth2 is the red shared segment 10.20.100.0/24.",
-    "Create VRF vrf-blue with table 10 and VRF vrf-red with table 20.",
-    "Place r1 eth1 and eth3 in vrf-blue, and r1 eth2 and eth4 in vrf-red.",
-    "Assign gateway addresses on r1 and enable IPv4 forwarding.",
-    "Allow each tenant to reach only its shared service segment, while tenant-blue and tenant-red remain isolated from each other.",
-    "Do not modify management connectivity on eth0."
+    "Separate the blue and red tenants on r1 using Linux VRFs while still giving each tenant access to its own shared-service segment.",
+    "The blue tenant is on r1 eth1 in 10.10.1.0/24 and should use the blue shared segment on r1 eth3 in 10.10.100.0/24.",
+    "The red tenant is on r1 eth2 in 10.20.1.0/24 and should use the red shared segment on r1 eth4 in 10.20.100.0/24.",
+    "Create a blue routing table and a red routing table using VRF devices named vrf-blue and vrf-red.",
+    "Attach the correct r1 tenant and shared interfaces to their matching VRF, then assign the gateway addresses and enable IPv4 forwarding.",
+    "Blue must not be able to reach red, and red must not be able to reach blue.",
+    "Each tenant should reach only its own shared-service side; do not create a broad leak between the VRFs.",
+    "Do not modify eth0 management connectivity."
   ],
   "startup_configs": {
     "tenant-blue": [

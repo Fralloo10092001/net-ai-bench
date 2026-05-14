@@ -4,12 +4,12 @@
   "domain": "firewall",
   "difficulty": "hard",
   "intents": [
-    "Expose the internal HTTP service through a public floating VIP using DNAT on the frontier node edge2.",
-    "The final state must have VIP 203.0.113.100/32 active on edge2 eth1.",
-    "Map TCP 203.0.113.100:8080 to the internal server 10.0.2.100:8080.",
-    "Add forward rules that allow the DNAT flow and its return traffic.",
-    "Use SNAT/MASQUERADE so return traffic is symmetric and does not depend on changing the server application.",
-    "Do not flush/reset iptables and do not modify existing addressing or management connectivity."
+    "A public client must be able to reach the internal HTTP service through the floating address assigned to edge2.",
+    "Use 203.0.113.100/32 as the public VIP on edge2's WAN interface, and publish the service on TCP port 8080.",
+    "Forward requests for 203.0.113.100:8080 to the internal server at 10.0.2.100:8080.",
+    "Make sure the forward path and the return path both work through edge2, including any NAT needed to keep the traffic symmetric.",
+    "Do not change the server application, existing addressing, or management connectivity.",
+    "Avoid broad firewall resets; add only the rules needed for this DNAT service."
   ],
   "startup_configs": {
     "wan": [
