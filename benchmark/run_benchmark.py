@@ -235,7 +235,7 @@ def clear_runtime_logs() -> None:
             path.unlink()
 
 
-# Scrive il CSV aggregato dei risultati
+# Esegue il write del CSV aggregato dei risultati
 def write_csv(results: list[dict[str, Any]]) -> None:
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 

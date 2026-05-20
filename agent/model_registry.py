@@ -86,8 +86,8 @@ def get_model(provider: str, model: str, temperature: float = 0, max_tokens: int
         if not api_key:
             raise ValueError(f"{api_key_var} is not set")
 
-        # ChatNVIDIA currently fails this model lookup when the catalog returns
-        # duplicate entries, so use NVIDIA's OpenAI-compatible endpoint.
+        # ChatNVIDIA al momento fallisce il lookup di questo modello quando il catalogo
+        # restituisce voci duplicate, quindi usa l'endpoint NVIDIA compatibile con OpenAI.
         top_p = 1 if model == "moonshotai/kimi-k2.6" else 0.95
         chat_template_kwargs = {"thinking": True}
         if model in {"deepseek-ai/deepseek-v4-pro", "deepseek-ai/deepseek-v4-flash"}:

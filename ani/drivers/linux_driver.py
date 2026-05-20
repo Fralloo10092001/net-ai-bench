@@ -42,17 +42,17 @@ ALLOWED_PREFIXES = [
     "sysctl -w net.ipv4.conf.eth1.rp_filter=",
     "sysctl -w net.ipv4.conf.eth2.rp_filter=",
 
-    # Read sysctl forwarding (some tasks inspect)
+    # Read del sysctl forwarding (alcuni task lo ispezionano)
     "sysctl net.ipv4.ip_forward",
     "sysctl net.ipv6.conf.all.forwarding",
     "sysctl net.ipv4.ip_forward net.ipv6.conf.all.forwarding",
 
-    # Read sysctl rp_filter (optional but useful)
+    # Read di sysctl rp_filter (opzionale ma utile)
     "sysctl net.ipv4.conf.all.rp_filter",
     "sysctl net.ipv4.conf.default.rp_filter",
     "sysctl net.ipv4.conf.eth1.rp_filter",
 
-    # /proc sysctl equivalents
+    # Equivalenti sysctl in /proc
     "cat /proc/sys/net/ipv4/ip_forward",
     "cat /proc/sys/net/ipv6/conf/all/forwarding",
     "echo 1 > /proc/sys/net/ipv4/ip_forward",
@@ -73,7 +73,7 @@ ALLOWED_PREFIXES = [
     "hostname",
     "uname ",
 
-    # FRR show
+    # Show FRR
     "vtysh -c 'show running-config'",
     "vtysh -c \"show running-config\"",
     "vtysh -c 'show version'",
@@ -83,14 +83,14 @@ ALLOWED_PREFIXES = [
     "vtysh -c 'conf t'",
     "vtysh -c \"conf t\"",
 
-    # Firewall read
+    # Read del firewall
     "nft list ruleset",
     "iptables-save",
 
-    # Firewall apply (Task 4) - load ruleset from file
+    # Applicazione firewall (Task 4) - carica il ruleset da file
     "nft -f ",
 
-    # NAT minimal (Task 5) - allow only additive rules / checks
+    # NAT minimale (Task 5) - consente solo regole additive / verifiche
     "iptables -t nat -A ",
     "iptables -A FORWARD ",
     "iptables -C ",
@@ -100,10 +100,10 @@ ALLOWED_PREFIXES = [
     "iptables -t nat -C POSTROUTING ",
     "iptables -A FORWARD ",
     "iptables -C FORWARD ",
-    # Start long-running services in background (used for internal HTTP server)
+    # Avvia servizi long-running in background (usato per il server HTTP interno)
     "nohup ",
 
-    # DNAT/SNAT rules for Floating IP task
+    # Regole DNAT/SNAT per il task Floating IP
     "iptables -t nat -A PREROUTING ",
     "iptables -t nat -A POSTROUTING ",
     "iptables -t nat -C PREROUTING ",
@@ -123,26 +123,26 @@ BLOCKED_SUBSTRINGS = [
     "poweroff",
     "mkfs",
 
-    # Prevent flushing/resetting firewalls
+    # Impedisce flush/reset dei firewall
     "iptables -F",
     "iptables -P",          # default policies
-    "iptables -X",          # delete chains
-    "iptables -Z",          # zero counters (not dangerous but hides evidence)
-    "iptables-restore",     # too powerful
+    "iptables -X",          # elimina chain
+    "iptables -Z",          # azzera contatori (non pericoloso ma nasconde evidenze)
+    "iptables-restore",     # troppo potente
 
     "nft flush",
     "nft reset",
     "nft delete table",
     "nft delete chain",
-    "nft -f /etc/",         # avoid writing system-level firewall configs (optional hardening)
+    "nft -f /etc/",         # evita write su configurazioni firewall di sistema (optional hardening)
 
-    # Prevent modifying /etc
+    # Impedisce modifiche a /etc
     "> /etc/",
     ">> /etc/",
     "chmod ",
     "chown ",
 
-    # Package managers / downloads / shells
+    # Package manager / download / shell
     "apt ",
     "yum ",
     "dnf ",
@@ -153,7 +153,7 @@ BLOCKED_SUBSTRINGS = [
     "flush ruleset",
     "nft delete ruleset",
 
-    # Keep bind-mounted FRR startup configs immutable across benchmark runs.
+    # Mantiene immutabili le config di startup FRR bind-mounted tra i run del benchmark.
     "write memory",
 ]
 
@@ -179,7 +179,7 @@ READ_ONLY_PREFIXES = [
     "sysctl net.ipv6.conf.all.forwarding",
     "sysctl net.ipv4.ip_forward net.ipv6.conf.all.forwarding",
 
-    # Read rp_filter
+    # Read di rp_filter
     "sysctl net.ipv4.conf.all.rp_filter",
     "sysctl net.ipv4.conf.default.rp_filter",
     "sysctl net.ipv4.conf.eth1.rp_filter",
@@ -212,7 +212,7 @@ READ_ONLY_PREFIXES = [
     "ip -br link",
     "nping ",
 
-    # Optional: readable iptables views (useful for audits)
+    # Opzionale: viste iptables leggibili (utili per audit)
     "iptables -S",
     "iptables -t nat -S",
 ]
@@ -383,7 +383,7 @@ class LinuxDriver(BaseDriver):
         except Exception:
             return default
 
-    # Interpreta una scrittura file controllata senza esporre una shell arbitraria.
+    # Interpreta un file write controllato senza esporre una shell arbitraria.
     def _parse_config_file_write_command(self, cmd: str) -> dict[str, Any] | None:
         try:
             parts = shlex.split(cmd)
@@ -434,7 +434,7 @@ class LinuxDriver(BaseDriver):
             "size": len(content),
         }
 
-    # Scrive solo file di configurazione esplicitamente allowlistati e non symlink.
+    # Esegue write solo su file di configurazione esplicitamente allowlistati e non symlink.
     def _write_config_file(self, device: str, file_write: dict[str, Any]) -> str:
         path = str(file_write["path"])
         content = file_write["content"]
@@ -489,13 +489,13 @@ class LinuxDriver(BaseDriver):
         if not cmd:
             return False
 
-        # Still block shell chaining operators
+        # Blocca comunque gli operatori di chaining shell
         if "&&" in cmd or "||" in cmd:
             return False
 
-        # Prevent taking down data-plane interfaces (common destructive behavior)
-        # (Note: we allow eth0 to be manipulated only if it's already in allowlist, but
-        # we explicitly block eth1/eth2 down.)
+        # Impedisce di disattivare interfacce data-plane (comportamento distruttivo comune)
+        # Nota: permettiamo di manipolare eth0 solo se è già in allowlist, ma
+        # blocchiamo esplicitamente la disattivazione di eth1/eth2.
         if cmd.startswith("ip link set"):
             lowered = cmd.lower()
             if (" eth1 " in lowered or lowered.endswith(" eth1") or " dev eth1" in lowered) and " down" in lowered:
@@ -503,21 +503,21 @@ class LinuxDriver(BaseDriver):
             if (" eth2 " in lowered or lowered.endswith(" eth2") or " dev eth2" in lowered) and " down" in lowered:
                 return False
 
-        # Prevent deleting IPv4 addressing on data-plane interfaces
-        # This keeps the lab reachable and avoids "destructive_fail" caused by LLMs wiping IPs.
+        # Impedisce di eliminare indirizzi IPv4 sulle interfacce data-plane
+        # Questo mantiene il lab raggiungibile ed evita "destructive_fail" causati da LLM che cancellano IP.
         if cmd.startswith("ip addr del"):
             lowered = cmd.lower()
             if " dev eth1" in lowered or " dev eth2" in lowered:
                 return False
 
-        # (Optional) also prevent deleting IPv6 global addresses on eth1/eth2
-        # Note: your driver already allows "ip -6 addr show" but not "ip -6 addr del" by default.
+        # Opzionale: impedisce anche di eliminare indirizzi IPv6 globali su eth1/eth2
+        # Nota: il driver consente già "ip -6 addr show" ma non "ip -6 addr del" di default.
         if cmd.startswith("ip -6 addr del"):
             lowered = cmd.lower()
             if " dev eth1" in lowered or " dev eth2" in lowered:
                 return False
 
-        # Block ';' except for nft chain definitions that require it
+        # Blocca ';' tranne che per le definizioni di chain nft che lo richiedono
         if ";" in cmd and not self._allows_semicolon_for_nft_chain(cmd):
             return False
 
@@ -929,7 +929,7 @@ class LinuxDriver(BaseDriver):
         text = self._exec(device, "ip link show", check=False)
         return self._parse_ip_link_show(text)
 
-    # Normalizza show running-config FRR per frr-reload.py.
+    # Normalizza "show running-config" FRR per frr-reload.py.
     def _normalize_frr_config(self, text: str) -> str:
         lines = []
 
@@ -1294,7 +1294,7 @@ class LinuxDriver(BaseDriver):
         snapshot_links = self._link_by_name(snapshot.get("links", []))
         current_links = self._link_by_name(self._capture_links(device))
 
-        # Recreate missing VRF links if they existed in the snapshot.
+        # Ricrea i link VRF mancanti se esistevano nello snapshot.
         for ifname, snapshot_link in snapshot_links.items():
             if ifname in current_links:
                 continue
@@ -1306,7 +1306,7 @@ class LinuxDriver(BaseDriver):
 
         current_links = self._link_by_name(self._capture_links(device))
 
-        # Restore interface master before deleting created VRFs.
+        # Ripristina il master dell'interfaccia prima di eliminare le VRF create.
         for ifname, snapshot_link in snapshot_links.items():
             if ifname not in current_links:
                 continue
@@ -1329,7 +1329,7 @@ class LinuxDriver(BaseDriver):
 
         current_links = self._link_by_name(self._capture_links(device))
 
-        # Restore administrative up/down state for links present in both snapshots.
+        # Ripristina lo stato amministrativo up/down per i link presenti in entrambi gli snapshot.
         for ifname, snapshot_link in snapshot_links.items():
             current_link = current_links.get(ifname)
             if not current_link:
@@ -1346,7 +1346,7 @@ class LinuxDriver(BaseDriver):
             state = "up" if snapshot_up else "down"
             self._run_rollback_command(device, f"ip link set {shlex.quote(ifname)} {state}", steps)
 
-        # Delete virtual links created after the snapshot, notably VRFs.
+        # Elimina i link virtuali creati dopo lo snapshot, in particolare le VRF.
         for ifname, current_link in current_links.items():
             if ifname in snapshot_links:
                 continue

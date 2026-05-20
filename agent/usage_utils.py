@@ -36,31 +36,31 @@ pricing = {
         "output_per_million": 2.50,
     },
     ("deepseek", "deepseek-v4-pro"): {
-        # DeepSeek reports separate input cache-hit/cache-miss prices.
-        # NetAiBench only tracks aggregate input tokens, so this uses the
-        # non-discounted cache-miss price as a worst-case estimate.
+        # DeepSeek riporta prezzi separati per input cache-hit/cache-miss.
+        # NetAiBench traccia solo token di input aggregati, quindi usa il
+        # prezzo cache-miss non scontato come stima dello scenario peggiore.
         "input_per_million": 1.74,
         "output_per_million": 3.48,
     },
     ("deepseek", "deepseek-v4-flash"): {
-        # DeepSeek cache-miss worst-case estimate provided for 2026-05-06.
+        # Stima cache-miss dello scenario peggiore DeepSeek fornita per il 2026-05-06.
         "input_per_million": 0.14,
         "output_per_million": 0.28,
     },
     ("nvidia", "deepseek-ai/deepseek-v4-pro"): {
-        # Reference estimate based on DeepSeek non-discounted cache-miss pricing.
-        # NVIDIA-hosted billing or free credits may differ from direct DeepSeek.
+        # Stima di riferimento basata sui prezzi cache-miss non scontati di DeepSeek.
+        # La fatturazione NVIDIA-hosted o i crediti gratuiti possono differire da DeepSeek diretto.
         "input_per_million": 1.74,
         "output_per_million": 3.48,
     },
     ("nvidia", "deepseek-ai/deepseek-v4-flash"): {
-        # Reference estimate based on DeepSeek cache-miss worst-case pricing.
-        # NVIDIA-hosted billing or free credits may differ from direct DeepSeek.
+        # Stima di riferimento basata sul prezzo cache-miss DeepSeek dello scenario peggiore.
+        # La fatturazione NVIDIA-hosted o i crediti gratuiti possono differire da DeepSeek diretto.
         "input_per_million": 0.14,
         "output_per_million": 0.28,
     },
     ("nvidia", "moonshotai/kimi-k2.6"): {
-        # Worst-case cache-miss estimate provided for Kimi-K2.6 on 2026-05-06.
+        # Stima cache-miss dello scenario peggiore fornita per Kimi-K2.6 il 2026-05-06.
         "input_per_million": 0.95,
         "output_per_million": 4.00,
     },
