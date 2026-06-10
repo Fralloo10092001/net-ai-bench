@@ -1,1 +1,0 @@
-Validated end-to-end connectivity from pc1 to pc2 with a bounded ping (3/3 replies, 0% loss). The solution preserved eth0 management connectivity and applied only the required r1 interface/state changes.

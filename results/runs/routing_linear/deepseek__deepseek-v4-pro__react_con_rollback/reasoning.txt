@@ -1,1 +1,0 @@
-All requirements are met: pc1 and pc2 have correct IPs and routes, r1 has 10.0.1.1/24 on eth1 and 10.0.2.1/24 on eth2, IPv4 forwarding was already enabled on r1, and connectivity from pc1 to pc2 has been successfully validated.

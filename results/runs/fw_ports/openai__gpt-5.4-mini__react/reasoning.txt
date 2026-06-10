@@ -1,1 +1,0 @@
-On fw, nftables input policy is set to drop with the required accepts and logging drop rules already installed. No addressing or management connectivity on eth0 was changed, and no further configuration is necessary.

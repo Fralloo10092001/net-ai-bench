@@ -1,1 +1,0 @@
-Agent reached maximum number of steps before finishing.

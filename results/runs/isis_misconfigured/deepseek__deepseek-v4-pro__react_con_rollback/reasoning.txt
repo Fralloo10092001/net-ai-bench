@@ -1,1 +1,0 @@
-the agent identified the IS-IS adjacency problem but only changed generic IS-IS settings and did not repair the core point-to-point interface configuration, so convergence was not restored.

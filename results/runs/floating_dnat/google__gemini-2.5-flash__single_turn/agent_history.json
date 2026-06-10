@@ -1,9 +1,0 @@
-[
-  {
-    "step": 1,
-    "thought": "Model output could not be parsed",
-    "action": "parse_error",
-    "raw_output": "{\n  \"edge2\": [\n    \"ip addr add 203.0.113.100/32 dev eth1\",\n    \"iptables -t nat -A PREROUTING -i eth1 -p tcp --dport 8080 -d 203.0.113.100 -j DNAT --to-destination ",
-    "observation": "ERROR: Model output is not valid JSON:\n{\n  \"edge2\": [\n    \"ip addr add 203.0.113.100/32 dev eth1\",\n    \"iptables -t nat -A PREROUTING -i eth1 -p tcp --dport 8080 -d 203.0.113.100 -j DNAT --to-destination"
-  }
-]

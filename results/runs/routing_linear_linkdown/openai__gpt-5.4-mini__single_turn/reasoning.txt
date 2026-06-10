@@ -1,1 +1,0 @@
-pc1 and pc2 already have the correct host addresses and routes, so only r1 needs repair. The r1-to-pc2 interface eth2 is down, so it must be brought up. r1 then needs 10.0.1.1/24 on eth1 and 10.0.2.1/24 on eth2, and IPv4 forwarding must be enabled for traffic to pass between the two subnets. Management on eth0 is left unchanged.

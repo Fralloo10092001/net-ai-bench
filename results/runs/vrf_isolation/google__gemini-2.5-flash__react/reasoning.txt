@@ -1,1 +1,0 @@
-All task requirements have been met and validated. Tenant-blue can reach its shared segment, tenant-red can reach its shared segment, and both tenants are isolated from each other as confirmed by failed pings between their respective networks.

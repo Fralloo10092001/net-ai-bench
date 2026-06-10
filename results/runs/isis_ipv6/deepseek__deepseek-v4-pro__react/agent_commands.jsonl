@@ -1,8 +1,0 @@
-{"device": "r1", "command": "ip addr add 2001:db8:1::1/64 dev eth1"}
-{"device": "r1", "command": "ip addr add 2001:db8:12::1/64 dev eth2"}
-{"device": "r1", "command": "sysctl -w net.ipv6.conf.all.forwarding=1"}
-{"device": "r1", "command": "vtysh -c 'configure terminal' -c 'ipv6 forwarding' -c 'router isis CORE' -c 'net 49.0001.0000.0000.0001.00' -c 'metric-style wide' -c 'exit' -c 'interface eth1' -c 'ipv6 router isis CORE' -c 'exit' -c 'interface eth2' -c 'ipv6 router isis CORE' -c 'exit'"}
-{"device": "r2", "command": "ip addr add 2001:db8:2::1/64 dev eth1"}
-{"device": "r2", "command": "ip addr add 2001:db8:12::2/64 dev eth2"}
-{"device": "r2", "command": "sysctl -w net.ipv6.conf.all.forwarding=1"}
-{"device": "r2", "command": "vtysh -c 'configure terminal' -c 'ipv6 forwarding' -c 'router isis CORE' -c 'net 49.0001.0000.0000.0002.00' -c 'metric-style wide' -c 'exit' -c 'interface eth1' -c 'ipv6 router isis CORE' -c 'exit' -c 'interface eth2' -c 'ipv6 router isis CORE' -c 'exit'"}

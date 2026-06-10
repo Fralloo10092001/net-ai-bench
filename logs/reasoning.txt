@@ -1,1 +1,0 @@
-I could not complete the task because the edge2 device container is not present: get_running_config returned 'Container not found: clab-floating-haproxy-edge2'. Without access to the topology devices, I cannot safely inspect or apply the required HAProxy/VIP configuration or validate connectivity.

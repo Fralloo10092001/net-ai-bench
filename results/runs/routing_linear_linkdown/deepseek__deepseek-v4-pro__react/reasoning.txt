@@ -1,1 +1,0 @@
-Successfully brought r1 eth2 up, assigned 10.0.1.1/24 to eth1 and 10.0.2.1/24 to eth2. IPv4 forwarding was already enabled. Validated ping from pc1 to pc2, which returned 3/3 successful replies. No management changes were made.

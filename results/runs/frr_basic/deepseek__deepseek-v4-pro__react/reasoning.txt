@@ -1,1 +1,0 @@
-All required configurations (IP addresses, static routes, IP forwarding) were verified as present from the execution history. The validation ping from pc1 (10.0.1.2) to pc2 (10.0.2.2) completed with 3/3 packets received and 0% loss, confirming full end-to-end connectivity through R1 and R2. The task objective has been successfully achieved.

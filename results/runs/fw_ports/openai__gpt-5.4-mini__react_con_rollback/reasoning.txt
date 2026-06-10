@@ -1,1 +1,0 @@
-Validated on fw with nft list table inet fw_input. The active ruleset shows chain input hooked to the input path with policy drop and the required accept rules plus log/drop rule prefix FW_INPUT_DROP. Management on eth0 and existing routes were left untouched.

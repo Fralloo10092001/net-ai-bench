@@ -1,1 +1,0 @@
-PC1 and PC2 can successfully ping each other, which validates the task goal of establishing connectivity between them through R1 and R2 using static routes. All required addressing and routing have been configured and verified.

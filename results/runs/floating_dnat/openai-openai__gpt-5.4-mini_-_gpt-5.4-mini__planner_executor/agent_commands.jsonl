@@ -1,1 +1,0 @@
-{"device": "edge2", "command": "ip addr add 203.0.113.100/32 dev eth1"}

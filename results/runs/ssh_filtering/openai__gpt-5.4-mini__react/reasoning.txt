@@ -1,1 +1,0 @@
-Added only the two missing forward-path nftables rules on fw to permit TCP/22 client-to-server and its return traffic, preserving the existing TCP/2222 allowance, default-drop policy, and management connectivity on eth0. No additional changes are necessary.

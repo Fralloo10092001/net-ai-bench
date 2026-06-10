@@ -1,1 +1,0 @@
-Configured pc1, r1, r2, and pc2 with exact IPs and static routes as per the addressing plan. Verified that PC1 can ping PC2, achieving the required connectivity.

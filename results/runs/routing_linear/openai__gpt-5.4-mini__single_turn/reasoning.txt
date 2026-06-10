@@ -1,1 +1,0 @@
-pc1 and pc2 already have the required interface addresses and host routes for reaching the opposite subnet, and management connectivity on eth0 is left unchanged. r1 only needs the two IPv4 interface addresses on the transit links and IPv4 forwarding enabled so it can route traffic between 10.0.1.0/24 and 10.0.2.0/24.

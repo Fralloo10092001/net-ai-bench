@@ -1,2 +1,0 @@
-{"device": "fw", "command": "nft add rule inet filter forward iifname \"eth1\" oifname \"eth2\" tcp dport 22 ct state new,established accept"}
-{"device": "fw", "command": "nft add rule inet filter forward iifname \"eth2\" oifname \"eth1\" tcp sport 22 ct state established accept"}

@@ -1,1 +1,0 @@
-Connectivity between pc1 and pc2 has been successfully established and validated by pinging 10.0.2.2 from pc1. All required configurations on r1 (bringing eth2 up, assigning IP addresses to eth1 and eth2, and ensuring IPv4 forwarding is enabled) have been applied and verified.

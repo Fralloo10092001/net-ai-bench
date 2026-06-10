@@ -1,1 +1,0 @@
-Applied the exact IPv4 addressing plan on the interconnect and host-facing interfaces, enabled IPv4 forwarding on both routers, and added the required static routes so PC1 reaches the PC2 subnet via R1->R2 and PC2 reaches the PC1 subnet via R2->R1. Existing management interfaces and default routes on eth0 were left untouched.

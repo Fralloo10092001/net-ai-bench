@@ -1,1 +1,0 @@
-The r1 eth2 link was down; it was brought up and the required IP addresses were assigned. IPv4 forwarding was already active. The ping from pc1 (10.0.1.2) to pc2 (10.0.2.2) succeeded with 0% packet loss, confirming end-to-end connectivity. No management interfaces or routes were modified. All task requirements are satisfied.
